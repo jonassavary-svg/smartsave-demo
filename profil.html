@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartSave – Modifier mes données</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="profile-page">
+    <div class="profile-shell">
+      <header class="dashboard-header">
+        <a class="logo" href="resultats.html">
+          <div class="logo-mark" aria-hidden="true">S</div>
+          <span class="logo-text">SmartSave</span>
+        </a>
+        <div class="user-menu-wrapper">
+          <button
+            class="user-pill"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="profile-user-menu"
+          >
+            <span class="user-avatar" aria-live="polite">SS</span>
+            <span class="user-name">Mon compte</span>
+            <span class="chevron" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+                <path
+                  d="M6 9l6 6 6-6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </span>
+          </button>
+          <div class="user-menu" id="profile-user-menu" role="menu" aria-label="Menu Mon compte">
+            <button type="button" data-profile-action="back">Retour aux résultats</button>
+            <button type="button" data-profile-action="logout">Déconnexion</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="profile-summary card" data-summary>
+        <div class="profile-summary__heading">
+          <p class="section-eyebrow">Synthèse rapide</p>
+          <h2>Vue d’ensemble</h2>
+        </div>
+        <div class="profile-summary__grid" data-summary-grid></div>
+      </section>
+
+      <nav class="profile-nav card" aria-label="Navigation des sections">
+        <a href="#step-personal">1. Profil</a>
+        <a href="#step-revenus">2. Revenus</a>
+        <a href="#step-depenses">3. Dépenses</a>
+        <a href="#step-actifs">4. Actifs</a>
+        <a href="#step-investissements">5. Investissements</a>
+        <a href="#step-credits">6. Crédits</a>
+        <a href="#step-impots">7. Impôts</a>
+        <a href="#step-vision">8. Vision</a>
+      </nav>
+
+      <form id="profile-form">
+        <section class="profile-step card" id="step-personal" data-step="personal">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 1</p>
+            <h2>Informations personnelles</h2>
+          </header>
+          <div class="profile-step__content profile-step__content--personal" data-fields="personal"></div>
+        </section>
+
+        <section class="profile-step card" id="step-revenus" data-step="revenus">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 2</p>
+            <h2>Revenus</h2>
+          </header>
+          <div class="profile-collection">
+            <div class="profile-collection__rows" data-rows="incomes"></div>
+            <button type="button" class="ghost-btn" data-add-row="incomes">Ajouter un revenu</button>
+          </div>
+        </section>
+
+        <section class="profile-step card" id="step-depenses" data-step="depenses">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 3</p>
+            <h2>Dépenses</h2>
+          </header>
+          <div class="profile-collection">
+            <p class="profile-collection__subtitle">Charges fixes</p>
+            <div class="profile-collection__rows" data-rows="expenses-fixed"></div>
+            <button type="button" class="ghost-btn" data-add-row="expenses-fixed">Ajouter une charge fixe</button>
+          </div>
+          <div class="profile-collection" style="margin-top: 1.5rem;">
+            <p class="profile-collection__subtitle">Charges variables</p>
+            <div class="profile-collection__rows" data-rows="expenses-variable"></div>
+            <button type="button" class="ghost-btn" data-add-row="expenses-variable">Ajouter une charge variable</button>
+          </div>
+        </section>
+
+        <section class="profile-step card" id="step-exceptional" data-step="exceptional">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 3.1</p>
+            <h2>Dépenses exceptionnelles</h2>
+          </header>
+          <div class="profile-step__content profile-step__content--exceptional" data-fields="exceptional"></div>
+        </section>
+
+        <section class="profile-step card" id="step-actifs" data-step="actifs">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 4</p>
+            <h2>Actifs et liquidités</h2>
+          </header>
+          <div class="profile-step__content profile-step__content--assets" data-fields="assets"></div>
+        </section>
+
+        <section class="profile-step card" id="step-investissements" data-step="investissements">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 5</p>
+            <h2>Investissements</h2>
+          </header>
+          <div class="profile-collection">
+            <div class="profile-collection__rows" data-rows="investments"></div>
+            <button type="button" class="ghost-btn" data-add-row="investments">Ajouter un investissement</button>
+          </div>
+        </section>
+
+        <section class="profile-step card" id="step-credits" data-step="credits">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 6</p>
+            <h2>Crédits & dettes</h2>
+          </header>
+          <div class="profile-step__content profile-step__content--credits" data-fields="credits"></div>
+          <div class="profile-collection" style="margin-top: 1.5rem;">
+            <p class="profile-collection__subtitle">Crédits à gérer</p>
+            <div class="profile-collection__rows" data-rows="credits"></div>
+            <button type="button" class="ghost-btn" data-add-row="credits">Ajouter un crédit</button>
+          </div>
+        </section>
+
+        <section class="profile-step card" id="step-impots" data-step="impots">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 7</p>
+            <h2>Impôts & déductions</h2>
+          </header>
+          <div class="profile-step__content profile-step__content--taxes" data-fields="taxes"></div>
+        </section>
+
+        <section class="profile-step card" id="step-vision" data-step="vision">
+          <header class="profile-step__header">
+            <p class="section-eyebrow">Étape 8</p>
+            <h2>Vision & tolérance</h2>
+          </header>
+          <div class="profile-step__content profile-step__content--goals" data-fields="goals"></div>
+        </section>
+      </form>
+
+      <div class="profile-actions card">
+        <button type="button" class="ghost-btn" data-action="cancel">Annuler les changements</button>
+        <button type="button" class="cta" data-action="apply">Appliquer les changements</button>
+      </div>
+    </div>
+
+    <script>
+      const STORAGE_KEY_FORM = "smartsaveFormData";
+      const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
+
+      let activeUser = null;
+      let originalData = null;
+      let editedData = null;
+
+      const personalFields = [
+        { label: "Date de naissance", path: "personal.birthDate", type: "date" },
+        { label: "Canton", path: "personal.canton" },
+        { label: "Commune", path: "personal.commune" },
+        {
+          label: "État civil",
+          path: "personal.maritalStatus",
+          options: ["celibataire", "marie", "partenariat", "divorce", "veuf"],
+        },
+        { label: "Enfants à charge", path: "personal.childrenCount", type: "number" },
+        { label: "Statut professionnel", path: "personal.employmentStatus" },
+        {
+          label: "Stabilité des revenus",
+          path: "personal.incomeStability",
+          options: ["stable", "variable", "autre"],
+        },
+        { label: "Religion", path: "personal.religion" },
+      ];
+
+      const assetFields = [
+        { label: "Compte courant (CHF)", path: "assets.currentAccount", type: "number" },
+        { label: "Épargne (CHF)", path: "assets.savingsAccount", type: "number" },
+        {
+          label: "Épargne automatique",
+          path: "assets.savingsContribution",
+          options: ["oui", "non"],
+        },
+        {
+          label: "Montant épargne auto (CHF)",
+          path: "assets.savingsContributionAmount",
+          type: "number",
+        },
+        {
+          label: "Pilier 3a actif",
+          path: "assets.thirdPillar",
+          options: ["oui", "non"],
+        },
+        { label: "Montant pilier 3a (CHF)", path: "assets.thirdPillarAmount", type: "number" },
+        { label: "Type pilier 3a", path: "assets.thirdPillarType" },
+      ];
+
+      const exceptionalFields = [
+        {
+          label: "Type de dépense",
+          path: "exceptional.type",
+          options: ["aucune", "vacances", "cadeaux", "sante", "reparation", "autre"],
+        },
+        {
+          label: "Montant estimé (CHF)",
+          path: "exceptional.amount",
+          type: "number",
+        },
+        {
+          label: "Commentaires",
+          path: "exceptional.notes",
+        },
+      ];
+
+      const taxFields = [
+        {
+          label: "Déclarez-vous des impôts en CH ?",
+          path: "taxes.paysTaxes",
+          options: ["oui", "non"],
+        },
+        { label: "Distance domicile-travail (km)", path: "taxes.commuteDistance", type: "number" },
+        { label: "Mode de transport", path: "taxes.transportMode" },
+        { label: "Fréquence repas", path: "taxes.mealsFrequency" },
+        { label: "Assurance maladie (CHF)", path: "taxes.basicInsurance", type: "number" },
+        { label: "Frais de garde (CHF)", path: "taxes.childcareCosts", type: "number" },
+      ];
+
+      const goalFields = [
+        {
+          label: "Priorité principale",
+          path: "goals.primaryPriority",
+          options: ["securite", "projet", "croissance"],
+        },
+        {
+          label: "Tolérance au risque",
+          path: "goals.riskTolerance",
+          options: ["faible", "moyenne", "elevee"],
+        },
+      ];
+
+      const collectionConfig = {
+        incomes: {
+          arrayPath: "incomes.entries",
+          container: "[data-rows='incomes']",
+          defaultEntry: () => ({
+            sourceType: "salaire",
+            amount: 0,
+            amountType: "net",
+            thirteenth: "oui",
+          }),
+          fields: [
+            {
+              label: "Type de revenu",
+              field: "sourceType",
+              options: ["salaire", "bonus", "freelance", "rente", "autre"],
+            },
+            { label: "Montant (CHF)", field: "amount", type: "number" },
+            {
+              label: "Net / Brut",
+              field: "amountType",
+              options: ["net", "brut"],
+            },
+            {
+              label: "13ᵉ salaire ?",
+              field: "thirteenth",
+              options: ["oui", "non"],
+            },
+          ],
+        },
+        "expenses-fixed": {
+          arrayPath: "expenses.fixed",
+          container: "[data-rows='expenses-fixed']",
+          defaultEntry: () => ({
+            label: "Nouvelle charge fixe",
+            amount: 0,
+            frequency: "mensuel",
+          }),
+          fields: [
+            { label: "Libellé", field: "label" },
+            { label: "Montant (CHF)", field: "amount", type: "number" },
+            {
+              label: "Fréquence",
+              field: "frequency",
+              options: ["mensuel", "annuel", "trimestriel", "hebdomadaire"],
+            },
+          ],
+        },
+        "expenses-variable": {
+          arrayPath: "expenses.variable",
+          container: "[data-rows='expenses-variable']",
+          defaultEntry: () => ({
+            label: "Nouvelle charge variable",
+            amount: 0,
+            frequency: "mensuel",
+          }),
+          fields: [
+            { label: "Libellé", field: "label" },
+            { label: "Montant (CHF)", field: "amount", type: "number" },
+            {
+              label: "Fréquence",
+              field: "frequency",
+              options: ["mensuel", "annuel", "trimestriel", "hebdomadaire"],
+            },
+          ],
+        },
+        investments: {
+          arrayPath: "investments.items",
+          container: "[data-rows='investments']",
+          defaultEntry: () => ({
+            investmentType: "etf",
+            amount: 0,
+            hasMonthly: "non",
+            monthlyAmount: 0,
+            horizon: "long",
+          }),
+          fields: [
+            {
+              label: "Type d’investissement",
+              field: "investmentType",
+              options: ["etf", "fonds", "actions", "obligations", "pilier3a", "crypto", "autre"],
+            },
+            { label: "Montant actuel (CHF)", field: "amount", type: "number" },
+            {
+              label: "Versement mensuel",
+              field: "hasMonthly",
+              options: ["oui", "non"],
+            },
+            { label: "Montant mensuel (CHF)", field: "monthlyAmount", type: "number" },
+            {
+              label: "Horizon de placement",
+              field: "horizon",
+              options: ["court", "moyen", "long"],
+            },
+          ],
+        },
+        credits: {
+          arrayPath: "credits.loans",
+          container: "[data-rows='credits']",
+          defaultEntry: () => ({
+            creditType: "consommation",
+            outstanding: 0,
+            monthlyPayment: 0,
+            rate: 0,
+            frequency: "mensuel",
+          }),
+          fields: [
+            {
+              label: "Type de crédit",
+              field: "creditType",
+              options: ["consommation", "leasing", "carte_credit", "hypotheque", "autre"],
+            },
+            { label: "Montant restant (CHF)", field: "outstanding", type: "number" },
+            { label: "Mensualité (CHF)", field: "monthlyPayment", type: "number" },
+            { label: "Taux (%)", field: "rate", type: "number" },
+            {
+              label: "Fréquence",
+              field: "frequency",
+              options: ["mensuel", "trimestriel", "annuel"],
+            },
+          ],
+        },
+      };
+
+      document.addEventListener("DOMContentLoaded", () => {
+        initProfileEditor();
+        document.querySelector("[data-action='apply']").addEventListener("click", applyChanges);
+        document.querySelector("[data-action='cancel']").addEventListener("click", cancelChanges);
+        document.addEventListener("click", handleRowButtons);
+        document.getElementById("profile-form").addEventListener("input", handleFieldInput);
+        setupProfileUserMenu();
+      });
+
+      function initProfileEditor() {
+        activeUser = loadActiveUser();
+        if (!activeUser) {
+          showMessage("Aucun profil actif. Commencez par remplir le formulaire.");
+          return;
+        }
+        const stored = loadUserForm(activeUser.id);
+        if (!stored) {
+          showMessage("Aucune donnée enregistrée pour ce profil.");
+          return;
+        }
+        originalData = deepClone(stored);
+        editedData = deepClone(stored);
+        renderEditor();
+      }
+
+      function renderEditor() {
+        renderFields(personalFields, "[data-fields='personal']");
+        renderCollection("incomes");
+        renderCollection("expenses-fixed");
+        renderCollection("expenses-variable");
+        renderFields(exceptionalFields, "[data-fields='exceptional']");
+        renderFields(assetFields, "[data-fields='assets']");
+        renderCollection("investments");
+        renderFields(
+          [
+            {
+              label: "Propriétaire",
+              path: "credits.isOwner",
+              options: ["oui", "non"],
+            },
+            { label: "Valeur du bien (CHF)", path: "credits.propertyValue", type: "number" },
+            { label: "Encours hypothèque (CHF)", path: "credits.mortgageBalance", type: "number" },
+            { label: "Taux hypothèque (%)", path: "credits.mortgageRate", type: "number" },
+            { label: "Valeur du véhicule (CHF)", path: "credits.vehicleValue", type: "number" },
+            { label: "Total dettes déclarées (CHF)", path: "credits.debtsTotal", type: "number" },
+            { label: "Total patrimoine déclaré (CHF)", path: "credits.assetsTotal", type: "number" },
+          ],
+          "[data-fields='credits']"
+        );
+        renderCollection("credits");
+        renderFields(taxFields, "[data-fields='taxes']");
+        renderFields(goalFields, "[data-fields='goals']");
+        renderSummary();
+        updateAvatarInitials();
+      }
+
+      function renderFields(fields, selector) {
+        const container = document.querySelector(selector);
+        if (!container || !editedData) return;
+        container.innerHTML = "";
+        fields.forEach((field) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "profile-field-row";
+          const label = document.createElement("label");
+          label.className = "profile-field-row__label";
+          label.textContent = field.label;
+          const input = createFieldInput(field);
+          wrapper.append(label, input);
+          container.appendChild(wrapper);
+        });
+      }
+
+      function createFieldInput(field) {
+        const value = getValueByPath(editedData, field.path) ?? "";
+        if (field.options) {
+          const select = document.createElement("select");
+          select.dataset.path = field.path;
+          select.dataset.type = field.type || "string";
+          field.options.forEach((option) => {
+            const opt = document.createElement("option");
+            opt.value = option;
+            opt.textContent = formatOptionValue(option);
+            select.appendChild(opt);
+          });
+          select.value = value || field.options[0] || "";
+          return select;
+        }
+        const input = document.createElement("input");
+        input.type = field.type === "number" ? "number" : field.type === "date" ? "date" : "text";
+        input.dataset.path = field.path;
+        input.dataset.type = field.type || "string";
+        input.value = value ?? "";
+        if (field.type === "number") input.step = "0.01";
+        return input;
+      }
+
+      function renderCollection(key) {
+        const config = collectionConfig[key];
+        if (!config || !editedData) return;
+        const container = document.querySelector(config.container);
+        if (!container) return;
+        const entries = ensureArray(getValueByPath(editedData, config.arrayPath));
+        container.innerHTML = "";
+        entries.forEach((entry, index) => {
+          const row = document.createElement("article");
+          row.className = "profile-collection-row";
+          const grid = document.createElement("div");
+          grid.className = "profile-collection-grid";
+          config.fields.forEach((field) => {
+            const path = `${config.arrayPath}[${index}].${field.field}`;
+            const inputField = createCollectionInput(field, path);
+            grid.appendChild(inputField);
+          });
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "ghost-btn profile-collection-row__remove";
+          removeBtn.textContent = "Supprimer";
+          removeBtn.dataset.removeRow = key;
+          removeBtn.dataset.index = String(index);
+          row.append(grid, removeBtn);
+          container.appendChild(row);
+        });
+      }
+
+      function renderSummary() {
+        const container = document.querySelector("[data-summary-grid]");
+        if (!container || !editedData) return;
+        const safeComputeMonthlyIncome =
+          typeof computeMonthlyIncome === "function" ? computeMonthlyIncome : () => 0;
+        const monthlyIncome = safeComputeMonthlyIncome(editedData);
+        const fixed = sumMonthly(editedData.expenses?.fixed);
+        const variable = sumMonthly(editedData.expenses?.variable);
+        const liquidity = computeLiquidAssets(editedData.assets);
+        const netAssets = toNumber(editedData.credits?.assetsTotal);
+        const debtValue = computeTotalDebt(editedData.credits);
+        const netWorth = liquidity + netAssets;
+        const metrics = [
+          ["Revenu mensuel", formatCurrency(monthlyIncome)],
+          ["Charges fixes", formatCurrency(fixed)],
+          ["Charges variables", formatCurrency(variable)],
+          ["Liquidités", formatCurrency(liquidity)],
+          ["Patrimoine estimé", formatCurrency(netWorth)],
+          ["Dettes déclarées", formatCurrency(debtValue)],
+        ];
+        container.innerHTML = metrics
+          .map(
+            ([label, value]) => `
+              <div class="profile-summary__metric">
+                <span>${label}</span>
+                <strong>${value}</strong>
+              </div>
+            `
+          )
+          .join("");
+      }
+
+      function createCollectionInput(field, path) {
+        const wrapper = document.createElement("label");
+        wrapper.className = "profile-collection-field";
+        const title = document.createElement("span");
+        title.textContent = field.label;
+        let control;
+        const value = getValueByPath(editedData, path) ?? "";
+        if (field.options) {
+          const select = document.createElement("select");
+          select.dataset.path = path;
+          select.dataset.type = "string";
+          field.options.forEach((option) => {
+            const opt = document.createElement("option");
+            opt.value = option;
+            opt.textContent = formatOptionValue(option);
+            select.appendChild(opt);
+          });
+          select.value = value || field.options[0] || "";
+          control = select;
+        } else {
+          const input = document.createElement("input");
+          input.type = field.type === "number" ? "number" : "text";
+          input.step = field.type === "number" ? "0.01" : undefined;
+          input.dataset.path = path;
+          input.dataset.type = field.type || "string";
+          input.value = value ?? "";
+          control = input;
+        }
+        wrapper.append(title, control);
+        return wrapper;
+      }
+
+      function handleFieldInput(event) {
+        const target = event.target;
+        const path = target.dataset.path;
+        if (!path) return;
+        updateEditedData(path, target.value, target.dataset.type);
+        if (path.startsWith("personal.")) {
+          updateAvatarInitials();
+        }
+      }
+
+      function handleRowButtons(event) {
+        const add = event.target.closest("[data-add-row]");
+        if (add) {
+          addRow(add.dataset.addRow);
+          return;
+        }
+        const remove = event.target.closest("[data-remove-row]");
+        if (remove) {
+          removeRow(remove.dataset.removeRow, Number(remove.dataset.index));
+        }
+      }
+
+      function addRow(key) {
+        const config = collectionConfig[key];
+        if (!config) return;
+        const array = ensureArray(getValueByPath(editedData, config.arrayPath));
+        array.push(config.defaultEntry());
+        setValueByPath(editedData, config.arrayPath, array);
+        renderCollection(key);
+        renderSummary();
+      }
+
+      function removeRow(key, index) {
+        const config = collectionConfig[key];
+        if (!config) return;
+        const array = ensureArray(getValueByPath(editedData, config.arrayPath));
+        if (index < 0 || index >= array.length) return;
+        array.splice(index, 1);
+        setValueByPath(editedData, config.arrayPath, array);
+        renderCollection(key);
+        renderSummary();
+      }
+
+      function updateEditedData(path, rawValue, type) {
+        const normalized = type === "number" ? toNumber(rawValue) : rawValue;
+        setValueByPath(editedData, path, normalized);
+        renderSummary();
+      }
+
+      function applyChanges() {
+        if (!activeUser || !editedData) return;
+        saveUserForm(activeUser.id, editedData);
+        window.location.href = "resultats.html";
+      }
+
+      function cancelChanges() {
+        if (!originalData) return;
+        editedData = deepClone(originalData);
+        renderEditor();
+      }
+
+      function showMessage(message) {
+        const form = document.getElementById("profile-form");
+        if (form) {
+          form.innerHTML = `<div class="profile-empty-message">${message}</div>`;
+        }
+      }
+
+      function loadActiveUser() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY_ACTIVE_USER);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed?.id ? parsed : null;
+        } catch (_error) {
+          return null;
+        }
+      }
+
+      function loadUserForm(userId) {
+        if (!userId) return null;
+        const raw = localStorage.getItem(STORAGE_KEY_FORM);
+        if (!raw) return null;
+        const parsed = safelyParse(raw);
+        if (parsed[userId]) {
+          return deepClone(parsed[userId]);
+        }
+        if (parsed.__default) {
+          return deepClone(parsed.__default);
+        }
+        return null;
+      }
+
+      function saveUserForm(userId, data) {
+        if (!userId || !data) return;
+        const raw = localStorage.getItem(STORAGE_KEY_FORM);
+        const payload = raw ? safelyParse(raw) : {};
+        payload[userId] = deepClone(data);
+        payload.__default = deepClone(data);
+        localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(payload));
+      }
+
+      function formatOptionValue(value) {
+        if (!value) return "";
+        const map = {
+          celibataire: "Célibataire",
+          marie: "Marié·e",
+          partenariat: "Partenariat",
+          divorce: "Divorcé·e",
+          veuf: "Veuf·Ve",
+          stable: "Stable",
+          variable: "Variable",
+          autre: "Autre",
+          securite: "Sécurité",
+          projet: "Projet",
+          croissance: "Croissance",
+          faible: "Faible",
+          moyenne: "Moyenne",
+          elevee: "Élevée",
+        };
+        return map[String(value).toLowerCase()] || value;
+      }
+
+      function formatCurrency(value) {
+        const number = Number.isFinite(value) ? value : toNumber(value);
+        return new Intl.NumberFormat("fr-CH", {
+          style: "currency",
+          currency: "CHF",
+          maximumFractionDigits: 0,
+        }).format(number);
+      }
+
+      function getValueByPath(data, path) {
+        if (!data || !path) return undefined;
+        const steps = parsePath(path);
+        let current = data;
+        for (const step of steps) {
+          if (current == null) return undefined;
+          current = current[step];
+        }
+        return current;
+      }
+
+      function setValueByPath(data, path, value) {
+        if (!data || !path) return;
+        const steps = parsePath(path);
+        let current = data;
+        for (let i = 0; i < steps.length - 1; i++) {
+          const step = steps[i];
+          if (current[step] == null) {
+            current[step] = typeof steps[i + 1] === "number" ? [] : {};
+          }
+          current = current[step];
+        }
+        current[steps[steps.length - 1]] = value;
+      }
+
+      function parsePath(path) {
+        const regex = /([^[.\]]+)|\[(\d+)\]/g;
+        const segments = [];
+        let match;
+        while ((match = regex.exec(path))) {
+          if (match[1]) segments.push(match[1]);
+          else if (match[2]) segments.push(Number(match[2]));
+        }
+        return segments;
+      }
+
+      function ensureArray(value) {
+        if (Array.isArray(value)) return value;
+        if (value === undefined || value === null) return [];
+        return [value];
+      }
+
+      function deepClone(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function safelyParse(raw) {
+        try {
+          return JSON.parse(raw);
+        } catch (_error) {
+          return {};
+        }
+      }
+
+      function toNumber(value) {
+        if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+        const parsed = parseFloat(String(value || "").replace(",", ".").replace(/\s/g, ""));
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function sumMonthly(entries = []) {
+        return ensureArray(entries).reduce((acc, entry) => acc + toNumber(entry.amount), 0);
+      }
+
+      function computeMonthlyIncome(data = {}) {
+        const entries = ensureArray(data.incomes?.entries);
+        let total = 0;
+        entries.forEach((entry) => {
+          total += toNumber(entry.amount);
+        });
+        const spouse = toNumber(data.incomes?.spouseNetIncome);
+        if (spouse > 0) total += spouse;
+        return total;
+      }
+
+      function computeLiquidAssets(assets = {}) {
+        let total = toNumber(assets.currentAccount) + toNumber(assets.savingsAccount) + toNumber(assets.thirdPillarAmount);
+        ensureArray(assets.otherAssets).forEach((item) => {
+          total += toNumber(item.amount);
+        });
+        return total;
+      }
+
+      function computeTotalDebt(credits = {}) {
+        let total = toNumber(credits.debtsTotal);
+        total += toNumber(credits.mortgageBalance);
+        ensureArray(credits.loans).forEach((loan) => {
+          total += toNumber(loan.outstanding);
+        });
+        return total;
+      }
+
+      function setupProfileUserMenu() {
+        const pill = document.querySelector(".user-pill");
+        const menu = document.querySelector(".user-menu");
+        if (!pill || !menu) return;
+
+        const avatar = pill.querySelector(".user-avatar");
+        if (avatar) {
+          avatar.textContent = getProfileInitials();
+        }
+
+        let open = false;
+
+        const update = (state) => {
+          open = state;
+          menu.classList.toggle("active", state);
+          pill.setAttribute("aria-expanded", String(state));
+        };
+
+        const toggle = () => update(!open);
+        const close = () => update(false);
+
+        pill.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          toggle();
+        });
+
+        menu.addEventListener("click", (event) => {
+          const action = event.target.closest("[data-profile-action]")?.dataset.profileAction;
+          if (!action) return;
+          close();
+          if (action === "back") {
+            window.location.href = "resultats.html";
+          } else if (action === "logout") {
+            alert("Déconnexion simulée : cette action doit être reliée à votre backend.");
+          }
+        });
+
+        document.addEventListener("click", (event) => {
+          if (!open) return;
+          if (!menu.contains(event.target) && !pill.contains(event.target)) {
+            close();
+          }
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && open) {
+            close();
+            pill.focus();
+          }
+        });
+      }
+
+      function getProfileInitials() {
+        const personal = editedData?.personal || {};
+        const first = (personal.firstName || personal.nom || "").trim();
+        const last = (personal.lastName || personal.prenom || "").trim();
+        const fallback = personal.fullName || personal.displayName;
+        const parts = [];
+        if (first) parts.push(first);
+        if (last) parts.push(last);
+        if (!parts.length && fallback) {
+          parts.push(...fallback.split(/\s+/).filter(Boolean));
+        }
+        if (!parts.length) {
+          const source = activeUser?.displayName || activeUser?.fullName || activeUser?.name || activeUser?.id;
+          if (source) parts.push(...String(source).trim().split(/\s+/).filter(Boolean));
+        }
+        if (!parts.length) return "SS";
+        if (parts.length === 1) return parts[0][0].toUpperCase();
+        const firstInitial = parts[0][0].toUpperCase();
+        const lastInitial = parts[parts.length - 1][0].toUpperCase();
+        return `${firstInitial}${lastInitial}`;
+      }
+
+      function updateAvatarInitials() {
+        const avatar = document.querySelector(".user-pill .user-avatar");
+        if (avatar) {
+          avatar.textContent = getProfileInitials();
+        }
+      }
+
+    </script>
+  </body>
+</html>

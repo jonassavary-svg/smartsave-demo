@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SmartSave MVP – Résultats</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="results" data-mvp>
+    <div class="dashboard-shell">
+      <header class="dashboard-header">
+        <a class="logo" href="formulaire.html">
+          <div class="logo-mark" aria-hidden="true">S</div>
+          <span class="logo-text">SmartSave MVP</span>
+        </a>
+        <div class="user-menu-wrapper">
+          <button class="user-pill" type="button" aria-haspopup="true">
+            <span class="user-avatar" aria-live="polite">SS</span>
+            <span class="user-name">Mon Compte</span>
+          </button>
+        </div>
+      </header>
+      <main class="results-layout">
+        <div class="results-header">
+          <section class="card result-header-card full-width" id="mvp-score-card">
+            <div class="score-panel">
+              <div class="score-panel__visual">
+                <div class="score-gauge" aria-hidden="true">
+                  <svg viewBox="0 0 160 160">
+                    <circle class="score-track" cx="80" cy="80" r="70"></circle>
+                    <circle class="score-progress" cx="80" cy="80" r="70" data-score-circle></circle>
+                    <text
+                      class="score-value"
+                      x="80"
+                      y="92"
+                      text-anchor="middle"
+                      dominant-baseline="middle"
+                    >
+                      <tspan class="score-value__score" data-mvp-score-total>0</tspan>
+                      <tspan class="score-value__max">/100</tspan>
+                    </text>
+                  </svg>
+                </div>
+                <p class="score-panel__level" data-mvp-score-level>SmartSave</p>
+              </div>
+              <div class="score-panel__text">
+                <p class="score-label">Score SmartSave</p>
+                <p class="score-panel__description">
+                  L'indicateur synthétise ta santé financière et met en lumière les leviers prioritaires.
+                </p>
+                <div class="score-panel__meta">
+                  <span>Mesure automatique basée sur ta stabilité, tes dépenses et tes ambitions.</span>
+                  <span>Mis à jour à chaque connexion.</span>
+                </div>
+                <div class="score-panel__pillar-list">
+                  <p class="score-panel__pillar" data-score-pillar="securite">
+                    <span>Sécurité</span>
+                    <strong data-score-value="securite">0/100</strong>
+                    <span class="pillar-gauge">
+                      <span class="pillar-gauge__fill" data-score-gauge="securite"></span>
+                    </span>
+                  </p>
+                  <p class="score-panel__pillar" data-score-pillar="anticipation">
+                    <span>Anticipation</span>
+                    <strong data-score-value="anticipation">0/100</strong>
+                    <span class="pillar-gauge">
+                      <span class="pillar-gauge__fill" data-score-gauge="anticipation"></span>
+                    </span>
+                  </p>
+                  <p class="score-panel__pillar" data-score-pillar="croissance">
+                    <span>Croissance</span>
+                    <strong data-score-value="croissance">0/100</strong>
+                    <span class="pillar-gauge">
+                      <span class="pillar-gauge__fill" data-score-gauge="croissance"></span>
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+          <div class="tab-toolbar" aria-label="Navigation SmartSave">
+            <div class="pillars-tab-list" role="tablist">
+              <button class="pillars-tab-toggle is-active" data-tab-target="situation">
+                Ma situation financière
+              </button>
+              <button class="pillars-tab-toggle" data-tab-target="plan">Plan SmartSave</button>
+              <button class="pillars-tab-toggle" data-tab-target="projection">Projection 2 ans</button>
+              <button class="pillars-tab-toggle" data-tab-target="ia">Analyse IA</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="pillars-tab-card card">
+          <div class="pillars-tab-panel is-active" data-tab-panel="situation">
+            <header class="situation-panel-header">
+              <p class="section-eyebrow">Ma situation financière</p>
+              <h2>Vue synthétique de tes revenus, dépenses et dettes</h2>
+            </header>
+            <section class="situation-section" data-section="revenus">
+              <div class="section-header">
+                <h3>Revenus</h3>
+                <p>Montant total perçu par mois et répartition des sources.</p>
+              </div>
+              <div class="section-content">
+                <div class="section-content__primary section-content__primary--revenue">
+                  <p class="section-label">Revenu mensuel</p>
+                  <p class="section-value" data-mvp-income>CHF 0</p>
+                </div>
+                <div class="section-content__chart" aria-label="Répartition des revenus">
+                  <div class="section-chart__pie" data-income-pie></div>
+                  <ul class="section-chart__legend" data-income-breakdown></ul>
+                </div>
+              </div>
+            </section>
+
+            <section class="situation-section" data-section="depenses">
+              <div class="section-header">
+                <h3>Dépenses</h3>
+                <p>Total, décomposition par types et leviers.</p>
+              </div>
+              <div class="section-content">
+                <div class="analysis-panel" data-spending-analysis-panel>
+                  <header class="analysis-panel__header">
+                    <p class="analysis-panel__headline">Analyse synthétique</p>
+                    <p>La répartition mensuelle de tes dépenses est présentée ci-dessous.</p>
+                  </header>
+                  <div class="analysis-panel__overview">
+                    <p class="analysis-panel__overview-label">Montant total mensuel des dépenses</p>
+                    <strong class="analysis-panel__overview-total" data-spending-total>CHF 0</strong>
+                    <span class="analysis-panel__overview-frequency">Mensuel</span>
+                  </div>
+                  <div class="analysis-panel__type-stack">
+                    <article class="analysis-panel__type" data-analysis-card="fixed">
+                      <header class="analysis-panel__type-header">
+                        <div>
+                          <p class="analysis-card__label">Fixes</p>
+                          <strong class="analysis-card__amount" data-analysis-amount="fixed">CHF 0</strong>
+                        </div>
+                        <span class="analysis-card__share" data-analysis-share="fixed">0%</span>
+                      </header>
+                      <div class="analysis-card__bar">
+                        <span class="analysis-card__bar-fill" data-analysis-bar="fixed"></span>
+                      </div>
+                      <div class="analysis-panel__type-chart">
+                        <div class="analysis-panel__pie-chart" data-analysis-pie-chart="fixed"></div>
+                        <p class="analysis-panel__pie-empty" data-analysis-pie-empty="fixed" hidden>
+                          Aucun détail par catégorie disponible
+                        </p>
+                      </div>
+                      <p class="analysis-panel__legend-label">Légende</p>
+                      <ul class="analysis-panel__category-list" data-analysis-category-list="fixed"></ul>
+                      <button
+                        type="button"
+                        class="analysis-panel__category-toggle"
+                        data-analysis-category-toggle="fixed"
+                      >
+                        Voir +
+                      </button>
+                    </article>
+                    <article class="analysis-panel__type" data-analysis-card="variable">
+                      <header class="analysis-panel__type-header">
+                        <div>
+                          <p class="analysis-card__label">Variables</p>
+                          <strong class="analysis-card__amount" data-analysis-amount="variable">CHF 0</strong>
+                        </div>
+                        <span class="analysis-card__share" data-analysis-share="variable">0%</span>
+                      </header>
+                      <div class="analysis-card__bar">
+                        <span class="analysis-card__bar-fill" data-analysis-bar="variable"></span>
+                      </div>
+                      <div class="analysis-panel__type-chart">
+                        <div class="analysis-panel__pie-chart" data-analysis-pie-chart="variable"></div>
+                        <p class="analysis-panel__pie-empty" data-analysis-pie-empty="variable" hidden>
+                          Aucun détail par catégorie disponible
+                        </p>
+                      </div>
+                      <p class="analysis-panel__legend-label">Légende</p>
+                      <ul class="analysis-panel__category-list" data-analysis-category-list="variable"></ul>
+                      <button
+                        type="button"
+                        class="analysis-panel__category-toggle"
+                        data-analysis-category-toggle="variable"
+                      >
+                        Voir +
+                      </button>
+                    </article>
+                    <article class="analysis-panel__type" data-analysis-card="exceptional">
+                      <header class="analysis-panel__type-header">
+                        <div>
+                          <p class="analysis-card__label">Exceptionnelles</p>
+                          <strong class="analysis-card__amount" data-analysis-amount="exceptional">CHF 0</strong>
+                        </div>
+                        <span class="analysis-card__share" data-analysis-share="exceptional">0%</span>
+                      </header>
+                      <div class="analysis-card__bar">
+                        <span class="analysis-card__bar-fill" data-analysis-bar="exceptional"></span>
+                      </div>
+                      <div class="analysis-panel__type-chart">
+                        <div class="analysis-panel__pie-chart" data-analysis-pie-chart="exceptional"></div>
+                        <p class="analysis-panel__pie-empty" data-analysis-pie-empty="exceptional" hidden>
+                          Aucun détail par catégorie disponible
+                        </p>
+                      </div>
+                      <p class="analysis-panel__legend-label">Légende</p>
+                      <ul class="analysis-panel__category-list" data-analysis-category-list="exceptional"></ul>
+                      <button
+                        type="button"
+                        class="analysis-panel__category-toggle"
+                        data-analysis-category-toggle="exceptional"
+                      >
+                        Voir +
+                      </button>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section class="situation-section" data-section="dettes">
+              <div class="section-header">
+                <h3>Dettes</h3>
+                <p>Mensualités et encours.</p>
+              </div>
+              <div class="section-content">
+                <div class="debt-grid">
+                  <article class="debt-card">
+                    <p class="section-label">Mensualités</p>
+                    <p class="section-value" data-mvp-debt>CHF 0</p>
+                  </article>
+                  <article class="debt-card">
+                    <p class="section-label">Capitaux restants</p>
+                    <p class="section-value" data-mvp-debt-total>CHF 0</p>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="situation-section balance-sheet-section">
+              <div class="section-header">
+                <h3>Bilan synthétique</h3>
+                <p>Chaque composante est clairement listée pour suivre le solde.</p>
+              </div>
+              <div class="balance-sheet">
+                <div class="balance-sheet__row">
+                  <span>Revenu mensuel</span>
+                  <strong data-balance-income>CHF 0</strong>
+                </div>
+                <div class="balance-sheet__row">
+                  <span>Dépenses totales</span>
+                  <strong data-balance-expenses>CHF 0</strong>
+                </div>
+                <div class="balance-sheet__row">
+                  <span>Mensualités dettes</span>
+                  <strong data-balance-debt>CHF 0</strong>
+                </div>
+                <div class="balance-sheet__row">
+                  <span>Liquidités disponibles</span>
+                  <strong data-balance-liquidites>CHF 0</strong>
+                </div>
+                <div class="balance-sheet__row balance-sheet__row--total">
+                  <span>Solde mensuel (revenus - dépenses - dettes)</span>
+                  <strong data-balance-net>CHF 0</strong>
+                </div>
+              </div>
+            </section>
+
+          </div>
+
+          <div class="pillars-tab-panel" data-tab-panel="plan">
+            <div class="plan-tab">
+              <div class="plan-tab__header">
+                <p class="plan-eyebrow">Plan SmartSave</p>
+                <h3>Que faire concrètement avec ton argent maintenant ?</h3>
+                <p class="plan-copy" data-plan-logic>
+                  SmartSave répartit automatiquement ton cash pour couvrir les besoins immédiats,
+                  les objectifs et les charges à venir.
+                </p>
+              </div>
+              <div class="plan-tab__content">
+                <section class="plan-chart" aria-label="Répartition SmartSave des comptes ce mois">
+                  <div class="plan-chart__bars" data-plan-bars></div>
+                </section>
+                <section class="plan-actions">
+                  <div class="plan-actions__header">
+                    <h4>Actions recommandées (IA)</h4>
+                    <p>Ce que ton IA coach te suggère de faire ce mois.</p>
+                  </div>
+                  <ul data-mvp-plan-actions></ul>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="pillars-tab-panel" data-tab-panel="projection">
+            <div class="projection-stage">
+              <header class="projection-stage__header">
+                <p class="plan-eyebrow">Projection</p>
+                <h3>Projection 2 ans</h3>
+                <p class="projection-stage__subtitle">
+                  On compare ta trajectoire actuelle avec celle imaginée par SmartSave pour suivre ton patrimoine dans 2 ans.
+                </p>
+              </header>
+              <div class="projection-stage__body">
+                <section class="projection-chart" role="img" aria-label="Projection du patrimoine">
+                  <svg viewBox="0 0 420 220" preserveAspectRatio="xMidYMid meet" data-projection-svg>
+                    <polyline class="projection-chart__line projection-chart__line--current" data-projection-current-path></polyline>
+                    <polyline class="projection-chart__line projection-chart__line--smart" data-projection-smart-path></polyline>
+                  </svg>
+                  <div class="projection-chart__legend">
+                    <span><span class="projection-chart__bullet projection-chart__bullet--current"></span> Trajectoire actuelle</span>
+                    <span><span class="projection-chart__bullet projection-chart__bullet--smart"></span> Plan SmartSave</span>
+                  </div>
+                  <div class="projection-chart__axis" data-projection-xlabels></div>
+                </section>
+                <section class="projection-summary">
+                  <article>
+                    <p>Trajectoire actuelle</p>
+                    <strong data-projection-current-total>CHF 0</strong>
+                    <small>Patrimoine estimé dans 2 ans</small>
+                  </article>
+                  <article>
+                    <p>Plan SmartSave</p>
+                    <strong data-projection-smart-total>CHF 0</strong>
+                    <small>Patrimoine estimé dans 2 ans</small>
+                  </article>
+                  <article class="projection-summary__delta">
+                    <p>Écart</p>
+                    <strong data-projection-difference>+CHF 0</strong>
+                    <small>SmartSave - trajectoire actuelle</small>
+                  </article>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div class="pillars-tab-panel" data-tab-panel="ia">
+            <div class="analysis-panel analysis-panel--ia">
+              <header class="analysis-panel__header">
+                <p class="section-eyebrow">Analyse IA</p>
+                <h3>Analyse automatique SmartSave</h3>
+                <p>Un coach financier IA passe en revue ta situation pour repérer les urgences, les leviers et les signaux critiques.</p>
+              </header>
+              <div class="analysis-panel__ia">
+                <p class="analysis-panel__ia-status" data-ia-status>Analyse IA en attente…</p>
+                <div class="analysis-panel__ia-meta">
+                  <button type="button" class="analysis-panel__ia-refresh" data-ia-refresh>Rafraîchir</button>
+                  <span class="analysis-panel__ia-badge" data-ia-cache-badge hidden></span>
+                </div>
+                <div class="analysis-panel__ia-content" data-ia-content hidden>
+                  <div class="analysis-panel__ia-grid">
+                    <article class="analysis-panel__ia-block">
+                      <h4>Analyse des dépenses</h4>
+                      <p data-ia-spending-text></p>
+                    </article>
+                    <article class="analysis-panel__ia-block">
+                      <h4>Faiblesse principale</h4>
+                      <p data-ia-key-weakness></p>
+                    </article>
+                    <article class="analysis-panel__ia-block">
+                      <h4>Priorité immédiate</h4>
+                      <p data-ia-priority-lever></p>
+                    </article>
+                    <article class="analysis-panel__ia-block">
+                      <h4>Narrative SmartSave</h4>
+                      <ul data-ia-smart-narrative></ul>
+                    </article>
+                    <article class="analysis-panel__ia-block">
+                      <h4>Projection</h4>
+                      <p data-ia-projection-motivation></p>
+                    </article>
+                    <article class="analysis-panel__ia-block">
+                      <h4>Alertes</h4>
+                      <ul data-ia-warnings></ul>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+      </main>
+      <section class="mvp-empty-state" data-mvp-no-profile hidden>
+        <div class="card">
+          <h2>Profil manquant</h2>
+          <p>Commence par remplir le formulaire SmartSave pour activer cette page.</p>
+          <a class="cta" href="formulaire.html">Ouvrir le formulaire</a>
+        </div>
+      </section>
+    </div>
+
+    <script src="financialScoreEngine.js" defer></script>
+    <script src="allocationEngine.js" defer></script>
+    <script src="projectionEngine.js" defer></script>
+    <script src="taxEngine.js" defer></script>
+    <script src="spendingAnalysisEngine.js" defer></script>
+    <script src="aiAssistant.js" defer></script>
+    <script src="mvp-v2.js" defer></script>
+  </body>
+</html>

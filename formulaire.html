@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartSave – Formulaire</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      --bg: #f7f9fb;
+      --card: #ffffff;
+      --primary: #035a9d;
+      --primary-accent: #0e8adf;
+      --text: #1a2733;
+      --muted: #5a6a7a;
+      --shadow: 0 18px 36px rgba(3, 90, 157, 0.1);
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --form-header-height: clamp(4.6rem, 9vw, 6.2rem);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .form-page .page-header {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      padding: clamp(1rem, 3vw, 1.6rem) clamp(1.2rem, 4vw, 2.6rem);
+      min-height: var(--form-header-height);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: clamp(0.9rem, 2.4vw, 1.8rem);
+      background: rgba(247, 249, 251, 0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(3, 90, 157, 0.08);
+    }
+
+
+    .page-header .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+      white-space: nowrap;
+    }
+
+    .page-header .logo-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-accent) 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 20px rgba(3, 90, 157, 0.18);
+    }
+
+    .page-header .logo-text {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .page-header .logo + .page-header__text {
+      margin-left: clamp(0.5rem, 2vw, 1.4rem);
+    }
+
+    .page-header__text {
+      display: grid;
+      gap: 0.25rem;
+      text-align: left;
+      max-width: clamp(260px, 45vw, 360px);
+    }
+
+    .page-header__text h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 4.4vw, 2.3rem);
+      letter-spacing: -0.4px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .page-header__text p {
+      margin: 0;
+      font-size: clamp(0.95rem, 2.1vw, 1.1rem);
+      color: rgba(26, 39, 51, 0.6);
+      line-height: 1.4;
+    }
+
+    .page-header__actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .form-progress {
+      padding: clamp(0.7rem, 2.5vw, 1rem) clamp(1.2rem, 4vw, 2.6rem);
+      display: grid;
+      gap: 0.35rem;
+      text-align: left;
+      position: sticky;
+      top: var(--form-header-height);
+      z-index: 55;
+      background: rgba(247, 249, 251, 0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(3, 90, 157, 0.08);
+    }
+
+    .progress-label {
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(26, 39, 51, 0.6);
+      font-size: 0.85rem;
+    }
+
+    .progress-track {
+      position: relative;
+      width: 100%;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(3, 90, 157, 0.15);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      position: absolute;
+      inset: 0;
+      width: 11%;
+      border-radius: inherit;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-accent) 100%);
+      transition: width 0.25s ease;
+    }
+
+    #wizard-form {
+      margin: 0 auto;
+      padding: clamp(1rem, 4vw, 2.2rem) clamp(1rem, 4vw, 2.6rem) calc(7rem + env(safe-area-inset-bottom, 0px));
+      display: grid;
+      gap: clamp(1.3rem, 3vw, 2rem);
+      width: min(100%, 920px);
+    }
+
+    .wizard-step {
+      display: none;
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: clamp(1.3rem, 4vw, 2.2rem);
+      display: none;
+      flex-direction: column;
+      gap: clamp(1rem, 3vw, 1.4rem);
+    }
+
+    .wizard-step.active {
+      display: flex;
+    }
+
+    .wizard-step h2 {
+      font-size: clamp(1.35rem, 3.5vw, 1.9rem);
+      font-weight: 700;
+    }
+
+    .wizard-step h3 {
+      font-size: clamp(1.1rem, 3vw, 1.32rem);
+      margin: 0;
+    }
+
+    .section-hint {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    .input-block {
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .input-block span {
+      font-weight: 600;
+      font-size: 0.86rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(26, 39, 51, 0.65);
+    }
+
+    .input-block input,
+    .input-block select,
+    .input-block textarea {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-md);
+      border: 1.5px solid rgba(3, 90, 157, 0.12);
+      background: #fdfdfd;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .input-block textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .input-block input:focus,
+    .input-block select:focus,
+    .input-block textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(14, 138, 223, 0.15);
+    }
+
+    input[readonly] {
+      background: rgba(3, 90, 157, 0.08);
+      color: rgba(26, 39, 51, 0.7);
+    }
+
+    .grid {
+      display: grid;
+      gap: clamp(0.85rem, 2vw, 1.2rem);
+    }
+
+    .grid.duo {
+      grid-template-columns: 1fr;
+    }
+
+    .grid.auto-fit {
+      grid-template-columns: 1fr;
+    }
+
+    .card {
+      background: rgba(3, 90, 157, 0.04);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(3, 90, 157, 0.08);
+      padding: clamp(0.9rem, 2vw, 1.3rem);
+      display: grid;
+      gap: clamp(0.75rem, 2vw, 1.1rem);
+    }
+
+    .lean-card {
+      padding: clamp(0.75rem, 2vw, 1.05rem);
+      gap: 0.75rem;
+    }
+
+    .fieldset {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      align-items: center;
+      border: 1px solid rgba(3, 90, 157, 0.1);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+    }
+
+    .fieldset legend {
+      font-weight: 600;
+      font-size: 0.88rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(26, 39, 51, 0.65);
+    }
+
+    .choice {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .choice input {
+      accent-color: var(--primary);
+    }
+
+    .collection {
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .collection-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(26, 39, 51, 0.6);
+    }
+
+    .collection-body {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .collection-row {
+      display: grid;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(3, 90, 157, 0.12);
+      background: #fff;
+      box-shadow: 0 10px 20px rgba(3, 90, 157, 0.08);
+    }
+
+    .collection-row.tight {
+      padding: 0.8rem;
+      gap: 0.6rem;
+    }
+
+    .row-grid,
+    .mini-grid {
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .row-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .ghost-btn,
+    .cta {
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      transition: transform 0.15s ease, filter 0.2s ease;
+    }
+
+    .ghost-btn {
+      padding: 0.55rem 1.2rem;
+      background: transparent;
+      border: 1px solid rgba(3, 90, 157, 0.2);
+      color: var(--primary);
+    }
+
+    .ghost-btn.small {
+      padding: 0.45rem 1rem;
+      font-size: 0.88rem;
+    }
+
+    .ghost-btn:hover,
+    .ghost-btn:focus-visible {
+      filter: brightness(0.95);
+      outline: none;
+    }
+
+    .remove-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(210, 60, 60, 0.4);
+      background: #fff;
+      color: #c02626;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(210, 60, 60, 0.15);
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    .remove-btn:hover,
+    .remove-btn:focus-visible {
+      background: rgba(210, 60, 60, 0.12);
+      color: #9c1919;
+      box-shadow: 0 10px 18px rgba(210, 60, 60, 0.22);
+      outline: none;
+    }
+
+    .remove-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 10px rgba(210, 60, 60, 0.18);
+    }
+
+    .cta {
+      padding: 0.85rem 1.6rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-accent) 100%);
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(3, 90, 157, 0.2);
+    }
+
+    .cta:disabled,
+    .ghost-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .fixed-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      background: rgba(247, 249, 251, 0.96);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(3, 90, 157, 0.12);
+      padding: 0.75rem clamp(1rem, 4vw, 2.5rem);
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .fixed-nav button {
+      width: 100%;
+    }
+
+    @media (min-width: 640px) {
+      .fixed-nav {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .fixed-nav button {
+        width: auto;
+      }
+    }
+
+    @media (min-width: 720px) {
+      .grid.duo {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid.auto-fit {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .row-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      .mini-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+
+      .form-page .page-header {
+        flex-wrap: nowrap;
+        gap: clamp(1.2rem, 3vw, 2.4rem);
+      }
+
+      .page-header__text {
+        text-align: left;
+      }
+    }
+
+      .grid.auto-fit {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .row-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      .mini-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+
+      .form-page .page-header {
+        grid-template-columns: auto 1fr auto;
+      }
+
+      .page-header__text {
+        justify-self: center;
+        text-align: center;
+      }
+    }
+
+    @media (min-width: 960px) {
+      .wizard-step {
+        padding: clamp(1.6rem, 2.8vw, 2.6rem);
+      }
+
+      #wizard-form {
+        padding-left: clamp(2rem, 4vw, 3.2rem);
+        padding-right: clamp(2rem, 4vw, 3.2rem);
+      }
+
+      .collection-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem 1.4rem;
+      }
+    }
+  
+</style>
+</head>
+<body class="form-page">
+  <header class="page-header">
+    <a class="logo" href="dashboard.html" aria-label="Retour au dashboard SmartSave">
+      <div class="logo-mark" aria-hidden="true">S</div>
+      <span class="logo-text">SmartSave</span>
+    </a>
+    <div class="page-header__text">
+      <h1>Formulaire</h1>
+      <p>Complète ton profil financier SmartSave</p>
+    </div>
+  </header>
+
+  <section class="form-progress" aria-live="polite">
+    <div class="progress-label" id="progress-label">Étape 1 / 9</div>
+    <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1">
+      <div class="progress-fill" id="progress-fill" style="width: 11%;"></div>
+    </div>
+  </section>
+
+  <form id="wizard-form" novalidate>
+    <section class="wizard-step active" data-step="1">
+      <h2>Informations personnelles</h2>
+      <div class="grid auto-fit">
+        <label class="input-block">
+          <span>Date de naissance</span>
+          <input type="date" name="birthDate" required>
+        </label>
+        <label class="input-block">
+          <span>Canton</span>
+          <select name="canton" required>
+            <option value="">Sélectionner</option>
+            <option value="AG">Argovie</option>
+            <option value="AI">Appenzell Rhodes-Intérieures</option>
+            <option value="AR">Appenzell Rhodes-Extérieures</option>
+            <option value="BE">Berne</option>
+            <option value="BL">Bâle-Campagne</option>
+            <option value="BS">Bâle-Ville</option>
+            <option value="FR">Fribourg</option>
+            <option value="GE">Genève</option>
+            <option value="GL">Glaris</option>
+            <option value="GR">Grisons</option>
+            <option value="JU">Jura</option>
+            <option value="LU">Lucerne</option>
+            <option value="NE">Neuchâtel</option>
+            <option value="NW">Nidwald</option>
+            <option value="OW">Obwald</option>
+            <option value="SG">Saint-Gall</option>
+            <option value="SH">Schaffhouse</option>
+            <option value="SO">Soleure</option>
+            <option value="SZ">Schwytz</option>
+            <option value="TG">Thurgovie</option>
+            <option value="TI">Tessin</option>
+            <option value="UR">Uri</option>
+            <option value="VD">Vaud</option>
+            <option value="VS">Valais</option>
+            <option value="ZG">Zoug</option>
+            <option value="ZH">Zurich</option>
+          </select>
+        </label>
+        <label class="input-block">
+          <span>Commune</span>
+          <input type="text" name="commune" placeholder="Lausanne" required>
+        </label>
+        <label class="input-block">
+          <span>État civil</span>
+          <select name="maritalStatus" required>
+            <option value="">Sélectionner</option>
+            <option value="celibataire">Célibataire</option>
+            <option value="marie">Marié·e</option>
+            <option value="partenariat">Partenariat enregistré</option>
+            <option value="divorce">Divorcé·e</option>
+            <option value="veuf">Veuf·ve</option>
+          </select>
+        </label>
+        <label class="input-block">
+          <span>Nombre d'enfants</span>
+          <input type="number" name="childrenCount" min="0" value="0" required>
+        </label>
+        <label class="input-block">
+          <span>Statut professionnel</span>
+          <select name="employmentStatus" required>
+            <option value="">Sélectionner</option>
+            <option value="employe">Employé·e</option>
+            <option value="independant">Indépendant·e</option>
+            <option value="fonctionnaire">Fonctionnaire</option>
+            <option value="etudiant">Étudiant·e</option>
+            <option value="retraite">Retraité·e</option>
+            <option value="sans_emploi">Sans emploi</option>
+            <option value="autre">Autre</option>
+          </select>
+        </label>
+        <label class="input-block">
+          <span>Stabilité du revenu</span>
+          <select name="incomeStability" required>
+            <option value="">Sélectionner</option>
+            <option value="stable">Stable</option>
+            <option value="variable">Variable</option>
+          </select>
+        </label>
+        <label class="input-block">
+          <span>Affiliation religieuse</span>
+          <select name="religion" required>
+            <option value="">Sélectionner</option>
+            <option value="catholique">Catholique</option>
+            <option value="protestant">Protestant</option>
+            <option value="autre">Autre</option>
+            <option value="aucune">Aucune</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="2">
+      <h2>Revenus</h2>
+      <p class="section-hint">Déclarez vos différentes sources de revenus réguliers.</p>
+      <div class="collection">
+        <div class="collection-header">
+          <span>Vos revenus</span>
+          <button type="button" class="ghost-btn" data-action="add-income">+ Ajouter un revenu</button>
+        </div>
+        <div class="collection-body" id="income-list"></div>
+      </div>
+      <div class="card" data-conditional="spouse-income" hidden>
+        <h3>Revenus du conjoint</h3>
+        <label class="input-block">
+          <span>Revenu net annuel (CHF)</span>
+          <input type="number" name="spouseNetIncome" min="0" step="0.05" placeholder="ex. 65000">
+        </label>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="3">
+      <h2>Dépenses</h2>
+      <div class="collection">
+        <div class="collection-header">
+          <span>Dépenses fixes</span>
+          <button type="button" class="ghost-btn" data-action="add-fixed-expense">+ Ajouter une dépense</button>
+        </div>
+        <div class="collection-body" id="fixed-expense-list"></div>
+      </div>
+      <div class="collection">
+        <div class="collection-header">
+          <span>Dépenses variables</span>
+          <button type="button" class="ghost-btn" data-action="add-variable-expense">+ Ajouter une dépense</button>
+        </div>
+        <div class="collection-body" id="variable-expense-list"></div>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="4">
+      <h2>Dépenses exceptionnelles</h2>
+      <label class="input-block">
+        <span>Type de dépense</span>
+        <select name="exceptionalType" required>
+          <option value="">Sélectionner</option>
+          <option value="aucune">Aucune</option>
+          <option value="vacances">Vacances</option>
+          <option value="cadeaux">Cadeaux</option>
+          <option value="sante">Santé / Dentaire</option>
+          <option value="reparation">Frais de réparation</option>
+          <option value="autre">Autre</option>
+        </select>
+      </label>
+      <label class="input-block">
+        <span>Montant estimé annuel (CHF)</span>
+        <input type="number" name="exceptionalAmount" min="0" step="0.05" placeholder="ex. 3000">
+      </label>
+      <label class="input-block">
+        <span>Commentaires</span>
+        <textarea name="exceptionalNotes" rows="3" placeholder="Détails supplémentaires (optionnel)"></textarea>
+      </label>
+    </section>
+
+    <section class="wizard-step" data-step="5">
+      <h2>Informations fiscales</h2>
+      <fieldset class="fieldset">
+        <legend>Payez-vous des impôts ?</legend>
+        <label class="choice">
+          <input type="radio" name="paysTaxes" value="oui" required>
+          <span>Oui</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="paysTaxes" value="non" required>
+          <span>Non</span>
+        </label>
+      </fieldset>
+
+      <div class="card" data-conditional="taxes">
+        <div class="grid auto-fit">
+          <label class="input-block">
+            <span>Distance domicile-travail (km aller simple)</span>
+            <input type="number" name="commuteDistance" min="0" step="0.1">
+          </label>
+          <label class="input-block">
+            <span>Moyen de transport</span>
+            <select name="transportMode">
+              <option value="">Sélectionner</option>
+              <option value="voiture">Voiture</option>
+              <option value="transport_public">Transports publics</option>
+              <option value="velo">Vélo</option>
+              <option value="marche">Marche</option>
+              <option value="mixte">Mixte</option>
+            </select>
+          </label>
+          <label class="input-block">
+            <span>Repas pris à l'extérieur</span>
+            <select name="mealsFrequency">
+              <option value="">Sélectionner</option>
+              <option value="jamais">Jamais</option>
+              <option value="un">1 jour / semaine</option>
+              <option value="deux">2 jours / semaine</option>
+              <option value="trois">3 jours / semaine</option>
+              <option value="quatre">4 jours / semaine</option>
+              <option value="cinq">5 jours / semaine</option>
+            </select>
+          </label>
+          <label class="input-block">
+            <span>Coût assurance maladie de base (CHF / an)</span>
+            <input type="number" name="basicInsurance" min="0" step="0.05">
+          </label>
+          <label class="input-block" data-conditional="childcare">
+            <span>Frais de garde d'enfants (CHF / mois)</span>
+            <input type="number" name="childcareCosts" min="0" step="0.05">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="6">
+      <h2>Comptes et avoirs</h2>
+      <p class="section-hint">Cette étape nous permet de savoir quelles réserves vous avez déjà.</p>
+      <div class="card">
+        <h3>Comptes bancaires</h3>
+        <label class="input-block">
+          <span>Solde actuel sur votre compte courant (CHF)</span>
+          <input type="number" name="currentAccount" min="0" step="0.05" placeholder="ex. 3000" required>
+        </label>
+        <label class="input-block">
+          <span>Solde actuel sur votre compte épargne (CHF)</span>
+          <input type="number" name="savingsAccount" min="0" step="0.05" placeholder="ex. 12000">
+        </label>
+        <fieldset class="fieldset">
+          <legend>Versement programmé mensuel sur l’épargne ?</legend>
+          <label class="choice">
+            <input type="radio" name="savingsContribution" value="oui">
+            <span>Oui</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="savingsContribution" value="non">
+            <span>Non</span>
+          </label>
+        </fieldset>
+        <label class="input-block" data-conditional="savings-contrib">
+          <span>Montant du versement mensuel (CHF)</span>
+          <input type="number" name="savingsContributionAmount" min="0" step="0.05">
+        </label>
+        <label class="input-block">
+          <span>Accès à votre épargne</span>
+          <select name="savingsAccess">
+            <option value="">Sélectionner</option>
+            <option value="immediat">Immédiat</option>
+            <option value="sous_3_jours">Sous 1 à 3 jours</option>
+            <option value="bloque_partiel">Bloqué partiellement (préavis)</option>
+            <option value="bloque_long">Bloqué plusieurs mois</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>Épargne retraite / 3ᵉ pilier</h3>
+        <fieldset class="fieldset">
+          <legend>Avez-vous déjà un 3ᵉ pilier ?</legend>
+          <label class="choice">
+            <input type="radio" name="thirdPillar" value="oui">
+            <span>Oui</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="thirdPillar" value="non">
+            <span>Non</span>
+          </label>
+        </fieldset>
+        <div data-conditional="third-pillar">
+          <label class="input-block">
+            <span>Montant total du 3ᵉ pilier (CHF)</span>
+            <input type="number" name="thirdPillarAmount" min="0" step="0.05">
+          </label>
+          <label class="input-block">
+            <span>Type de 3ᵉ pilier</span>
+            <select name="thirdPillarType">
+              <option value="">Sélectionner</option>
+              <option value="a">3ᵉ pilier A (bloqué)</option>
+              <option value="b">3ᵉ pilier B (flexible)</option>
+              <option value="unknown">Je ne sais pas</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card lean-card">
+        <div class="collection" data-collection="other-assets">
+          <div class="collection-header">
+            <span>Autres avoirs</span>
+            <button type="button" class="ghost-btn small" data-action="add-other-asset">+ Ajouter un compte</button>
+          </div>
+          <div class="collection-body compact" id="other-assets-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="input-block">
+          <span>Total de vos avoirs disponibles (CHF)</span>
+          <input type="number" name="liquidAssetsTotal" readonly>
+        </label>
+        <p class="section-hint">Les montants indiqués ici seront utilisés pour calculer votre réserve de sécurité et pour savoir combien vous pouvez investir sans risque.</p>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="7">
+      <h2>Investissements</h2>
+      <fieldset class="fieldset">
+        <legend>Avez-vous déjà des investissements ?</legend>
+        <label class="choice">
+          <input type="radio" name="hasInvestments" value="oui">
+          <span>Oui</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="hasInvestments" value="non">
+          <span>Non</span>
+        </label>
+      </fieldset>
+
+      <div class="card" data-conditional="investments">
+        <div class="collection">
+          <div class="collection-header">
+            <span>Portefeuille actuel</span>
+            <button type="button" class="ghost-btn" data-action="add-investment">+ Ajouter un investissement</button>
+          </div>
+          <div class="collection-body" id="investment-list"></div>
+        </div>
+        <label class="input-block">
+          <span>Commentaires / comptes externes</span>
+          <textarea name="investmentNotes" rows="3" placeholder="Précisez les plateformes ou services externes (optionnel)"></textarea>
+        </label>
+      </div>
+
+      <p class="section-hint" data-conditional="no-investments" hidden>
+        OK, on proposera un plan d’investissement adapté à votre situation. Vous pourrez le modifier plus tard.
+      </p>
+    </section>
+
+    <section class="wizard-step" data-step="8">
+      <h2>Crédits et patrimoine</h2>
+      <h3>Vos crédits et dettes</h3>
+      <div class="collection">
+        <div class="collection-header">
+          <span>Crédits en cours</span>
+          <button type="button" class="ghost-btn" data-action="add-credit">+ Ajouter un crédit</button>
+        </div>
+        <div class="collection-body" id="credit-list"></div>
+      </div>
+
+      <h3>Patrimoine immobilier / autres actifs</h3>
+      <fieldset class="fieldset">
+        <legend>Êtes-vous propriétaire ?</legend>
+        <label class="choice">
+          <input type="radio" name="isOwner" value="oui">
+          <span>Oui</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="isOwner" value="non">
+          <span>Non</span>
+        </label>
+      </fieldset>
+      <div data-conditional="owner">
+        <label class="input-block">
+          <span>Valeur estimée du bien (CHF)</span>
+          <input type="number" name="propertyValue" min="0" step="0.05">
+        </label>
+        <label class="input-block">
+          <span>Hypothèque actuelle (CHF)</span>
+          <input type="number" name="mortgageBalance" min="0" step="0.05">
+        </label>
+        <label class="input-block">
+          <span>Taux d’intérêt hypothécaire (%)</span>
+          <input type="number" name="mortgageRate" min="0" max="20" step="0.01">
+        </label>
+      </div>
+
+      <fieldset class="fieldset">
+        <legend>Avez-vous des véhicules ?</legend>
+        <label class="choice">
+          <input type="radio" name="hasVehicles" value="oui">
+          <span>Oui</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="hasVehicles" value="non">
+          <span>Non</span>
+        </label>
+      </fieldset>
+      <div data-conditional="vehicles">
+        <label class="input-block">
+          <span>Valeur estimée totale (CHF)</span>
+          <input type="number" name="vehicleValue" min="0" step="0.05">
+        </label>
+      </div>
+
+      <div class="grid auto-fit">
+        <label class="input-block">
+          <span>Total des dettes (CHF)</span>
+          <input type="number" name="debtsTotal" readonly>
+        </label>
+        <label class="input-block">
+          <span>Total du patrimoine déclaré (CHF)</span>
+          <input type="number" name="assetsTotal" readonly>
+        </label>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="9">
+      <h2>Votre vision face à l’avenir</h2>
+      <p class="section-hint">
+        Décrivez brièvement votre priorité financière et votre appétence au risque pour que SmartSave adapte sa proposition.
+      </p>
+      <label class="input-block">
+        <span>Priorité principale</span>
+        <select name="primaryPriority" required>
+          <option value="">Sélectionner</option>
+          <option value="securite">Sécurité</option>
+          <option value="projet">Projet spécial</option>
+          <option value="croissance">Croissance</option>
+        </select>
+      </label>
+      <label class="input-block">
+        <span>Tolérance au risque</span>
+        <select name="riskTolerance" required>
+          <option value="">Sélectionner</option>
+          <option value="faible">Faible</option>
+          <option value="moyenne">Moyenne</option>
+          <option value="elevee">Élevée</option>
+        </select>
+      </label>
+    </section>
+
+    <div class="fixed-nav">
+      <button type="button" class="ghost-btn" id="prev-btn">⬅ Précédent</button>
+      <button type="button" class="cta" id="next-btn">Suivant ➡</button>
+    </div>
+  </form>
+
+  <script>
+    const STORAGE_KEY_FORM = "smartsaveFormData";
+    const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("wizard-form");
+      if (!form) return;
+
+      const steps = Array.from(form.querySelectorAll(".wizard-step"));
+      const totalSteps = steps.length;
+      const progressFill = document.getElementById("progress-fill");
+      const progressLabel = document.getElementById("progress-label");
+      const prevBtn = document.getElementById("prev-btn");
+      const nextBtn = document.getElementById("next-btn");
+      const backDashboardBtn = document.querySelector('[data-action="back-dashboard"]');
+
+      const collections = {
+        incomes: document.getElementById("income-list"),
+        fixedExpenses: document.getElementById("fixed-expense-list"),
+        variableExpenses: document.getElementById("variable-expense-list"),
+        otherAssets: document.getElementById("other-assets-list"),
+        investments: document.getElementById("investment-list"),
+        credits: document.getElementById("credit-list"),
+      };
+
+      const isPartnered = (status) => ["marie", "partenariat"].includes(status);
+
+      let currentStepIndex = 0;
+      const activeUserId = getActiveUserId();
+      let formState = loadFormState(activeUserId);
+
+      initialiseCollections();
+      restoreForm();
+      updateUI();
+
+      if (backDashboardBtn) {
+        backDashboardBtn.addEventListener("click", () => {
+          window.location.href = "dashboard.html";
+        });
+      }
+
+      prevBtn.addEventListener("click", () => {
+        if (currentStepIndex === 0) return;
+        persistCurrentStep();
+        currentStepIndex -= 1;
+        updateUI();
+      });
+
+      nextBtn.addEventListener("click", () => {
+        if (!persistCurrentStep(currentStepIndex === totalSteps - 1)) return;
+
+        if (currentStepIndex === totalSteps - 1) {
+          saveFormState(activeUserId, formState);
+          window.location.href = "resultats.html";
+          return;
+        }
+
+        currentStepIndex += 1;
+        updateUI();
+      });
+
+      form.addEventListener("input", (event) => {
+        const target = event.target;
+        const { name } = target;
+
+        if (["currentAccount", "savingsAccount", "thirdPillarAmount", "thirdPillarType"].includes(name) || target.closest("#other-assets-list")) {
+          updateLiquidAssetsTotal();
+        }
+
+        if (name === "childrenCount") {
+          toggleChildcareQuestion();
+        }
+
+        if (["propertyValue", "mortgageBalance", "vehicleValue"].includes(name) || target.closest("#credit-list")) {
+          updateDebtAssetTotals();
+        }
+      });
+
+      form.addEventListener("change", (event) => {
+        const target = event.target;
+        const { name, value } = target;
+
+        if (name === "paysTaxes") {
+          toggleTaxDetails(value === "oui");
+        }
+
+        if (name === "savingsContribution") {
+          toggleSavingsContribution(value === "oui");
+          updateLiquidAssetsTotal();
+        }
+
+        if (name === "thirdPillar") {
+          toggleThirdPillar(value === "oui");
+          updateLiquidAssetsTotal();
+        }
+
+        if (name === "thirdPillarType") {
+          updateLiquidAssetsTotal();
+        }
+
+        if (name === "hasInvestments") {
+          toggleInvestments(value === "oui");
+        }
+
+        if (name === "maritalStatus") {
+          toggleSpouseIncome(isPartnered(value));
+        }
+
+        if (target.closest("#other-assets-list")) {
+          updateLiquidAssetsTotal();
+        }
+
+        if (name === "isOwner") {
+          toggleOwnerFields(value === "oui");
+          updateDebtAssetTotals();
+        }
+
+        if (name === "hasVehicles") {
+          toggleVehicleFields(value === "oui");
+          updateDebtAssetTotals();
+        }
+      });
+
+      toggleTaxDetails(getRadioValue("paysTaxes") === "oui");
+      toggleSavingsContribution(getRadioValue("savingsContribution") === "oui");
+      toggleThirdPillar(getRadioValue("thirdPillar") === "oui");
+      toggleInvestments(getRadioValue("hasInvestments") === "oui");
+      toggleOwnerFields(getRadioValue("isOwner") === "oui");
+      toggleVehicleFields(getRadioValue("hasVehicles") === "oui");
+      toggleSpouseIncome(isPartnered(getInputValue("maritalStatus")));
+      toggleChildcareQuestion();
+      updateLiquidAssetsTotal();
+      updateDebtAssetTotals();
+
+      function updateUI() {
+        steps.forEach((step, index) => {
+          step.classList.toggle("active", index === currentStepIndex);
+        });
+
+        const isFinalStep = currentStepIndex === totalSteps - 1;
+        prevBtn.hidden = isFinalStep;
+        prevBtn.disabled = currentStepIndex === 0 || isFinalStep;
+        nextBtn.textContent = isFinalStep ? "Calculer mon score" : "Suivant ➡";
+
+        const progress = ((currentStepIndex + 1) / totalSteps) * 100;
+        progressFill.style.width = `${progress}%`;
+        progressFill.parentElement?.setAttribute("aria-valuenow", String(currentStepIndex + 1));
+        progressLabel.textContent = `Étape ${currentStepIndex + 1} / ${totalSteps}`;
+
+        toggleSpouseIncome(isPartnered(getInputValue("maritalStatus")));
+      }
+
+      function persistCurrentStep(force = false) {
+        const currentStep = steps[currentStepIndex];
+        if (!validateStep(currentStep)) return false;
+        saveStepData(currentStep.dataset.step);
+        if (force) {
+          steps.forEach((step) => saveStepData(step.dataset.step));
+        }
+        saveFormState(activeUserId, formState);
+        return true;
+      }
+
+      function initialiseCollections() {
+        if (!formState.incomes.entries.length) formState.incomes.entries.push(defaultIncomeEntry());
+        if (!formState.expenses.fixed.length) formState.expenses.fixed.push(defaultExpenseEntry("fixe"));
+        if (!formState.expenses.variable.length) formState.expenses.variable.push(defaultExpenseEntry("variable"));
+        if (!formState.assets.otherAssets || !formState.assets.otherAssets.length) formState.assets.otherAssets = [defaultOtherAssetEntry()];
+        if (!formState.investments.items.length) formState.investments.items.push(defaultInvestmentEntry());
+
+        renderCollection(collections.incomes, formState.incomes.entries, createIncomeRow);
+        renderCollection(collections.fixedExpenses, formState.expenses.fixed, (entry) => createExpenseRow("fixe", entry));
+        renderCollection(collections.variableExpenses, formState.expenses.variable, (entry) => createExpenseRow("variable", entry));
+        renderCollection(collections.otherAssets, formState.assets.otherAssets, createOtherAssetRow);
+        renderCollection(collections.investments, formState.investments.items, createInvestmentRow);
+        renderCollection(collections.credits, formState.credits.loans, createCreditRow);
+
+        form.querySelector('[data-action="add-income"]').addEventListener("click", () => {
+          const entry = defaultIncomeEntry();
+          formState.incomes.entries.push(entry);
+          collections.incomes.appendChild(createIncomeRow(entry));
+        });
+
+        form.querySelector('[data-action="add-fixed-expense"]').addEventListener("click", () => {
+          const entry = defaultExpenseEntry("fixe");
+          formState.expenses.fixed.push(entry);
+          collections.fixedExpenses.appendChild(createExpenseRow("fixe", entry));
+        });
+
+        form.querySelector('[data-action="add-variable-expense"]').addEventListener("click", () => {
+          const entry = defaultExpenseEntry("variable");
+          formState.expenses.variable.push(entry);
+          collections.variableExpenses.appendChild(createExpenseRow("variable", entry));
+        });
+
+        const addOtherAssetBtn = form.querySelector('[data-action="add-other-asset"]');
+        if (addOtherAssetBtn) {
+          addOtherAssetBtn.addEventListener("click", () => {
+            const entry = defaultOtherAssetEntry();
+            formState.assets.otherAssets.push(entry);
+            if (collections.otherAssets) {
+              collections.otherAssets.appendChild(createOtherAssetRow(entry));
+            }
+            updateLiquidAssetsTotal();
+          });
+        }
+
+        form.querySelector('[data-action="add-investment"]').addEventListener("click", () => {
+          const entry = defaultInvestmentEntry();
+          formState.investments.items.push(entry);
+          collections.investments.appendChild(createInvestmentRow(entry));
+        });
+
+        form.querySelector('[data-action="add-credit"]').addEventListener("click", () => {
+          const entry = defaultCreditEntry();
+          formState.credits.loans.push(entry);
+          collections.credits.appendChild(createCreditRow(entry));
+          updateDebtAssetTotals();
+        });
+      }
+
+      function saveStepData(stepId) {
+        switch (Number(stepId)) {
+          case 1:
+            formState.personal = {
+              birthDate: getInputValue("birthDate"),
+              canton: getInputValue("canton"),
+              commune: getInputValue("commune"),
+              maritalStatus: getInputValue("maritalStatus"),
+              childrenCount: toInteger(getInputValue("childrenCount")),
+              employmentStatus: getInputValue("employmentStatus"),
+              incomeStability: getInputValue("incomeStability"),
+              religion: getInputValue("religion"),
+            };
+            break;
+          case 2:
+            formState.incomes = {
+              entries: Array.from(collections.incomes.querySelectorAll(".collection-row")).map((row) => ({
+                sourceType: getFieldValue(row, "sourceType"),
+                amount: toNumber(getFieldValue(row, "amount")),
+                amountType: getFieldValue(row, "amountType"),
+                thirteenth: getFieldValue(row, "thirteenth"),
+              })),
+              spouseNetIncome: toNumber(getInputValue("spouseNetIncome")),
+            };
+            break;
+          case 3:
+            formState.expenses = {
+              fixed: mapExpenseRows(collections.fixedExpenses),
+              variable: mapExpenseRows(collections.variableExpenses),
+            };
+            break;
+          case 4:
+            formState.exceptional = {
+              type: getInputValue("exceptionalType"),
+              amount: toNumber(getInputValue("exceptionalAmount")),
+              notes: getInputValue("exceptionalNotes"),
+            };
+            break;
+          case 5:
+            formState.taxes = {
+              paysTaxes: getRadioValue("paysTaxes"),
+              commuteDistance: toNumber(getInputValue("commuteDistance")),
+              transportMode: getInputValue("transportMode"),
+              mealsFrequency: getInputValue("mealsFrequency"),
+              basicInsurance: toNumber(getInputValue("basicInsurance")),
+              childcareCosts: toNumber(getInputValue("childcareCosts")),
+            };
+            break;
+          case 6:
+            const mappedOtherAssets = mapOtherAssetRows(collections.otherAssets);
+            formState.assets = {
+              currentAccount: toNumber(getInputValue("currentAccount")),
+              savingsAccount: toNumber(getInputValue("savingsAccount")),
+              savingsContribution: getRadioValue("savingsContribution"),
+              savingsContributionAmount: toNumber(getInputValue("savingsContributionAmount")),
+              savingsAccess: getInputValue("savingsAccess"),
+              thirdPillar: getRadioValue("thirdPillar"),
+              thirdPillarAmount: toNumber(getInputValue("thirdPillarAmount")),
+              thirdPillarType: getInputValue("thirdPillarType"),
+              otherAssets: mappedOtherAssets.length ? mappedOtherAssets : [defaultOtherAssetEntry()],
+              liquidAssetsTotal: toNumber(getInputValue("liquidAssetsTotal")),
+            };
+            break;
+          case 7:
+            formState.investments = {
+              hasInvestments: getRadioValue("hasInvestments"),
+              items:
+                getRadioValue("hasInvestments") === "oui"
+                  ? Array.from(collections.investments.querySelectorAll(".collection-row")).map((row) => ({
+                      investmentType: getFieldValue(row, "investmentType"),
+                      amount: toNumber(getFieldValue(row, "amount")),
+                      hasMonthly: getFieldValue(row, "hasMonthly"),
+                      monthlyAmount: toNumber(getFieldValue(row, "monthlyAmount")),
+                      horizon: getFieldValue(row, "horizon"),
+                    }))
+                  : [],
+              notes: getInputValue("investmentNotes"),
+            };
+            break;
+          case 8:
+            formState.credits = {
+              loans: Array.from(collections.credits.querySelectorAll(".collection-row")).map((row) => ({
+                creditType: getFieldValue(row, "creditType"),
+                outstanding: toNumber(getFieldValue(row, "outstanding")),
+                monthlyPayment: toNumber(getFieldValue(row, "monthly")),
+                rate: toNumber(getFieldValue(row, "rate")),
+                frequency: getFieldValue(row, "frequency"),
+              })),
+              isOwner: getRadioValue("isOwner"),
+              propertyValue: toNumber(getInputValue("propertyValue")),
+              mortgageBalance: toNumber(getInputValue("mortgageBalance")),
+              mortgageRate: toNumber(getInputValue("mortgageRate")),
+              hasVehicles: getRadioValue("hasVehicles"),
+              vehicleValue: toNumber(getInputValue("vehicleValue")),
+              debtsTotal: toNumber(getInputValue("debtsTotal")),
+              assetsTotal: toNumber(getInputValue("assetsTotal")),
+            };
+            break;
+          case 9:
+            formState.goals = {
+              primaryPriority: getInputValue("primaryPriority"),
+              riskTolerance: getInputValue("riskTolerance"),
+            };
+            break;
+          default:
+            break;
+        }
+      }
+
+      function restoreForm() {
+        const { personal, incomes, expenses, exceptional, taxes, assets, investments, credits, goals } = formState;
+
+        setInputValue("birthDate", personal.birthDate);
+        setInputValue("canton", personal.canton);
+        setInputValue("commune", personal.commune);
+        setInputValue("maritalStatus", personal.maritalStatus);
+        setInputValue("childrenCount", String(personal.childrenCount ?? 0));
+        setInputValue("employmentStatus", personal.employmentStatus);
+        setInputValue("incomeStability", personal.incomeStability);
+        setInputValue("religion", personal.religion);
+
+        renderCollection(collections.incomes, incomes.entries.length ? incomes.entries : [defaultIncomeEntry()], createIncomeRow);
+        setInputValue("spouseNetIncome", toValueString(incomes.spouseNetIncome));
+
+        renderCollection(collections.fixedExpenses, expenses.fixed.length ? expenses.fixed : [defaultExpenseEntry("fixe")], (entry) =>
+          createExpenseRow("fixe", entry)
+        );
+        renderCollection(collections.variableExpenses, expenses.variable.length ? expenses.variable : [defaultExpenseEntry("variable")], (entry) =>
+          createExpenseRow("variable", entry)
+        );
+
+        setInputValue("exceptionalType", exceptional.type);
+        setInputValue("exceptionalAmount", toValueString(exceptional.amount));
+        setInputValue("exceptionalNotes", exceptional.notes);
+
+        setRadioValue("paysTaxes", taxes.paysTaxes);
+        setInputValue("commuteDistance", toValueString(taxes.commuteDistance));
+        setInputValue("transportMode", taxes.transportMode);
+        setInputValue("mealsFrequency", taxes.mealsFrequency);
+        setInputValue("basicInsurance", toValueString(taxes.basicInsurance));
+        setInputValue("childcareCosts", toValueString(taxes.childcareCosts));
+
+        setInputValue("currentAccount", toValueString(assets.currentAccount));
+        setInputValue("savingsAccount", toValueString(assets.savingsAccount));
+        setRadioValue("savingsContribution", assets.savingsContribution);
+        setInputValue("savingsContributionAmount", toValueString(assets.savingsContributionAmount));
+        setInputValue("savingsAccess", assets.savingsAccess);
+        setRadioValue("thirdPillar", assets.thirdPillar);
+        setInputValue("thirdPillarAmount", toValueString(assets.thirdPillarAmount));
+        setInputValue("thirdPillarType", assets.thirdPillarType);
+        renderCollection(
+          collections.otherAssets,
+          assets.otherAssets && assets.otherAssets.length ? assets.otherAssets : [defaultOtherAssetEntry()],
+          createOtherAssetRow
+        );
+        setInputValue("liquidAssetsTotal", toValueString(assets.liquidAssetsTotal));
+
+        setRadioValue("hasInvestments", investments.hasInvestments);
+        renderCollection(collections.investments, investments.items.length ? investments.items : [defaultInvestmentEntry()], createInvestmentRow);
+        setInputValue("investmentNotes", investments.notes);
+
+        renderCollection(collections.credits, credits.loans, createCreditRow);
+        setRadioValue("isOwner", credits.isOwner);
+        setInputValue("propertyValue", toValueString(credits.propertyValue));
+        setInputValue("mortgageBalance", toValueString(credits.mortgageBalance));
+        setInputValue("mortgageRate", toValueString(credits.mortgageRate));
+        setRadioValue("hasVehicles", credits.hasVehicles);
+        setInputValue("vehicleValue", toValueString(credits.vehicleValue));
+        setInputValue("debtsTotal", toValueString(credits.debtsTotal));
+        setInputValue("assetsTotal", toValueString(credits.assetsTotal));
+
+        setInputValue("primaryPriority", goals.primaryPriority);
+        setInputValue("riskTolerance", goals.riskTolerance);
+      }
+
+      function updateLiquidAssetsTotal() {
+        const current = toNumber(getInputValue("currentAccount"));
+        const savings = toNumber(getInputValue("savingsAccount"));
+        const otherRows = collections.otherAssets
+          ? Array.from(collections.otherAssets.querySelectorAll(".collection-row"))
+          : [];
+        const other = otherRows.reduce((acc, row) => acc + toNumber(getFieldValue(row, "amount")), 0);
+        const thirdType = getInputValue("thirdPillarType");
+        const thirdAmount = toNumber(getInputValue("thirdPillarAmount"));
+
+        const includeThird = thirdType && thirdType !== "a";
+        const total = current + savings + other + (includeThird ? thirdAmount : 0);
+        const totalField = form.querySelector('[name="liquidAssetsTotal"]');
+        if (totalField) {
+          totalField.value = total ? total.toFixed(2) : "";
+        }
+      }
+
+      function updateDebtAssetTotals() {
+        const loans = Array.from(collections.credits.querySelectorAll(".collection-row"));
+        const loanTotal = loans.reduce((acc, row) => acc + toNumber(getFieldValue(row, "outstanding")), 0);
+        const mortgage = toNumber(getInputValue("mortgageBalance"));
+        const propertyValue = toNumber(getInputValue("propertyValue"));
+        const vehicleValue = toNumber(getInputValue("vehicleValue"));
+
+        const totalDebt = loanTotal + mortgage;
+        const totalAssets = propertyValue + vehicleValue;
+
+        setInputValue("debtsTotal", totalDebt ? totalDebt.toFixed(2) : "");
+        setInputValue("assetsTotal", totalAssets ? totalAssets.toFixed(2) : "");
+      }
+
+      function toggleTaxDetails(visible) {
+        const container = form.querySelector('[data-conditional="taxes"]');
+        toggleContainer(container, visible, ["commuteDistance", "transportMode", "mealsFrequency", "basicInsurance", "childcareCosts"]);
+      }
+
+      function toggleSavingsContribution(visible) {
+        const container = form.querySelector('[data-conditional="savings-contrib"]');
+        toggleContainer(container, visible, ["savingsContributionAmount"]);
+      }
+
+      function toggleThirdPillar(visible) {
+        const container = form.querySelector('[data-conditional="third-pillar"]');
+        toggleContainer(container, visible, ["thirdPillarAmount", "thirdPillarType"]);
+      }
+
+      function toggleSpouseIncome(visible) {
+        const container = form.querySelector('[data-conditional="spouse-income"]');
+        toggleContainer(container, visible, ["spouseNetIncome"]);
+      }
+
+      function toggleInvestments(visible) {
+        const investCard = form.querySelector('[data-conditional="investments"]');
+        const placeholder = form.querySelector('[data-conditional="no-investments"]');
+        toggleContainer(investCard, visible, [], { preserveValues: true });
+        placeholder.hidden = visible;
+        investCard?.querySelectorAll("input, select, textarea").forEach((field) => {
+          field.disabled = !visible;
+        });
+      }
+
+      function toggleChildcareQuestion() {
+        const count = toNumber(getInputValue("childrenCount"));
+        const container = form.querySelector('[data-conditional="childcare"]');
+        toggleContainer(container, count > 0, ["childcareCosts"]);
+      }
+
+      function toggleOwnerFields(visible) {
+        const container = form.querySelector('[data-conditional="owner"]');
+        toggleContainer(container, visible, ["propertyValue", "mortgageBalance", "mortgageRate"]);
+      }
+
+      function toggleVehicleFields(visible) {
+        const container = form.querySelector('[data-conditional="vehicles"]');
+        toggleContainer(container, visible, ["vehicleValue"]);
+      }
+
+      function toggleContainer(container, visible, fieldNames = [], options = {}) {
+        if (!container) return;
+        container.hidden = !visible;
+        if (!container.dataset.originalDisplay || container.dataset.originalDisplay === "none") {
+          let fallback = container.style.display && container.style.display !== "none" ? container.style.display : "";
+          if (!fallback) {
+            fallback = container.classList.contains("card") ? "grid" : "block";
+          }
+          container.dataset.originalDisplay = fallback;
+        }
+        container.style.display = visible ? container.dataset.originalDisplay : "none";
+        const preserve = options.preserveValues ?? false;
+        fieldNames.forEach((name) => {
+          const field = Array.from(container.querySelectorAll(`[name="${name}"]`));
+          field.forEach((input) => {
+            input.disabled = !visible;
+            if (!visible && !preserve) input.value = "";
+          });
+        });
+      }
+
+      function validateStep(step) {
+        const fields = step.querySelectorAll("input, select, textarea");
+        for (const field of fields) {
+          if (field.disabled || field.closest("[hidden]")) continue;
+          if (!field.checkValidity()) {
+            field.reportValidity();
+            return false;
+          }
+        }
+        return true;
+      }
+
+      function renderCollection(container, entries, factory) {
+        if (!container) return;
+        container.innerHTML = "";
+        if (!entries || entries.length === 0) return;
+        entries.forEach((entry) => container.appendChild(factory(entry)));
+      }
+
+      function createIncomeRow(data = defaultIncomeEntry()) {
+        const row = document.createElement("div");
+        row.className = "collection-row";
+        row.innerHTML = `
+          <div class="row-grid">
+            <label class="input-block">
+              <span>Type de revenu</span>
+              <select data-field="sourceType" required>
+                <option value="salaire">Salaire</option>
+                <option value="bonus">Bonus</option>
+                <option value="freelance">Freelance / Mandat</option>
+                <option value="rente">Rente</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+            <label class="input-block">
+              <span>Montant (CHF)</span>
+              <input type="number" min="0" step="0.05" data-field="amount" required>
+            </label>
+            <label class="input-block">
+              <span>Type</span>
+              <select data-field="amountType" required>
+                <option value="net">Net</option>
+                <option value="brut">Brut</option>
+              </select>
+            </label>
+            <label class="input-block">
+              <span>13ᵉ salaire</span>
+              <select data-field="thirteenth" required>
+                <option value="oui">Oui</option>
+                <option value="non">Non</option>
+              </select>
+            </label>
+          </div>
+      <div class="row-actions">
+        <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer ce revenu">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+        `;
+        setFieldValue(row, "sourceType", data.sourceType || "salaire");
+        setFieldValue(row, "amount", toValueString(data.amount));
+        setFieldValue(row, "amountType", data.amountType || "net");
+        setFieldValue(row, "thirteenth", data.thirteenth || "oui");
+
+        row.querySelector('[data-action="remove-row"]').addEventListener("click", () => {
+          if (collections.incomes.children.length > 1) {
+            const index = Array.from(collections.incomes.children).indexOf(row);
+            formState.incomes.entries.splice(index, 1);
+            row.remove();
+          }
+        });
+
+      return row;
+    }
+
+    function createOtherAssetRow(data = defaultOtherAssetEntry()) {
+      const row = document.createElement("div");
+      row.className = "collection-row tight";
+      row.innerHTML = `
+        <div class="mini-grid">
+          <label class="input-block">
+            <span>Montant (CHF)</span>
+            <input type="number" min="0" step="0.05" data-field="amount" placeholder="ex. 2000">
+          </label>
+          <label class="input-block">
+            <span>Type d’avoir</span>
+            <select data-field="type">
+              <option value="">Sélectionner</option>
+              <option value="cash">Cash / Liquide</option>
+              <option value="compte_commun">Compte commun</option>
+              <option value="compte_enfant">Compte enfant</option>
+              <option value="compte_etranger">Compte étranger</option>
+              <option value="autre">Autre</option>
+            </select>
+          </label>
+          <label class="input-block">
+            <span>Accès</span>
+            <select data-field="access">
+              <option value="">Sélectionner</option>
+              <option value="immediat">Immédiat</option>
+              <option value="quelques_jours">Sous quelques jours</option>
+              <option value="bloque">Bloqué</option>
+              <option value="interne">Total (interne)</option>
+            </select>
+          </label>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer cet avoir">
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+      `;
+
+      setFieldValue(row, "amount", toValueString(data.amount));
+      setFieldValue(row, "type", data.type || "");
+      setFieldValue(row, "access", data.access || "");
+
+      row.querySelector('[data-action="remove-row"]').addEventListener("click", () => {
+        if (!collections.otherAssets) return;
+        if (collections.otherAssets.children.length > 1) {
+          const index = Array.from(collections.otherAssets.children).indexOf(row);
+          if (index >= 0) {
+            formState.assets.otherAssets.splice(index, 1);
+          }
+          row.remove();
+        } else {
+          row.querySelectorAll("[data-field]").forEach((input) => {
+            input.value = "";
+          });
+          if (formState.assets.otherAssets.length) {
+            formState.assets.otherAssets[0] = defaultOtherAssetEntry();
+          } else {
+            formState.assets.otherAssets.push(defaultOtherAssetEntry());
+          }
+        }
+        updateLiquidAssetsTotal();
+      });
+
+      return row;
+    }
+
+      function createExpenseRow(kind, data = defaultExpenseEntry(kind)) {
+        const row = document.createElement("div");
+        row.className = "collection-row";
+        row.innerHTML = `
+          <div class="row-grid">
+            <label class="input-block">
+              <span>Type de dépense</span>
+              <input type="text" data-field="label" placeholder="ex. ${kind === "fixe" ? "Loyer" : "Alimentation"}" required>
+            </label>
+            <label class="input-block">
+              <span>Montant (CHF)</span>
+              <input type="number" min="0" step="0.05" data-field="amount" required>
+            </label>
+            <label class="input-block">
+              <span>Fréquence</span>
+              <select data-field="frequency" required>
+                <option value="mensuel">Mensuel</option>
+                <option value="annuel">Annuel</option>
+              </select>
+            </label>
+          </div>
+      <div class="row-actions">
+        <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer cette dépense">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+        `;
+        setFieldValue(row, "label", data.label || "");
+        setFieldValue(row, "amount", toValueString(data.amount));
+        setFieldValue(row, "frequency", data.frequency || "mensuel");
+
+        row.querySelector('[data-action="remove-row"]').addEventListener("click", () => {
+          const list = kind === "fixe" ? collections.fixedExpenses : collections.variableExpenses;
+          if (list.children.length > 1) {
+            const index = Array.from(list.children).indexOf(row);
+            if (kind === "fixe") {
+              formState.expenses.fixed.splice(index, 1);
+            } else {
+              formState.expenses.variable.splice(index, 1);
+            }
+            row.remove();
+          }
+        });
+
+        return row;
+      }
+
+      function createInvestmentRow(data = defaultInvestmentEntry()) {
+        const row = document.createElement("div");
+        row.className = "collection-row";
+        row.innerHTML = `
+          <div class="row-grid">
+            <label class="input-block">
+              <span>Type d’investissement</span>
+              <select data-field="investmentType" required>
+                <option value="etf">ETF</option>
+                <option value="fonds">Fonds de placement</option>
+                <option value="actions">Actions</option>
+                <option value="obligations">Obligations</option>
+                <option value="pilier3a">Comptes de prévoyance (3a bancaire)</option>
+                <option value="crypto">Crypto</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+            <label class="input-block">
+              <span>Montant actuel (CHF)</span>
+              <input type="number" min="0" step="0.05" data-field="amount" required>
+            </label>
+            <label class="input-block">
+              <span>Versement mensuel programmé ?</span>
+              <select data-field="hasMonthly" required>
+                <option value="non">Non</option>
+                <option value="oui">Oui</option>
+              </select>
+            </label>
+            <label class="input-block" data-field-wrapper="monthlyAmount">
+              <span>Montant mensuel (CHF)</span>
+              <input type="number" min="0" step="0.05" data-field="monthlyAmount">
+            </label>
+            <label class="input-block">
+              <span>Horizon de placement</span>
+              <select data-field="horizon" required>
+                <option value="court">Court terme (&lt; 3 ans)</option>
+                <option value="moyen">Moyen terme (3 - 7 ans)</option>
+                <option value="long">Long terme (&gt; 7 ans)</option>
+              </select>
+            </label>
+          </div>
+      <div class="row-actions">
+        <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer cet investissement">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+        `;
+
+        setFieldValue(row, "investmentType", data.investmentType || "etf");
+        setFieldValue(row, "amount", toValueString(data.amount));
+        setFieldValue(row, "hasMonthly", data.hasMonthly || "non");
+        setFieldValue(row, "monthlyAmount", toValueString(data.monthlyAmount));
+        setFieldValue(row, "horizon", data.horizon || "long");
+
+        toggleMonthlyAmount(row);
+
+        row.querySelector('[data-field="hasMonthly"]').addEventListener("change", () => toggleMonthlyAmount(row));
+
+        row.querySelector('[data-action="remove-row"]').addEventListener("click", () => {
+          if (collections.investments.children.length > 1) {
+            const index = Array.from(collections.investments.children).indexOf(row);
+            formState.investments.items.splice(index, 1);
+            row.remove();
+          }
+        });
+
+        return row;
+      }
+
+      function createCreditRow(data = defaultCreditEntry()) {
+        const row = document.createElement("div");
+        row.className = "collection-row";
+        row.innerHTML = `
+          <div class="row-grid">
+            <label class="input-block">
+              <span>Type de crédit</span>
+              <select data-field="creditType" required>
+                <option value="consommation">Crédit à la consommation</option>
+                <option value="leasing">Leasing voiture</option>
+                <option value="carte_credit">Carte de crédit</option>
+                <option value="hypotheque">Hypothèque</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+            <label class="input-block">
+              <span>Montant restant à rembourser (CHF)</span>
+              <input type="number" min="0" step="0.05" data-field="outstanding" required>
+            </label>
+            <label class="input-block">
+              <span>Mensualité (CHF)</span>
+              <input type="number" min="0" step="0.05" data-field="monthly" required>
+            </label>
+            <label class="input-block">
+              <span>Taux d’intérêt (%)</span>
+              <input type="number" min="0" max="100" step="0.01" data-field="rate">
+            </label>
+            <label class="input-block">
+              <span>Fréquence de paiement</span>
+              <select data-field="frequency" required>
+                <option value="mensuel">Mensuel</option>
+                <option value="trimestriel">Trimestriel</option>
+                <option value="annuel">Annuel</option>
+              </select>
+            </label>
+          </div>
+      <div class="row-actions">
+        <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer ce crédit">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+        `;
+
+        setFieldValue(row, "creditType", data.creditType || "consommation");
+        setFieldValue(row, "outstanding", toValueString(data.outstanding));
+        setFieldValue(row, "monthly", toValueString(data.monthlyPayment));
+        setFieldValue(row, "rate", toValueString(data.rate));
+        setFieldValue(row, "frequency", data.frequency || "mensuel");
+
+        row.querySelector('[data-action="remove-row"]').addEventListener("click", () => {
+          const index = Array.from(collections.credits.children).indexOf(row);
+          if (index >= 0) {
+            formState.credits.loans.splice(index, 1);
+            row.remove();
+            updateDebtAssetTotals();
+          }
+        });
+
+        return row;
+      }
+
+      function toggleMonthlyAmount(row) {
+        const hasMonthly = getFieldValue(row, "hasMonthly") === "oui";
+        const wrapper = row.querySelector('[data-field-wrapper="monthlyAmount"]');
+        const input = row.querySelector('[data-field="monthlyAmount"]');
+        if (wrapper && input) {
+          wrapper.hidden = !hasMonthly;
+          input.required = hasMonthly;
+          if (!hasMonthly) input.value = "";
+        }
+      }
+
+      function mapExpenseRows(container) {
+        return Array.from(container.querySelectorAll(".collection-row")).map((row) => ({
+          label: getFieldValue(row, "label"),
+          amount: toNumber(getFieldValue(row, "amount")),
+          frequency: getFieldValue(row, "frequency"),
+        }));
+      }
+
+      function mapOtherAssetRows(container) {
+        if (!container) return [];
+        return Array.from(container.querySelectorAll(".collection-row")).map((row) => ({
+          amount: toNumber(getFieldValue(row, "amount")),
+          type: getFieldValue(row, "type"),
+          access: getFieldValue(row, "access"),
+        }));
+      }
+
+      function getInputValue(name) {
+        const field = form.querySelector(`[name="${name}"]`);
+        return field && !field.disabled ? field.value || "" : "";
+      }
+
+      function setInputValue(name, value) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!field) return;
+        if (value === undefined || value === null) {
+          field.value = "";
+        } else {
+          field.value = value;
+        }
+      }
+
+      function getRadioValue(name) {
+        const selected = form.querySelector(`input[name="${name}"]:checked`);
+        return selected ? selected.value : "";
+      }
+
+      function setRadioValue(name, value) {
+        if (!value) return;
+        const radio = form.querySelector(`input[name="${name}"][value="${value}"]`);
+        if (radio) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event("change"));
+        }
+      }
+
+      function getFieldValue(row, field) {
+        const element = row.querySelector(`[data-field="${field}"]`);
+        return element ? element.value || "" : "";
+      }
+
+      function setFieldValue(row, field, value) {
+        const element = row.querySelector(`[data-field="${field}"]`);
+        if (element && value !== undefined && value !== null && value !== "") {
+          element.value = value;
+        }
+      }
+    });
+
+    function defaultFormState() {
+      return {
+        personal: {
+          birthDate: "",
+          canton: "",
+          commune: "",
+          maritalStatus: "",
+          childrenCount: 0,
+          employmentStatus: "",
+          incomeStability: "",
+          religion: "",
+        },
+        incomes: {
+          entries: [defaultIncomeEntry()],
+          spouseNetIncome: 0,
+        },
+        expenses: {
+          fixed: [defaultExpenseEntry("fixe")],
+          variable: [defaultExpenseEntry("variable")],
+        },
+        exceptional: {
+          type: "",
+          amount: 0,
+          notes: "",
+        },
+        taxes: {
+          paysTaxes: "",
+          commuteDistance: 0,
+          transportMode: "",
+          mealsFrequency: "",
+          basicInsurance: 0,
+          childcareCosts: 0,
+        },
+        assets: {
+          currentAccount: 0,
+          savingsAccount: 0,
+          savingsContribution: "",
+          savingsContributionAmount: 0,
+          savingsAccess: "",
+          thirdPillar: "",
+          thirdPillarAmount: 0,
+          thirdPillarType: "",
+          thirdPillarContribution: 0,
+          thirdPillarContributionSpouse: 0,
+          otherAssets: [defaultOtherAssetEntry()],
+          liquidAssetsTotal: 0,
+        },
+        investments: {
+          hasInvestments: "",
+          items: [defaultInvestmentEntry()],
+          notes: "",
+        },
+        credits: {
+          loans: [],
+          isOwner: "",
+          propertyValue: 0,
+          mortgageBalance: 0,
+          mortgageRate: 0,
+          hasVehicles: "",
+          vehicleValue: 0,
+          debtsTotal: 0,
+          assetsTotal: 0,
+        },
+        goals: {
+          primaryPriority: "",
+          riskTolerance: "",
+        },
+      };
+    }
+
+    function defaultIncomeEntry() {
+      return {
+        sourceType: "salaire",
+        amount: 0,
+        amountType: "net",
+        thirteenth: "oui",
+      };
+    }
+
+    function defaultExpenseEntry(kind) {
+      return {
+        label: kind === "fixe" ? "Loyer" : "Alimentation",
+        amount: 0,
+        frequency: "mensuel",
+      };
+    }
+
+    function defaultOtherAssetEntry() {
+      return {
+        amount: "",
+        type: "",
+        access: "",
+      };
+    }
+
+    function defaultInvestmentEntry() {
+      return {
+        investmentType: "etf",
+        amount: 0,
+        hasMonthly: "non",
+        monthlyAmount: 0,
+        horizon: "long",
+      };
+    }
+
+    function defaultCreditEntry() {
+      return {
+        creditType: "consommation",
+        outstanding: 0,
+        monthlyPayment: 0,
+        rate: 0,
+        frequency: "mensuel",
+      };
+    }
+
+    function loadFormState(userId) {
+      const raw = localStorage.getItem(STORAGE_KEY_FORM);
+      if (!raw) return defaultFormState();
+      try {
+        const parsed = JSON.parse(raw);
+        if (!userId) return parsed.__default ? mergeWithDefaults(parsed.__default) : defaultFormState();
+        return parsed[userId] ? mergeWithDefaults(parsed[userId]) : defaultFormState();
+      } catch (_error) {
+        return defaultFormState();
+      }
+    }
+
+    function saveFormState(userId, state) {
+      const raw = localStorage.getItem(STORAGE_KEY_FORM);
+      const payload = raw ? safelyParse(raw) : {};
+      if (userId) {
+        payload[userId] = state;
+      } else {
+        payload.__default = state;
+      }
+      localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(payload));
+    }
+
+    function mergeWithDefaults(partial) {
+      const defaults = defaultFormState();
+      const merged = deepMerge(defaults, partial);
+      return normalizeState(merged);
+    }
+
+    function deepMerge(target, source) {
+      if (typeof source !== "object" || source === null) return target;
+      Object.keys(source).forEach((key) => {
+        if (Array.isArray(source[key])) {
+          target[key] = source[key];
+        } else if (source[key] && typeof source[key] === "object") {
+          target[key] = deepMerge(target[key] ?? {}, source[key]);
+        } else {
+          target[key] = source[key];
+        }
+      });
+      return target;
+    }
+
+    function normalizeState(state) {
+      if (state?.assets) {
+        const assets = state.assets;
+        if (!Array.isArray(assets.otherAssets) || !assets.otherAssets.length) {
+          const legacyAmount = toNumber(assets.otherAssetsAmount ?? 0);
+          const legacyType = assets.otherAssetsType ?? "";
+          const legacyAccess = assets.otherAssetsAccess ?? "";
+          const legacyEntries = [];
+          if (legacyAmount || legacyType || legacyAccess) {
+            legacyEntries.push({
+              amount: legacyAmount,
+              type: legacyType || "",
+              access: legacyAccess || "",
+            });
+          }
+          assets.otherAssets = legacyEntries.length ? legacyEntries : [defaultOtherAssetEntry()];
+        }
+        delete assets.otherAssetsAmount;
+        delete assets.otherAssetsType;
+        delete assets.otherAssetsAccess;
+      }
+      if (state) {
+        const hadCreditLoans = Array.isArray(state.credits?.loans);
+        if (!state.credits) {
+          state.credits = { loans: [] };
+        } else if (!hadCreditLoans) {
+          state.credits.loans = [];
+        }
+        if (!hadCreditLoans) {
+          const legacyLoans = Array.isArray(state.loans)
+            ? state.loans
+            : state.loans
+            ? [state.loans]
+            : [];
+          if (legacyLoans.length) {
+            state.credits.loans = legacyLoans.filter((loan) => loan && typeof loan === "object");
+          }
+        }
+        if (!Array.isArray(state.credits.loans)) {
+          state.credits.loans = [];
+        }
+        state.loans = state.credits.loans;
+      }
+      return state;
+    }
+
+    function safelyParse(value) {
+      try {
+        return JSON.parse(value);
+      } catch (_error) {
+        return {};
+      }
+    }
+
+    function getActiveUserId() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_ACTIVE_USER);
+        if (!raw) return "";
+        const parsed = JSON.parse(raw);
+        return parsed?.id || "";
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function toNumber(value) {
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      const parsed = parseFloat(String(value).replace(/\s/g, "").replace(/’/g, "").replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function toInteger(value) {
+      if (value === "" || value === undefined || value === null) return 0;
+      const parsed = parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function toValueString(value) {
+      if (value === 0) return "0";
+      return value ? String(value) : "";
+    }
+  </script>
+</body>
+</html>
