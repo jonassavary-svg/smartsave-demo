@@ -311,6 +311,12 @@
         fill: transparent;
         cursor: pointer;
       }
+      .projection-hit-line {
+        fill: none;
+        stroke: transparent;
+        stroke-width: 18;
+        cursor: pointer;
+      }
       .projection-point--today {
         fill: #64748b;
       }
@@ -564,6 +570,7 @@
               <text class="projection-svg-label projection-svg-label--x" x="318" y="147">20 ans</text>
 
               <path class="projection-line" data-proj-line d="M42 132 L318 42"></path>
+              <path class="projection-hit-line" data-proj-hit-line d="M42 132 L318 42"></path>
               <circle class="projection-hit" data-proj-hit-today cx="42" cy="132" r="12" tabindex="0" role="button" aria-label="Patrimoine aujourd'hui"></circle>
               <circle class="projection-hit" data-proj-hit-future cx="318" cy="42" r="12" tabindex="0" role="button" aria-label="Patrimoine dans 20 ans"></circle>
               <circle class="projection-point projection-point--today" data-proj-point-today cx="42" cy="132" r="3.6"></circle>
@@ -953,8 +960,10 @@
         const lineNode = document.querySelector("[data-proj-line]");
         const pointTodayNode = document.querySelector("[data-proj-point-today]");
         const pointFutureNode = document.querySelector("[data-proj-point-future]");
+        const hitLineNode = document.querySelector("[data-proj-hit-line]");
         const hitTodayNode = document.querySelector("[data-proj-hit-today]");
         const hitFutureNode = document.querySelector("[data-proj-hit-future]");
+        const chartSvgNode = chartNode ? chartNode.querySelector("svg") : null;
         const chartNode = document.querySelector(".projection-chart");
         const tooltipNode = document.querySelector("[data-proj-tooltip]");
         const yLabelNodes = [0, 1, 2, 3, 4].map((index) =>
@@ -968,6 +977,7 @@
         const yToday = toChartY(netWorthToday);
         const yFuture = toChartY(netWorthFuture);
         if (lineNode) lineNode.setAttribute("d", `M42 ${yToday.toFixed(2)} L318 ${yFuture.toFixed(2)}`);
+        if (hitLineNode) hitLineNode.setAttribute("d", `M42 ${yToday.toFixed(2)} L318 ${yFuture.toFixed(2)}`);
         if (pointTodayNode) pointTodayNode.setAttribute("cy", yToday.toFixed(2));
         if (pointFutureNode) pointFutureNode.setAttribute("cy", yFuture.toFixed(2));
         if (hitTodayNode) hitTodayNode.setAttribute("cy", yToday.toFixed(2));
@@ -1012,6 +1022,34 @@
         };
         bindInteractivePoint(hitTodayNode, "Aujourd'hui", formatCurrency(netWorthToday));
         bindInteractivePoint(hitFutureNode, "Dans 20 ans", formatCurrency(netWorthFuture));
+        const bindInteractiveLine = (node) => {
+          if (!node || !chartNode || !chartSvgNode) return;
+          const onMove = (event) => {
+            const svgRect = chartSvgNode.getBoundingClientRect();
+            const chartRect = chartNode.getBoundingClientRect();
+            const xStartPx = (42 / 340) * svgRect.width;
+            const xEndPx = (318 / 340) * svgRect.width;
+            const pointerX = Math.max(0, Math.min(svgRect.width, event.clientX - svgRect.left));
+            const clampedX = Math.max(xStartPx, Math.min(xEndPx, pointerX));
+            const ratio = (clampedX - xStartPx) / Math.max(1, xEndPx - xStartPx);
+            const year = Math.round(ratio * 20);
+            const projected = netWorthToday + (netWorthFuture - netWorthToday) * ratio;
+            const ySvg = yToday + (yFuture - yToday) * ratio;
+            const yPx = (ySvg / 150) * svgRect.height;
+            showTooltip(
+              node,
+              `${year} an${year > 1 ? "s" : ""}`,
+              formatCurrency(projected),
+              svgRect.left + clampedX - chartRect.left,
+              svgRect.top + yPx - chartRect.top - 10
+            );
+          };
+          node.addEventListener("pointerenter", onMove);
+          node.addEventListener("pointermove", onMove);
+          node.addEventListener("click", onMove);
+          node.addEventListener("pointerleave", hideTooltip);
+        };
+        bindInteractiveLine(hitLineNode);
         if (chartNode) {
           chartNode.addEventListener("pointerleave", hideTooltip);
         }

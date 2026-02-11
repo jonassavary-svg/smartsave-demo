@@ -1004,7 +1004,6 @@
   <script>
     const STORAGE_KEY_FORM = "smartsaveFormData";
     const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
-    const RECAP_PENDING_KEY = "smartsaveRecapPendingByUser";
     const NAME_INDEX_KEY = "smartsaveNameIndex";
     const PENDING_NAME_KEY = "smartsavePendingName";
     const SYNC_ENABLED = true;
@@ -1130,15 +1129,11 @@
         if (!persistCurrentStep(currentStepIndex === totalSteps - 1)) return;
 
         if (currentStepIndex === totalSteps - 1) {
-          const resolvedUserId = resolveSessionUserId(activeUserId, formState);
-          ensureActiveUserSession(resolvedUserId, formState);
-          injectPendingName(formState, pendingName, resolvedUserId);
-          saveFormState(resolvedUserId, formState);
-          // Do not block navigation on network sync.
-          syncCompletedProfile(resolvedUserId, formState).catch(() => {});
-          registerPendingName(resolvedUserId, pendingName);
-          markRecapPendingOnFirstCompletion(resolvedUserId);
-          window.location.href = resolvePostOnboardingTarget(resolvedUserId);
+          injectPendingName(formState, pendingName, activeUserId);
+          saveFormState(activeUserId, formState);
+          await syncCompletedProfile(activeUserId, formState);
+          registerPendingName(activeUserId, pendingName);
+          window.location.href = "mon-argent.html";
           return;
         }
 
@@ -2139,50 +2134,6 @@
           payload.__default = nextState;
         }
         localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(payload));
-      }
-
-      function resolvePostOnboardingTarget(userId) {
-        return isRecapPending(userId) ? "resultats.html" : "mon-argent.html";
-      }
-
-      function resolveSessionUserId(activeId, state) {
-        const candidate = String(activeId || state?.profileId || state?.id || "").trim();
-        return candidate;
-      }
-
-      function ensureActiveUserSession(userId, state) {
-        if (!userId) return;
-        const personal = state?.personal || {};
-        const firstName = String(personal.firstName || personal.prenom || "").trim();
-        const lastName = String(personal.lastName || personal.nom || "").trim();
-        const displayName = String(
-          personal.displayName || personal.fullName || [firstName, lastName].filter(Boolean).join(" ")
-        ).trim();
-        const payload = {
-          id: userId,
-          displayName: displayName || "Profil",
-        };
-        if (firstName) payload.firstName = firstName;
-        if (lastName) payload.lastName = lastName;
-        try {
-          localStorage.setItem(STORAGE_KEY_ACTIVE_USER, JSON.stringify(payload));
-        } catch (_error) {
-          // ignore storage issues
-        }
-      }
-
-      function markRecapPendingOnFirstCompletion(userId) {
-        if (!userId) return;
-        const map = safelyParse(localStorage.getItem(RECAP_PENDING_KEY)) || {};
-        if (Object.prototype.hasOwnProperty.call(map, userId)) return;
-        map[userId] = true;
-        localStorage.setItem(RECAP_PENDING_KEY, JSON.stringify(map));
-      }
-
-      function isRecapPending(userId) {
-        if (!userId) return false;
-        const map = safelyParse(localStorage.getItem(RECAP_PENDING_KEY)) || {};
-        return Boolean(map?.[userId]);
       }
 
     function mergeWithDefaults(partial) {

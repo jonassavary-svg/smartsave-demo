@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
+    <title>SmartSave – Home</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="theme-polish.css" />
+  </head>
+  <body class="dashboard app-page" data-page="home" data-mvp>
+    <div class="dashboard-shell app-shell">
+      <header class="dashboard-header app-header">
+        <div class="brand-block">
+          <a class="logo" href="mon-argent.html">
+            <div class="logo-mark" aria-hidden="true">S</div>
+            <span class="logo-text">SmartSave</span>
+          </a>
+          <span class="logo-subtitle">Personal Finance</span>
+        </div>
+        <div class="header-actions">
+          <div class="user-menu-wrapper">
+            <button class="user-pill user-pill--account" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="user-avatar user-avatar--icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="currentColor" />
+                </svg>
+              </span>
+              <span class="user-info">
+                <span class="user-name">Marie Dupont</span>
+                <span class="user-email">marie@example.ch</span>
+              </span>
+              <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <div class="user-menu" role="menu" aria-label="Menu Mon compte">
+              <div class="user-menu__header">
+                <strong data-user-name>Marie Dupont</strong>
+                <span data-user-email>marie@example.ch</span>
+              </div>
+              <button type="button" data-user-action="edit">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm8 3.5-1.9-.3a6.8 6.8 0 0 0-.7-1.7l1.1-1.6-1.4-1.4-1.6 1.1c-.5-.3-1.1-.6-1.7-.7L12 4l-1.8 1.9c-.6.1-1.2.4-1.7.7L6.9 5.5 5.5 6.9l1.1 1.6c-.3.5-.6 1.1-.7 1.7L4 12l1.9 1.8c.1.6.4 1.2.7 1.7l-1.1 1.6 1.4 1.4 1.6-1.1c.5.3 1.1.6 1.7.7L12 20l1.8-1.9c.6-.1 1.2-.4 1.7-.7l1.6 1.1 1.4-1.4-1.1-1.6c.3-.5.6-1.1.7-1.7L20 12z" fill="currentColor" />
+                </svg>
+                <span>Mes données</span>
+              </button>
+              <button type="button" data-user-action="logout" class="danger">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 6h-2V4h2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-2v-2h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zM4 12l4-4v3h7v2H8v3z" fill="currentColor" />
+                </svg>
+                <span>Déconnexion</span>
+              </button>
+            </div>
+          </div>
+          <div class="hamburger-wrapper">
+            <button class="icon-button menu-button" type="button" aria-label="Menu" aria-expanded="false" aria-controls="app-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+            <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Home</a>
+              <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
+              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Actions</a>
+              <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Score</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="card" data-month-header>
+          <div class="card-header">
+            <h3>Mois actif</h3>
+          </div>
+          <p data-month-label>—</p>
+        </section>
+
+        <section class="card" data-month-banner hidden>
+          <div class="card-header">
+            <h3>Mois à clôturer</h3>
+          </div>
+          <p>Tu n’as pas clôturé le mois précédent.</p>
+          <button class="ghost-btn" type="button" data-close-month>Clôturer maintenant</button>
+        </section>
+
+        <section class="balance-hero">
+          <div class="balance-card">
+            <p class="card-label">Available Balance</p>
+            <div class="balance-amount" data-home-available>CHF 0</div>
+            <p class="balance-delta">
+              <span class="trend-up" aria-hidden="true">+</span>
+              <span data-home-saved-delta>CHF 0</span>
+              this month
+            </p>
+          </div>
+          <div class="balance-metrics">
+            <div class="metric-card card card--compact">
+              <div class="metric-header">
+                <span class="metric-icon metric-icon--income" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 6l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M12 4v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <span>Income</span>
+              </div>
+              <strong data-home-income>CHF 0</strong>
+            </div>
+            <div class="metric-card card card--compact">
+              <div class="metric-header">
+                <span class="metric-icon metric-icon--expense" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 18l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M12 20V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <span>Expenses</span>
+              </div>
+              <strong data-home-expenses>CHF 0</strong>
+            </div>
+            <div class="metric-card card card--compact">
+              <div class="metric-header">
+                <span class="metric-icon metric-icon--saved" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6 7h12a3 3 0 0 1 3 3v3a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V10a3 3 0 0 1 3-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    <path d="M12 11a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6-4V6a3 3 0 0 0-3-3H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <span>Saved</span>
+              </div>
+              <strong data-home-saved>CHF 0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="home-grid">
+          <section class="card remaining-card">
+            <h3>Reste à dépenser ce mois</h3>
+            <div class="remaining-amount" data-home-remaining>CHF 0</div>
+            <div class="progress-bar" data-home-progress-bar>
+              <div class="progress-bar__fill" data-home-progress-fill></div>
+            </div>
+            <p class="progress-caption" data-home-progress-caption>—</p>
+            <div class="remaining-details">
+              <button class="details-toggle" type="button" data-remaining-toggle aria-expanded="false">
+                <span>Détails du calcul</span>
+                <span class="details-toggle__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </span>
+              </button>
+              <div class="details-panel" data-remaining-panel hidden>
+                <div class="remaining-breakdown" data-home-remaining-detail></div>
+                <p class="remaining-note" data-home-investments-note>Investissements (objectif SmartSave): —</p>
+              </div>
+            </div>
+          </section>
+          <section class="card projection-card" data-home-projection-card>
+            <h3>Projection fin de mois</h3>
+            <div class="projection-rows">
+              <div class="projection-row">
+                <span>Dépenses variables actuelles</span>
+                <strong data-home-projection-actual>CHF 0</strong>
+              </div>
+              <div class="projection-row">
+                <span>Projection fin de mois</span>
+                <strong data-home-projection-forecast>CHF 0</strong>
+              </div>
+              <div class="projection-row">
+                <span>Budget variable SmartSave</span>
+                <strong data-home-projection-budget>CHF 0</strong>
+              </div>
+            </div>
+            <div class="projection-status" data-home-projection-status>
+              <span class="status-dot" aria-hidden="true"></span>
+              <span data-home-projection-label>—</span>
+            </div>
+            <p class="projection-text" data-home-projection-message>—</p>
+            <p class="projection-hint" data-home-projection-hint>—</p>
+          </section>
+          <div class="card chart-card">
+            <div class="card-header">
+              <h3>Last 6 Months</h3>
+            </div>
+            <div class="mini-chart" data-home-chart></div>
+            <div class="chart-legend">
+              <span class="legend-dot legend-dot--income"></span>
+              Income
+              <span class="legend-dot legend-dot--expense"></span>
+              Expenses
+            </div>
+          </div>
+          <div class="card quick-link">
+            <div class="card-header">
+              <h3>Dépenses</h3>
+            </div>
+            <p>Consulte toutes les dépenses du mois, y compris les fixes et celles ajoutées manuellement.</p>
+            <a class="quick-action quick-action--primary" href="depenses.html">
+              <span class="quick-action__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span class="quick-action__label">Voir mes dépenses</span>
+              <span class="quick-action__arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </a>
+          </div>
+          <div class="card quick-actions">
+            <div class="card-header">
+              <h3>Actions rapides</h3>
+            </div>
+            <button class="quick-action quick-action--primary" type="button" data-quick-action="transfer">
+              <span class="quick-action__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 11l17-7-7 17-2-6-6-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <span class="quick-action__label">Transfer Money</span>
+              <span class="quick-action__arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </button>
+            <button class="quick-action quick-action--accent" type="button" data-quick-action="expense">
+              <span class="quick-action__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 4h11l3 3v13H4V4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                  <path d="M8 4v6h7V4" fill="none" stroke="currentColor" stroke-width="1.8" />
+                </svg>
+              </span>
+              <span class="quick-action__label">Dépense</span>
+              <span class="quick-action__arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </button>
+            <button class="quick-action quick-action--success" type="button" data-quick-action="income">
+              <span class="quick-action__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 17l5-6 4 4 7-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span class="quick-action__label">Revenu</span>
+              <span class="quick-action__arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section class="home-activity card">
+          <div class="card-header">
+            <h3>Historique récent</h3>
+          </div>
+          <ul class="activity-list" data-transaction-list data-home-transactions></ul>
+          <a class="activity-history-link" href="mes-depenses.html">Voir l'historique complet</a>
+        </section>
+
+        <section class="card plan-card">
+          <div class="card-header">
+            <h3>Plan du mois</h3>
+          </div>
+          <div class="balance-sheet">
+            <div class="balance-sheet__row">
+              <span>Revenu mensuel estimé</span>
+              <strong data-plan-income>CHF 0</strong>
+            </div>
+            <div class="balance-sheet__row">
+              <span>Charges fixes prévues</span>
+              <strong data-plan-fixed>CHF 0</strong>
+            </div>
+            <div class="balance-sheet__row">
+              <span>Budget variables prévu</span>
+              <strong data-plan-variable>CHF 0</strong>
+            </div>
+            <div class="balance-sheet__row">
+              <span>Provision impôts</span>
+              <strong data-plan-tax>CHF 0</strong>
+            </div>
+            <div class="balance-sheet__row balance-sheet__row--total">
+              <span>Reste à vivre prévu</span>
+              <strong data-plan-forecast>CHF 0</strong>
+            </div>
+          </div>
+          <span class="section-label">Comparaison avec le réel</span>
+          <div class="balance-sheet">
+            <div class="balance-sheet__row">
+              <span>Reste à vivre réel</span>
+              <strong data-plan-real>CHF 0</strong>
+            </div>
+            <div class="balance-sheet__row balance-sheet__row--total">
+              <span>Écart (avance / retard)</span>
+              <strong data-plan-gap>CHF 0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="system-section">
+          <div class="section-header">
+            <h3>Budgets variables</h3>
+          </div>
+          <div class="allocation-list" data-variable-budgets></div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Fin de mois</h3>
+          </div>
+          <button class="ghost-btn" type="button" data-close-month>Clôturer le mois</button>
+        </section>
+
+        <section class="system-section">
+          <div class="section-header">
+            <h3>Vue globale</h3>
+          </div>
+          <div class="accounts-grid" data-home-accounts></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="hub-modal" data-quick-modal>
+      <div class="hub-modal__overlay" data-quick-close></div>
+      <div class="hub-modal__content" role="dialog" aria-modal="true" aria-labelledby="quick-modal-title">
+        <header class="hub-modal__header">
+          <h2 id="quick-modal-title">Ajouter une opération</h2>
+          <button class="hub-modal__close" type="button" data-quick-close aria-label="Fermer">×</button>
+        </header>
+        <form class="hub-modal__form" data-quick-form>
+          <div class="hub-field">
+            <label for="quick-amount">Montant (CHF)</label>
+            <input id="quick-amount" name="amount" type="number" min="0" step="1" placeholder="0" required />
+          </div>
+          <div class="hub-field" data-quick-field="category">
+            <label for="quick-category">Catégorie</label>
+            <select id="quick-category" name="category">
+              <option value="">Sélectionner</option>
+              <option value="Logement">Logement</option>
+              <option value="Transport">Transport</option>
+              <option value="Alimentation">Alimentation</option>
+              <option value="Santé">Santé</option>
+              <option value="Loisirs">Loisirs</option>
+              <option value="Autre">Autre</option>
+            </select>
+            <input
+              id="quick-category-other"
+              name="categoryOther"
+              type="text"
+              placeholder="Nom de la dépense ou du revenu"
+              data-quick-other="category"
+              hidden
+            />
+          </div>
+          <div class="hub-field" data-quick-field="account">
+            <label for="quick-account">Compte</label>
+            <select id="quick-account" name="account"></select>
+            <input
+              id="quick-account-other"
+              name="accountOther"
+              type="text"
+              placeholder="Nom du compte"
+              data-quick-other="account"
+              hidden
+            />
+          </div>
+          <div class="hub-field hub-field--inline" data-quick-field="transfer">
+            <div>
+              <label for="quick-from">Compte source</label>
+              <select id="quick-from" name="from"></select>
+            </div>
+            <div>
+              <label for="quick-to">Compte destination</label>
+              <select id="quick-to" name="to"></select>
+            </div>
+          </div>
+          <div class="hub-field">
+            <label for="quick-date">Date</label>
+            <input id="quick-date" name="date" type="date" required />
+          </div>
+          <div class="hub-field">
+            <label for="quick-note">Note (optionnelle)</label>
+            <input id="quick-note" name="note" type="text" placeholder="Ex: courses" />
+          </div>
+          <button class="cta hub-cta" type="submit">Enregistrer</button>
+        </form>
+      </div>
+    </div>
+
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Home</span>
+      </a>
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+        <span>SmartSave</span>
+      </a>
+      <a class="bottom-nav__link" href="actions.html" data-nav="actions">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span>Actions</span>
+      </a>
+      <a class="bottom-nav__link" href="future.html" data-nav="future">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 16l5-5 4 3 7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Future</span>
+      </a>
+      <a class="bottom-nav__link" href="score.html" data-nav="score">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Score</span>
+      </a>
+    </nav>
+
+    <script src="financialScoreEngine.js" defer></script>
+    <script src="allocationEngine.js" defer></script>
+    <script src="projectionEngine.js" defer></script>
+    <script src="taxEngine.js" defer></script>
+    <script src="spendingAnalysisEngine.js" defer></script>
+    <script src="smartsaveSnapshot.js" defer></script>
+    <script src="runtimeConfig.js" defer></script>
+    <script src="mvp-v2.js" defer></script>
+    <script src="mon-argent.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#eef2ff" />
+    <script src="seed-data.js"></script>
+    <title>SmartSave – Profil détaillé</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="theme-polish.css" />
+  </head>
+  <body class="profile-page" data-page="profil">
+    <div class="profile-overlay profile-section-page">
+      <main class="profile-modal__content profile-details">
+        <div class="profile-section-heading">
+          <button type="button" class="ghost-btn profile-back" onclick="window.goBackToProfile()" aria-label="Retour">
+            ← Retour
+          </button>
+          <p class="section-eyebrow" data-section-subtitle></p>
+          <h1 data-section-title>—</h1>
+        </div>
+        <div class="profile-details__grid" data-section-grid></div>
+        <div class="profile-details__lists" data-section-lists></div>
+        <section class="card spouse-section" data-spouse-section>
+          <div class="spouse-section__header">
+            <div>
+              <p class="section-eyebrow">Conjoint</p>
+              <h2>Revenu conjoint (net/an)</h2>
+            </div>
+            <button
+              class="ghost-btn spouse-section__toggle"
+              type="button"
+              data-spouse-toggle
+              aria-expanded="false"
+            >
+              Afficher le revenu
+            </button>
+          </div>
+        <div class="spouse-section__content" data-spouse-content hidden>
+            <p class="spouse-section__note">
+              Ce chiffre est déclaré dans le formulaire conjoint, il sert aux calculs globaux.
+            </p>
+            <div class="spouse-section__value" data-spouse-income>CHF 0</div>
+            <div class="spouse-section__actions">
+              <button 
+                class="ghost-btn spouse-section__edit" 
+                type="button" 
+                data-spouse-edit
+              >
+                Modifier
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+      <div class="profile-edit-modal" id="profile-edit-modal" aria-hidden="true">
+        <div class="profile-edit-modal__content">
+          <h3 id="profile-edit-title">Modifier</h3>
+          <p id="profile-edit-description" class="section-eyebrow">—</p>
+          <input id="profile-edit-input" class="profile-edit-modal__input" type="text" />
+          <div class="profile-edit-modal__actions">
+            <button class="ghost-btn" type="button" id="profile-edit-cancel">Annuler</button>
+            <button class="ghost-btn profile-back" type="button" id="profile-edit-save">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="runtimeConfig.js"></script>
+    <script src="taxEngine.js"></script>
+    <script src="allocationEngine.js"></script>
+    <script>
+      const STORAGE_KEY_FORM = "smartsaveFormData";
+      const PROFILE_UPDATE_KEY = "smartsaveProfileUpdated";
+      const PROFILE_VERSION_KEY = "smartsaveProfileVersion";
+      const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
+      const PROFILE_FROM_STORAGE = "profileLastMain";
+      const SYNC_ENABLED = true;
+      const SYNC_URL = "http://localhost:3000";
+      const SYNC_URL_OVERRIDE_KEY = "smartsaveProfileSyncUrl";
+      let currentSectionKey = "personal";
+
+      const CATEGORY_DEFINITIONS = [
+        { section: "personal", label: "Informations personnelles", description: "Mon identité et statut", icon: "M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3 0-6 1.5-6 3.5V19h12v-1.5c0-2-3-3.5-6-3.5z" },
+        { section: "assets", label: "Mes comptes et liquidités", description: "Solde et réserves", icon: "M4 11h16v8H4zM6 5h12v4H6z" },
+        { section: "incomes", label: "Revenus", description: "Toutes mes sources de revenu", icon: "M4 12h16M4 16h10M4 8h6", stroke: true },
+        { section: "expenses", label: "Dépenses", description: "Charges fixes et variables", icon: "M4 6h16M4 12h16M4 18h16", stroke: true },
+        { section: "investments", label: "Investissements", description: "Portefeuille actif", icon: "M12 4l2.5 4.5L18 11l-3 2.5L14 18l-4-2.5L6 18l-.5-4.5L2 11l3.5-2.5z" },
+        { section: "credits", label: "Crédits et dettes", description: "Ce que je dois", icon: "M5 8h7v4H5zM5 14h11v4H5z" },
+        { section: "taxes", label: "Impôts", description: "Informations fiscales", icon: "M5 12h6M5 16h10M5 8h10", stroke: true },
+        { section: "vision", label: "Vision & priorités", description: "Mes objectifs financiers", icon: "M12 5l3 3-3 3-3-3zM6 12l6 7 6-7" },
+      ];
+
+      const OPTION_LABELS = {
+        maritalStatus: { celibataire: "Célibataire", marie: "Marié·e", partenariat: "Partenariat", divorce: "Divorcé·e", veuf: "Veuf·ve" },
+        employmentStatus: {
+          employe: "Employé·e",
+          independant: "Indépendant·e",
+          fonctionnaire: "Fonctionnaire",
+          etudiant: "Étudiant·e",
+          retraite: "Retraité·e",
+          sans_emploi: "Sans emploi",
+          autre: "Autre",
+        },
+        incomeStability: { stable: "Stable", variable: "Variable" },
+        religion: { catholique: "Catholique", protestant: "Protestant", autre: "Autre", aucune: "Aucune" },
+        paysTaxes: { oui: "Oui", non: "Non" },
+        transportMode: {
+          voiture: "Voiture",
+          transport_public: "Transports publics",
+          velo: "Vélo",
+          marche: "Marche",
+          mixte: "Mixte",
+        },
+        mealsFrequency: {
+          jamais: "Jamais",
+          un: "1 jour / semaine",
+          deux: "2 jours / semaine",
+          trois: "3 jours / semaine",
+          quatre: "4 jours / semaine",
+          cinq: "5 jours / semaine",
+        },
+        savingsContribution: { oui: "Oui", non: "Non" },
+        savingsAccess: {
+          immediat: "Immédiat",
+          sous_3_jours: "Sous 1 à 3 jours",
+          bloque_partiel: "Bloqué partiellement",
+          bloque_long: "Bloqué plusieurs mois",
+        },
+        thirdPillar: { oui: "Oui", non: "Non" },
+        thirdPillarType: { a: "3ᵉ pilier A", b: "3ᵉ pilier B", unknown: "Je ne sais pas" },
+        hasInvestments: { oui: "Oui", non: "Non" },
+        investmentType: {
+          etf: "ETF",
+          fonds: "Fonds de placement",
+          actions: "Actions",
+          obligations: "Obligations",
+          pilier3a: "Comptes de prévoyance (3a bancaire)",
+          crypto: "Crypto",
+          autre: "Autre",
+        },
+        annualReturnPct: {
+          "1": "1%",
+          "2": "2%",
+          "3": "3%",
+          "4": "4%",
+          "5": "5%",
+          "6": "6%",
+          "7": "7%",
+          "8": "8%",
+          "9": "9%",
+          "10": "10%",
+        },
+        hasMonthly: { oui: "Oui", non: "Non" },
+        horizon: { court: "Court terme", moyen: "Moyen terme", long: "Long terme" },
+        creditType: { consommation: "Crédit à la consommation", leasing: "Leasing", carte_credit: "Carte de crédit", hypotheque: "Hypothèque", autre: "Autre" },
+        isOwner: { oui: "Oui", non: "Non" },
+        hasVehicles: { oui: "Oui", non: "Non" },
+        transportFrequency: { mensuel: "Mensuel", trimestriel: "Trimestriel", annuel: "Annuel" },
+        priorities: { securite: "Sécurité", projet: "Projet spécial", croissance: "Croissance" },
+        riskTolerance: { faible: "Faible", moyenne: "Moyenne", elevee: "Élevée" },
+        amountType: { net: "Net", brut: "Brut" },
+      };
+
+      const DEFAULT_ASSET_ACCOUNTS = [
+        { key: "assets.currentAccount", label: "Compte courant" },
+        { key: "assets.savingsAccount", label: "Épargne" },
+        { key: "assets.thirdPillarAmount", label: "3ᵉ pilier" },
+        { key: "assets.taxProvision", label: "Impôts" },
+      ];
+
+      const CANTON_LABELS = {
+        AG: "Argovie",
+        AI: "Appenzell Rhodes-Intérieures",
+        AR: "Appenzell Rhodes-Extérieures",
+        BE: "Berne",
+        BL: "Bâle-Campagne",
+        BS: "Bâle-Ville",
+        FR: "Fribourg",
+        GE: "Genève",
+        GL: "Glaris",
+        GR: "Grisons",
+        JU: "Jura",
+        LU: "Lucerne",
+        NE: "Neuchâtel",
+        NW: "Nidwald",
+        OW: "Obwald",
+        SG: "Saint-Gall",
+        SH: "Schaffhouse",
+        SO: "Soleure",
+        SZ: "Schwytz",
+        TG: "Thurgovie",
+        TI: "Tessin",
+        UR: "Uri",
+        VD: "Vaud",
+        VS: "Valais",
+        ZG: "Zoug",
+        ZH: "Zurich",
+      };
+
+      const SECTION_CONFIG = {
+        personal: {
+          title: "Informations personnelles",
+          description: "Votre identité, statut et coordonnées.",
+          fields: [
+            { label: "Prénom", path: "personal.firstName" },
+            { label: "Nom", path: "personal.lastName" },
+            { label: "Nom affiché", path: "personal.displayName" },
+            { label: "Date de naissance", path: "personal.birthDate", format: "date" },
+            { label: "Canton", path: "personal.canton", map: CANTON_LABELS },
+            { label: "Commune", path: "personal.commune" },
+            { label: "État civil", path: "personal.maritalStatus", map: OPTION_LABELS.maritalStatus },
+            { label: "Nombre d'enfants", path: "personal.childrenCount" },
+            { label: "Statut pro", path: "personal.employmentStatus", map: OPTION_LABELS.employmentStatus },
+          ],
+        },
+        assets: {
+          title: "Comptes & liquidités",
+          description: "Ce que vous détenez sur vos comptes.",
+          fields: [],
+          lists: [
+            {
+              label: "Comptes personnalisés",
+              addLabel: "Ajouter un compte",
+              removeLabel: "Supprimer un compte",
+              entriesPath: "assets.otherAssets",
+              entries: (data) => (Array.isArray(data.assets?.otherAssets) ? data.assets.otherAssets : []),
+              fields: [
+                { label: "Nom", path: "label" },
+                { label: "Montant", path: "amount", format: "currency" },
+              ],
+              empty: "Aucun compte personnalisé",
+              defaultEntry: { label: "", amount: 0 },
+            },
+          ],
+        },
+        incomes: {
+          title: "Revenus",
+          description: "Vos sources de revenus déclarées.",
+          fields: [],
+          lists: [
+        {
+          label: "Revenu",
+          addLabel: "Ajouter un revenu",
+          removeLabel: "Supprimer un revenu",
+          entriesPath: "incomes.entries",
+          entries: (data) => (Array.isArray(data.incomes?.entries) ? data.incomes.entries : []),
+          fields: [
+            { label: "Type", path: "sourceType" },
+            { label: "Montant", path: "amount", format: "currency" },
+            { label: "Net / Brut", path: "amountType", map: OPTION_LABELS.amountType },
+          ],
+          empty: "Aucune source",
+          defaultEntry: { sourceType: "", amount: 0, amountType: "net", frequency: "mensuel" },
+        },
+          ],
+        },
+        expenses: {
+          title: "Dépenses",
+          description: "Charges fixes, variables et exceptionnelles.",
+          fields: [],
+          lists: [
+            {
+            label: "Dépenses fixes",
+            subtitle: "Dépenses fixes",
+            addLabel: "Ajouter une dépense fixe",
+            removeLabel: "Supprimer une dépense fixe",
+          entriesPath: "expenses.fixed",
+          entries: (data) => (Array.isArray(data.expenses?.fixed) ? data.expenses.fixed : []),
+            fields: [
+              { label: "Libellé", path: "label" },
+              { label: "Montant", path: "amount", format: "currency" },
+            ],
+            empty: "Aucune dépense fixe",
+            defaultEntry: { label: "", amount: 0, frequency: "mensuel" },
+          },
+            {
+            label: "Dépenses variables",
+            subtitle: "Dépenses variables",
+            addLabel: "Ajouter une dépense variable",
+            removeLabel: "Supprimer une dépense variable",
+          entriesPath: "expenses.variable",
+          entries: (data) => (Array.isArray(data.expenses?.variable) ? data.expenses.variable : []),
+            fields: [
+              { label: "Libellé", path: "label" },
+              { label: "Montant", path: "amount", format: "currency" },
+            ],
+            empty: "Aucune dépense variable",
+            defaultEntry: { label: "", amount: 0, frequency: "mensuel" },
+          },
+            {
+            label: "Dépenses exceptionnelles",
+            subtitle: "Dépenses exceptionnelles",
+            addLabel: "Ajouter une dépense exceptionnelle",
+            removeLabel: "Supprimer une dépense exceptionnelle",
+          entriesPath: "expenses.exceptional",
+          entries: (data) => (Array.isArray(data.expenses?.exceptional) ? data.expenses.exceptional : []),
+            fields: [
+              { label: "Libellé", path: "label" },
+              { label: "Montant", path: "amount", format: "currency" },
+              { label: "Fréquence", path: "frequency" },
+            ],
+            empty: "Aucune dépense exceptionnelle",
+            defaultEntry: { label: "", amount: 0, frequency: "annuel" },
+          },
+          ],
+        },
+        investments: {
+          title: "Investissements",
+          description: "Placement, versements et horizon.",
+          fields: [
+            { label: "Avez-vous des investissements ?", path: "investments.hasInvestments", map: OPTION_LABELS.hasInvestments },
+            { label: "Commentaires", path: "investments.notes" },
+          ],
+          lists: [
+            {
+            label: "Positions",
+            addLabel: "Ajouter un investissement",
+            removeLabel: "Supprimer un investissement",
+          entriesPath: "investments.items",
+          entries: (data) => (Array.isArray(data.investments?.items) ? data.investments.items : []),
+            fields: [
+              { label: "Type d’investissement", path: "investmentType", map: OPTION_LABELS.investmentType },
+              { label: "Montant actuel", path: "amount", format: "currency" },
+              { label: "Taux de rendement annuel", path: "annualReturnPct", map: OPTION_LABELS.annualReturnPct },
+            ],
+            empty: "Aucun investissement",
+            defaultEntry: {
+              investmentType: "etf",
+              amount: 0,
+              annualReturnPct: "5",
+            },
+          },
+          ],
+        },
+        credits: {
+          title: "Crédits et dettes",
+          description: "Dettes et patrimoine affichés.",
+          fields: [
+            { label: "Total dettes", path: "credits.debtsTotal", format: "currency" },
+            { label: "Patrimoine déclaré", path: "credits.assetsTotal", format: "currency" },
+          ],
+          lists: [
+            {
+            label: "Crédits en cours",
+            addLabel: "Ajouter un crédit",
+            removeLabel: "Supprimer un crédit",
+          entriesPath: "credits.loans",
+          entries: (data) => (Array.isArray(data.credits?.loans) ? data.credits.loans : []),
+            fields: [
+              { label: "Type", path: "creditType", map: OPTION_LABELS.creditType },
+              { label: "Restant", path: "outstanding", format: "currency" },
+              { label: "Mensualité", path: "monthlyPayment", format: "currency" },
+            ],
+            empty: "Aucun crédit",
+            defaultEntry: { creditType: "", outstanding: 0, monthlyPayment: 0 },
+          },
+          ],
+        },
+        taxes: {
+          title: "Impôts",
+          description: "Informations fiscales principales.",
+          fields: [
+            { label: "Paiement impôts", path: "taxes.paysTaxes", map: OPTION_LABELS.paysTaxes },
+            { label: "Transport", path: "taxes.transportMode", map: OPTION_LABELS.transportMode },
+            { label: "Repas", path: "taxes.mealsFrequency", map: OPTION_LABELS.mealsFrequency },
+          ],
+        },
+        vision: {
+          title: "Vision & priorités",
+          description: "Objectifs et tolérance au risque.",
+          fields: [
+            { label: "Priorité principale", path: "goals.primaryPriority", map: OPTION_LABELS.priorities },
+            { label: "Tolérance au risque", path: "goals.riskTolerance", map: OPTION_LABELS.riskTolerance },
+          ],
+        },
+      };
+
+      const SPECIAL_LIST_ENTRIES = [
+        "incomes.entries",
+        "expenses.fixed",
+        "expenses.variable",
+        "expenses.exceptional",
+        "investments.items",
+        "assets.otherAssets",
+        "credits.loans",
+      ];
+      const SPECIAL_LIST_SET = new Set(SPECIAL_LIST_ENTRIES);
+
+      const toNumber = (value) => {
+        const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const normalizeEditValue = (fieldPath, value) => {
+        if (!fieldPath || value === undefined || value === null) return value;
+        const normalizedPath = fieldPath.toLowerCase();
+        const isAmountType = normalizedPath.includes("amounttype");
+        const shouldParseNumber =
+          (normalizedPath.includes("amount") && !isAmountType) ||
+          normalizedPath.includes("spousenetincome") ||
+          normalizedPath.includes("spouseincome");
+        if (shouldParseNumber) {
+          const numeric = toNumber(value);
+          return Number.isFinite(numeric) ? numeric : value;
+        }
+        return value;
+      };
+
+      const formatCurrency = (value) =>
+        new Intl.NumberFormat("fr-CH", {
+          style: "currency",
+          currency: "CHF",
+          maximumFractionDigits: 0,
+        }).format(Number.isFinite(value) ? value : toNumber(value));
+
+      const resolveMonthlyExpenseAmount = (entry = {}) => {
+        const amount = toNumber(entry?.amount);
+        const frequency = String(entry?.frequency || "mensuel").toLowerCase();
+        if (!amount) return 0;
+        if (frequency.includes("ann")) return amount / 12;
+        if (frequency.includes("trim")) return amount / 3;
+        return amount;
+      };
+
+      const formatDate = (value) => {
+        if (!value) return "";
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return "";
+        return parsed.toLocaleDateString("fr-CH");
+      };
+
+      const formatField = (value, options = {}) => {
+        if (options.format === "currency") {
+          return value ? formatCurrency(value) : "—";
+        }
+        if (options.format === "percent") {
+          return value ? `${value}%` : "—";
+        }
+        if (options.map) {
+          return options.map[value] || "—";
+        }
+        return value || "—";
+      };
+
+      let activeFormData = {};
+      let fieldContainer = null;
+      let listContainer = null;
+      let editContext = null;
+      let activeUserId = null;
+      let spouseSectionNode = null;
+      let spouseToggleButton = null;
+      let spouseContent = null;
+      let spouseIncomeDisplay = null;
+      let spouseEditButton = null;
+      let spouseEditorNode = null;
+
+      const createEditButton = (payload) => {
+        const button = document.createElement("button");
+        button.className = "profile-item__edit";
+        button.type = "button";
+        button.dataset.editAction = JSON.stringify(payload);
+        button.innerHTML = '<span aria-hidden="true">✎</span>';
+        button.setAttribute("aria-label", `Modifier ${payload.field}`);
+        return button;
+      };
+
+      const getValueByPath = (obj, path) => {
+        if (!obj || !path) return undefined;
+        return path.split(".").reduce((acc, key) => (acc ? acc[key] : undefined), obj);
+      };
+
+      const ensureObjectPath = (obj, pathParts) => {
+        let cursor = obj;
+        pathParts.forEach((part) => {
+          if (!cursor[part] || typeof cursor[part] !== "object") {
+            cursor[part] = {};
+          }
+          cursor = cursor[part];
+        });
+        return cursor;
+      };
+
+      const ensureArrayByPath = (obj, path) => {
+        if (!path) return [];
+        const parts = path.split(".");
+        const last = parts.pop();
+        const parent = ensureObjectPath(obj, parts);
+        if (!parent[last] || !Array.isArray(parent[last])) {
+          parent[last] = [];
+        }
+        return parent[last];
+      };
+
+      const setValueByPath = (obj, path, value) => {
+        if (!path) return;
+        const parts = path.split(".");
+        const last = parts.pop();
+        const target = ensureObjectPath(obj, parts);
+        if (target && last) {
+          target[last] = value;
+        }
+      };
+
+      const createProfileItem = (label, value, options = {}) => {
+        const node = document.createElement("div");
+        node.className = "profile-item";
+        const field = document.createElement("div");
+        field.className = "profile-field";
+        const labelEl = document.createElement("span");
+        labelEl.className = "profile-item__label";
+        labelEl.textContent = label;
+        const valueEl = document.createElement("span");
+        valueEl.className = "profile-item__value";
+        valueEl.textContent = value;
+        field.appendChild(labelEl);
+        field.appendChild(valueEl);
+        if (options.editable) {
+          const payload = {
+            section: options.section,
+            field: label,
+            fieldPath: options.fieldPath,
+            list: options.list,
+            listPath: options.listPath,
+            entryIndex: options.entryIndex,
+          };
+          const editButton = createEditButton(payload);
+          field.appendChild(editButton);
+        }
+        node.appendChild(field);
+        return node;
+      };
+
+      const renderFields = (container, fields, data) => {
+        if (!container) return;
+        container.innerHTML = "";
+        fields.forEach((field) => {
+          const raw = field.value
+            ? field.value(data)
+            : field.path.split(".").reduce((acc, key) => (acc ? acc[key] : null), data);
+          const formatted = field.format === "date" ? formatDate(raw) : formatField(raw, field);
+          container.appendChild(
+            createProfileItem(field.label, formatted, {
+              editable: true,
+              section: currentSectionKey,
+              fieldPath: field.path,
+            })
+          );
+        });
+      };
+
+      const createListControls = (sectionKey, list) => {
+        const controls = document.createElement("div");
+        controls.className = "profile-list-control";
+        if (SPECIAL_LIST_SET.has(list.entriesPath)) {
+          controls.classList.add("profile-list-control--special");
+        }
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        const addLabel = list.addLabel || `Ajouter ${list.label}`;
+        addBtn.textContent = addLabel;
+        addBtn.dataset.listAdd = list.label;
+        addBtn.dataset.section = sectionKey;
+        addBtn.dataset.entriesPath = list.entriesPath || "";
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        const removeLabel = list.removeLabel || `Supprimer ${list.label}`;
+        removeBtn.textContent = removeLabel;
+        removeBtn.dataset.listRemove = list.label;
+        removeBtn.dataset.section = sectionKey;
+        removeBtn.dataset.entriesPath = list.entriesPath || "";
+        controls.append(addBtn, removeBtn);
+        return controls;
+      };
+
+      const getCurrentSectionConfig = () => SECTION_CONFIG[currentSectionKey] || SECTION_CONFIG.personal;
+      const findListDefinition = (label) => {
+        const config = getCurrentSectionConfig();
+        return (config?.lists || []).find((list) => list.label === label);
+      };
+
+      const createProfileEntryCard = (list, entry, index) => {
+        const title = entry?.label ? entry.label : `${list.label} ${index + 1}`;
+        const card = document.createElement("article");
+        card.className = "profile-entry";
+        card.innerHTML = `<h3 class="profile-entry__title">${title}</h3>`;
+        const grid = document.createElement("div");
+        grid.className = "profile-entry__grid";
+        const items = list.fields.map((field) => {
+          const raw = field.value
+            ? field.value(entry)
+            : field.path.split(".").reduce((acc, key) => (acc ? acc[key] : null), entry);
+          const formatted = field.format === "date" ? formatDate(raw) : formatField(raw, field);
+          return createProfileItem(field.label, formatted, {
+            editable: true,
+            section: currentSectionKey,
+            fieldPath: field.path,
+            list: list.label,
+            listPath: list.entriesPath,
+            entryIndex: index,
+          });
+        });
+        items.forEach((node) => grid.appendChild(node));
+        card.appendChild(grid);
+        return card;
+      };
+
+      const inlineEditorNodes = new Map();
+      const removalPickerNodes = new Map();
+
+      const removeInlineEditor = (entriesPath) => {
+        const node = inlineEditorNodes.get(entriesPath);
+        if (node) {
+          node.remove();
+          inlineEditorNodes.delete(entriesPath);
+        }
+      };
+
+      const clearInlineEditors = () => {
+        inlineEditorNodes.forEach((node) => node.remove());
+        inlineEditorNodes.clear();
+      };
+
+      const removeRemovalPicker = (entriesPath) => {
+        const node = removalPickerNodes.get(entriesPath);
+        if (node) {
+          node.remove();
+          removalPickerNodes.delete(entriesPath);
+        }
+      };
+
+      const clearRemovalPickers = () => {
+        removalPickerNodes.forEach((node) => node.remove());
+        removalPickerNodes.clear();
+      };
+
+      const determineFieldType = (field) => {
+        if (field.map) return "select";
+        const pathLower = (field.path || "").toLowerCase();
+        if (field.format === "currency" || /amount|montant|mensualité|restant|value/.test(pathLower)) {
+          return "number";
+        }
+        if (field.path?.toLowerCase().includes("type")) {
+          return "text";
+        }
+        return "text";
+      };
+
+      const createFieldControl = (field, defaults = {}) => {
+        const wrapper = document.createElement("label");
+        wrapper.className = "input-block";
+        const label = document.createElement("span");
+        label.textContent = field.label;
+        wrapper.appendChild(label);
+        let control;
+        const type = determineFieldType(field);
+        if (field.map) {
+          control = document.createElement("select");
+          Object.keys(field.map).forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = field.map[value];
+            control.appendChild(option);
+          });
+          control.value = defaults[field.path] ?? Object.keys(field.map)[0] ?? "";
+        } else if (type === "number") {
+          control = document.createElement("input");
+          control.type = "number";
+          control.min = "0";
+          control.step = "0.05";
+          control.placeholder = field.label;
+          control.value = defaults[field.path] ?? "";
+        } else {
+          control = document.createElement("input");
+          control.type = "text";
+          control.placeholder = field.label;
+          control.value = defaults[field.path] ?? "";
+        }
+        control.dataset.fieldPath = field.path;
+        wrapper.appendChild(control);
+        return { wrapper, input: control };
+      };
+
+      const formatEntryLabel = (list, entry, index) => {
+        const primaryField = list.fields?.[0];
+        const entryLabel =
+          entry?.label || entry?.name || (primaryField ? entry?.[primaryField.path] : "");
+        const prefix = entryLabel ? entryLabel : `${list.label} ${index + 1}`;
+        const amount = entry?.amount ?? entry?.montant ?? 0;
+        const amountLabel = amount ? formatCurrency(amount) : "—";
+        return `${prefix} — ${amountLabel}`;
+      };
+
+      const buildInlineEditor = (list) => {
+        const card = document.createElement("article");
+        card.className = "profile-entry profile-entry--editing";
+        const title = document.createElement("h3");
+        title.className = "profile-entry__title";
+        title.textContent = `Nouvelle ${list.label.toLowerCase()}`;
+        const grid = document.createElement("div");
+        grid.className = "profile-entry__grid";
+        const defaults = list.defaultEntry ? { ...list.defaultEntry } : {};
+        const inputs = [];
+        (list.fields || []).forEach((field) => {
+          const { wrapper, input } = createFieldControl(field, defaults);
+          grid.appendChild(wrapper);
+          inputs.push(input);
+        });
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "cta";
+        saveBtn.textContent = "Enregistrer";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "ghost-btn";
+        cancelBtn.textContent = "Annuler";
+        actions.append(saveBtn, cancelBtn);
+        card.append(title, grid, actions);
+        return { card, inputs, saveBtn, cancelBtn };
+      };
+
+      const ensureListEntries = (list) => {
+        return ensureArrayByPath(activeFormData, list.entriesPath || "");
+      };
+
+      const normalizeFieldValue = (control) => {
+        if (!control || !control.dataset.fieldPath) return null;
+        if (control.tagName === "SELECT") return control.value;
+        if (control.type === "number") return toNumber(control.value);
+        return control.value;
+      };
+
+      const showInlineEditor = (list, anchor) => {
+        if (!list?.entriesPath || !anchor) return;
+        const path = list.entriesPath;
+        removeInlineEditor(path);
+        removeRemovalPicker(path);
+        const controls = anchor.closest(".profile-list-control");
+        if (!controls) return;
+        const { card, inputs, saveBtn, cancelBtn } = buildInlineEditor(list);
+        inlineEditorNodes.set(path, card);
+        controls.after(card);
+        inputs[0]?.focus();
+
+        saveBtn.addEventListener("click", () => {
+          const entries = ensureListEntries(list);
+          const entry = list.defaultEntry ? { ...list.defaultEntry } : {};
+          card.querySelectorAll("[data-field-path]").forEach((control) => {
+            const fieldPath = control.dataset.fieldPath;
+            if (!fieldPath) return;
+            entry[fieldPath] = normalizeFieldValue(control);
+          });
+          entries.push(entry);
+          removeInlineEditor(path);
+          refreshSection();
+          persistFormData();
+        });
+
+        cancelBtn.addEventListener("click", () => {
+          removeInlineEditor(path);
+        });
+      };
+
+      const showRemovalPicker = (list, anchor) => {
+        if (!list?.entriesPath || !anchor) return;
+        const path = list.entriesPath;
+        removeRemovalPicker(path);
+        removeInlineEditor(path);
+        const controls = anchor.closest(".profile-list-control");
+        if (!controls) return;
+        const entries = ensureListEntries(list);
+        if (!entries.length) return;
+        const picker = document.createElement("div");
+        picker.className = "income-removal-picker";
+        const label = document.createElement("span");
+        label.className = "income-removal-picker__label";
+        label.textContent = `Choisir ${list.label.toLowerCase()} à supprimer`;
+        const select = document.createElement("select");
+        select.className = "income-removal-picker__select";
+        entries.forEach((entry, index) => {
+          const option = document.createElement("option");
+          option.value = String(index);
+          option.textContent = formatEntryLabel(list, entry, index);
+          select.appendChild(option);
+        });
+        const actions = document.createElement("div");
+        actions.className = "row-actions income-removal-picker__actions";
+        const confirmBtn = document.createElement("button");
+        confirmBtn.type = "button";
+        confirmBtn.className = "ghost-btn";
+        confirmBtn.textContent = "Supprimer";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "ghost-btn";
+        cancelBtn.textContent = "Annuler";
+        actions.append(confirmBtn, cancelBtn);
+        picker.append(label, select, actions);
+        controls.after(picker);
+        removalPickerNodes.set(path, picker);
+
+        confirmBtn.addEventListener("click", () => {
+          const index = Number(select.value);
+          if (Number.isFinite(index) && entries[index]) {
+            entries.splice(index, 1);
+            refreshSection();
+            persistFormData();
+          }
+          removeRemovalPicker(path);
+        });
+
+        cancelBtn.addEventListener("click", () => {
+          removeRemovalPicker(path);
+        });
+      };
+
+      const removeSpouseEditor = () => {
+        if (spouseEditorNode) {
+          spouseEditorNode.remove();
+          spouseEditorNode = null;
+        }
+      };
+
+      const showSpouseEditor = () => {
+        if (!spouseContent) return;
+        removeSpouseEditor();
+        toggleSpouseContent(true);
+        const editor = document.createElement("div");
+        editor.className = "spouse-section__editor";
+        const label = document.createElement("label");
+        label.innerHTML = `<span>Revenu conjoint (net/an)</span>`;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = "0";
+        input.step = "0.05";
+        input.placeholder = "ex. 72000";
+        const spouseValue = activeFormData.incomes?.spouseNetIncome;
+        input.value = spouseValue != null ? String(spouseValue) : "";
+        label.appendChild(input);
+        const actions = document.createElement("div");
+        actions.className = "row-actions spouse-section__editor-actions";
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "cta";
+        saveBtn.textContent = "Enregistrer";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "ghost-btn";
+        cancelBtn.textContent = "Annuler";
+        actions.append(saveBtn, cancelBtn);
+        editor.append(label, actions);
+        spouseEditorNode = editor;
+        spouseContent.appendChild(editor);
+        input.focus();
+
+        saveBtn.addEventListener("click", () => {
+          activeFormData.incomes = activeFormData.incomes || {};
+          activeFormData.incomes.spouseNetIncome = toNumber(input.value);
+          removeSpouseEditor();
+          refreshSection();
+          persistFormData();
+        });
+
+        cancelBtn.addEventListener("click", () => {
+          removeSpouseEditor();
+        });
+      };
+
+      const calculateExpenseTotal = (entries = []) =>
+        entries.reduce((sum, entry) => sum + resolveMonthlyExpenseAmount(entry), 0);
+
+      const createExpenseGroupCard = (list, entries) => {
+        const section = document.createElement("section");
+        section.className = "profile-expense-group";
+
+        const header = document.createElement("div");
+        header.className = "profile-expense-group__header";
+        const title = document.createElement("h3");
+        title.className = "profile-expense-group__title";
+        title.textContent = list.label;
+        header.appendChild(title);
+        if (list.subtitle) {
+          const subtitle = document.createElement("p");
+          subtitle.className = "profile-expense-group__subtitle";
+          subtitle.textContent = list.subtitle;
+          header.appendChild(subtitle);
+        }
+        section.appendChild(header);
+
+        const entriesContainer = document.createElement("div");
+        entriesContainer.className = "profile-expense-group__entries";
+        if (!entries.length) {
+          const empty = document.createElement("div");
+          empty.className = "profile-empty";
+          empty.textContent = list.empty || "Aucune donnée";
+          entriesContainer.appendChild(empty);
+        } else {
+          entries.forEach((entry, index) => {
+            const card = createProfileEntryCard(list, entry, index);
+            entriesContainer.appendChild(card);
+          });
+        }
+        section.appendChild(entriesContainer);
+
+        const controls = createListControls(currentSectionKey, list);
+        controls.classList.add("profile-expense-group__controls");
+        section.appendChild(controls);
+
+        const totalRow = document.createElement("div");
+        totalRow.className = "profile-expense-group__total";
+        totalRow.innerHTML = `<span>Total</span><strong>${formatCurrency(
+          calculateExpenseTotal(entries)
+        )}</strong>`;
+        section.appendChild(totalRow);
+
+        return section;
+      };
+
+      const renderExpensesSection = (container, lists, data) => {
+        if (!container) return;
+        const wrapper = document.createElement("div");
+        wrapper.className = "profile-expenses";
+        lists.forEach((list) => {
+          const entries = (list.entries(data) || []).filter(Boolean);
+          const group = createExpenseGroupCard(list, entries);
+          wrapper.appendChild(group);
+        });
+        container.appendChild(wrapper);
+      };
+
+      const renderDefaultAssetAccounts = (container, data) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "profile-account-defaults";
+        DEFAULT_ASSET_ACCOUNTS.forEach((account) => {
+          const amount = toNumber(getValueByPath(data, account.key));
+          const card = document.createElement("article");
+          card.className = "profile-account-card";
+          const header = document.createElement("div");
+          header.className = "profile-account-card__header";
+          const labelNode = document.createElement("div");
+          labelNode.className = "profile-account-card__label";
+          labelNode.textContent = account.label;
+          const editButton = createEditButton({
+            section: "assets",
+            field: account.label,
+            fieldPath: account.key,
+          });
+          header.append(labelNode, editButton);
+          const valueNode = document.createElement("div");
+          valueNode.className = "profile-account-card__value";
+          valueNode.textContent = formatCurrency(amount);
+          card.append(header, valueNode);
+          wrapper.appendChild(card);
+        });
+        container.appendChild(wrapper);
+      };
+
+      const renderCustomAssetList = (container, list, data) => {
+        const entries = list.entries(data).filter(Boolean);
+        const group = document.createElement("div");
+        group.className = "profile-account-custom";
+        group.appendChild(createListControls(currentSectionKey, list));
+        if (!entries.length) {
+          const empty = document.createElement("div");
+          empty.className = "profile-empty";
+          empty.textContent = list.empty || "Aucune donnée";
+          group.appendChild(empty);
+        } else {
+          entries.forEach((entry, index) => {
+            const card = createProfileEntryCard(list, entry, index);
+            group.appendChild(card);
+          });
+        }
+        container.appendChild(group);
+      };
+
+      const renderAssetsSection = (container, lists, data) => {
+        if (!container) return;
+        container.innerHTML = "";
+        renderDefaultAssetAccounts(container, data);
+        lists.forEach((list) => {
+          renderCustomAssetList(container, list, data);
+        });
+      };
+
+      const renderLists = (container, lists, data) => {
+        if (!container) return;
+        if (currentSectionKey === "assets") {
+          renderAssetsSection(container, lists, data);
+          return;
+        }
+        container.innerHTML = "";
+        if (currentSectionKey === "expenses") {
+          renderExpensesSection(container, lists, data);
+          return;
+        }
+        lists.forEach((list) => {
+          const entries = list.entries(data).filter(Boolean);
+          container.appendChild(createListControls(currentSectionKey, list));
+          if (!entries.length) {
+            const empty = document.createElement("div");
+            empty.className = "profile-empty";
+            empty.textContent = list.empty || "Aucune donnée";
+            container.appendChild(empty);
+            return;
+          }
+          entries.forEach((entry, index) => {
+            const card = createProfileEntryCard(list, entry, index);
+            container.appendChild(card);
+          });
+        });
+      };
+
+      const toggleSpouseContent = (expanded) => {
+        if (!spouseToggleButton || !spouseContent) return;
+        spouseToggleButton.setAttribute("aria-expanded", String(Boolean(expanded)));
+        spouseToggleButton.textContent = expanded ? "Masquer le revenu" : "Afficher le revenu";
+        if (expanded) {
+          spouseContent.removeAttribute("hidden");
+        } else {
+          spouseContent.setAttribute("hidden", "");
+          removeSpouseEditor();
+        }
+      };
+
+      const renderSpouseSection = () => {
+        if (!spouseSectionNode || !spouseIncomeDisplay) return;
+        const spouseIncome = toNumber(activeFormData.incomes?.spouseNetIncome);
+        spouseIncomeDisplay.textContent = formatCurrency(spouseIncome);
+        spouseSectionNode.classList.toggle("spouse-section--empty", spouseIncome === 0);
+      };
+
+      const setupSpouseSection = () => {
+        spouseSectionNode = document.querySelector("[data-spouse-section]");
+        spouseToggleButton = spouseSectionNode?.querySelector("[data-spouse-toggle]");
+        spouseContent = spouseSectionNode?.querySelector("[data-spouse-content]");
+        spouseIncomeDisplay = spouseSectionNode?.querySelector("[data-spouse-income]");
+        spouseEditButton = spouseSectionNode?.querySelector("[data-spouse-edit]");
+        if (spouseToggleButton) {
+          spouseToggleButton.addEventListener("click", () => {
+            const expanded = spouseToggleButton.getAttribute("aria-expanded") === "true";
+            toggleSpouseContent(!expanded);
+          });
+        }
+        if (spouseEditButton) {
+          spouseEditButton.addEventListener("click", () => {
+            showSpouseEditor();
+          });
+        }
+        toggleSpouseContent(false);
+      };
+
+      const refreshSection = () => {
+        clearInlineEditors();
+        clearRemovalPickers();
+        removeSpouseEditor();
+        const config = SECTION_CONFIG[currentSectionKey] || SECTION_CONFIG.personal;
+        if (currentSectionKey === "incomes") {
+          renderLists(listContainer, config.lists || [], activeFormData);
+          renderFields(fieldContainer, config.fields || [], activeFormData);
+          renderSpouseSection();
+          return;
+        }
+        renderFields(fieldContainer, config.fields || [], activeFormData);
+        renderLists(listContainer, config.lists || [], activeFormData);
+        renderSpouseSection();
+      };
+
+      const readStorage = (key) => {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        } catch (_error) {
+          return null;
+        }
+      };
+
+      const writeStorage = (key, value) => {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (_error) {
+          console.warn("Impossible d'écrire dans localStorage", _error);
+        }
+      };
+
+      const bumpProfileVersion = () => {
+        try {
+          const version = Date.now();
+          localStorage.setItem(PROFILE_VERSION_KEY, String(version));
+          return version;
+        } catch (_error) {
+          return null;
+        }
+      };
+
+      const persistFormData = () => {
+        console.log("[profil-section] persistFormData", {
+          activeUserId,
+          incomes: activeFormData.incomes,
+          spouseIncome: activeFormData?.incomes?.spouseNetIncome,
+        });
+        if (activeUserId && typeof window.updateProfileData === "function") {
+          const updated = window.updateProfileData(activeUserId, (profile) => {
+            const clone = JSON.parse(JSON.stringify(activeFormData || {}));
+            Object.keys(profile).forEach((key) => {
+              delete profile[key];
+            });
+            Object.assign(profile, clone);
+          });
+          if (updated) {
+            activeFormData = updated;
+            return;
+          }
+        }
+        const stored = readStorage(STORAGE_KEY_FORM) || {};
+        if (activeUserId) {
+          stored[activeUserId] = activeFormData;
+        } else {
+          stored.__default = activeFormData;
+        }
+        writeStorage(STORAGE_KEY_FORM, stored);
+        writeStorage(PROFILE_UPDATE_KEY, Date.now());
+        window.dispatchEvent(new CustomEvent("smartsaveProfileUpdated", { detail: Date.now() }));
+        bumpProfileVersion();
+        syncProfileToSheet(activeUserId, activeFormData);
+      };
+
+      const resolveProfileSyncTarget = () => {
+        const runtime = typeof window.getSmartSaveRuntime === "function"
+          ? window.getSmartSaveRuntime()
+          : {};
+        const runtimeUrl = String(runtime?.automations?.profileSyncWebhookUrl || "").trim();
+        const overrideUrl = String(localStorage.getItem(SYNC_URL_OVERRIDE_KEY) || "").trim();
+        const preferred = runtimeUrl || overrideUrl;
+        if (preferred) return preferred;
+        const fallback = String(SYNC_URL || "").trim();
+        if (!fallback) return "";
+        return /\/sync$/i.test(fallback) ? fallback : `${fallback.replace(/\/+$/, "")}/sync`;
+      };
+
+      const computeSmartSaveLimitsForSync = (formData = {}) => {
+        const limits = {
+          currentAccountLimit: 0,
+          savingsAccountLimit: 0,
+          savingsAccountHardLimit: 0,
+          taxProvisionLimit: 0,
+          taxProvisionMonthlyNeed: 0,
+          calculatedAt: new Date().toISOString(),
+        };
+        try {
+          const source = JSON.parse(JSON.stringify(formData || {}));
+          const allocationEngine = window.AllocationEngine;
+          if (allocationEngine && typeof allocationEngine.calculateAllocation === "function") {
+            const allocation = allocationEngine.calculateAllocation(source);
+            const debug = allocation?.debug || {};
+            limits.currentAccountLimit = Math.max(0, toNumber(debug.currentTarget));
+            limits.savingsAccountLimit = Math.max(0, toNumber(debug?.savingsTargets?.targetAmount));
+            limits.savingsAccountHardLimit = Math.max(
+              0,
+              toNumber(debug?.savingsTargets?.hardStopAmount)
+            );
+          }
+          const taxEngine = window.TaxEngine || window.SmartSaveTaxEngine;
+          if (taxEngine && typeof taxEngine.calculateAnnualTax === "function") {
+            const taxData = taxEngine.calculateAnnualTax(source) || {};
+            const monthlyProvision = taxData?.monthlyProvision || {};
+            limits.taxProvisionLimit = Math.max(
+              0,
+              toNumber(monthlyProvision.remaining != null ? monthlyProvision.remaining : taxData.total)
+            );
+            limits.taxProvisionMonthlyNeed = Math.max(0, toNumber(monthlyProvision.monthlyAmount));
+          }
+        } catch (_error) {
+          // keep safe defaults
+        }
+        return limits;
+      };
+
+      const normalizeProfileIdentity = (data, userId) => {
+        const payload = JSON.parse(JSON.stringify(data || {}));
+        const profileId = String(payload.profileId || payload.id || userId || "").trim();
+        if (!profileId) return payload;
+        payload.profileId = profileId;
+        payload.id = profileId;
+        payload.updatedAt = new Date().toISOString();
+        payload.personal = payload.personal && typeof payload.personal === "object" ? payload.personal : {};
+        const personal = payload.personal;
+        const firstName = String(personal.firstName || personal.prenom || "").trim();
+        const lastName = String(personal.lastName || personal.nom || "").trim();
+        if (firstName) {
+          personal.firstName = firstName;
+          personal.prenom = firstName;
+        }
+        if (lastName) {
+          personal.lastName = lastName;
+          personal.nom = lastName;
+        }
+        const limits = computeSmartSaveLimitsForSync(payload);
+        payload.smartSaveLimits = limits;
+        payload.smartSaveCurrentLimit = limits.currentAccountLimit;
+        payload.smartSaveSavingsLimit = limits.savingsAccountLimit;
+        payload.smartSaveSavingsHardLimit = limits.savingsAccountHardLimit;
+        payload.smartSaveTaxLimit = limits.taxProvisionLimit;
+        payload.smartSaveTaxMonthlyNeed = limits.taxProvisionMonthlyNeed;
+        return payload;
+      };
+
+      const syncProfileToSheet = (userId, data) => {
+        const target = resolveProfileSyncTarget();
+        if (!SYNC_ENABLED || !target || !userId) return;
+        const payload = normalizeProfileIdentity(data, userId);
+        console.log("[profil-section] sync profile", { target, profileId: payload.profileId });
+        fetch(target, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          keepalive: true,
+          body: JSON.stringify(payload),
+        })
+          .then(async (response) => {
+            if (!response.ok) {
+              const raw = await response.text().catch(() => "");
+              console.warn("[profil-section] sync non-2xx", {
+                status: response.status,
+                statusText: response.statusText,
+                body: raw,
+              });
+            }
+          })
+          .catch((error) => {
+            console.warn("[profil-section] sync failed", error);
+          });
+      };
+
+      const getActiveUser = () => readStorage(STORAGE_KEY_ACTIVE_USER);
+      const getUserForm = (userId) => {
+        const data = readStorage(STORAGE_KEY_FORM);
+        if (!data) return null;
+        if (userId && data[userId]) return data[userId];
+        return data.__default || data;
+      };
+      const getDisplayName = (activeUser = {}, formData = {}) => {
+        const personal = formData.personal || {};
+        const fullName = [
+          personal.firstName || personal.prenom,
+          personal.lastName || personal.nom,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        return (
+          personal.fullName ||
+          personal.displayName ||
+          activeUser.displayName ||
+          activeUser.name ||
+          fullName ||
+          "Profil"
+        );
+      };
+
+      const loadSectionConfig = () => {
+        const params = new URLSearchParams(window.location.search);
+        const sectionKey = params.get("section") || "personal";
+        currentSectionKey = sectionKey;
+        return SECTION_CONFIG[sectionKey] || SECTION_CONFIG.personal;
+      };
+
+      const init = () => {
+        const fromParam = new URLSearchParams(window.location.search).get("from");
+        const stored = localStorage.getItem(PROFILE_FROM_STORAGE) || "mon-argent.html";
+        const resolvedFrom = fromParam || stored;
+        localStorage.setItem(PROFILE_FROM_STORAGE, resolvedFrom);
+        window.goBackToProfile = () => {
+          window.location.href = `profil.html?from=${encodeURIComponent(resolvedFrom)}`;
+        };
+
+        const activeUser = getActiveUser() || {};
+        const formData = getUserForm(activeUser.id) || {};
+        activeUserId = activeUser.id || "__default";
+        const config = loadSectionConfig();
+
+        document.querySelectorAll("[data-user-name], [data-profile-name]").forEach((node) => {
+          node.textContent = getDisplayName(activeUser, formData);
+        });
+
+        document.querySelector("[data-section-title]").textContent = config.title;
+        document.querySelector("[data-section-subtitle]").textContent = config.description;
+
+        fieldContainer = document.querySelector("[data-section-grid]");
+        listContainer = document.querySelector("[data-section-lists]");
+        activeFormData = formData;
+        refreshSection();
+      };
+
+      const focusNewEntry = (listDef, entriesPath, entryIndex) => {
+        if (!listDef || !entriesPath || entryIndex < 0) return;
+        const fieldDef = Array.isArray(listDef.fields) ? listDef.fields[0] : null;
+        if (!fieldDef?.path) return;
+        const entries = getValueByPath(activeFormData, entriesPath) || [];
+        const entry = entries[entryIndex];
+        const currentValue = entry ? entry[fieldDef.path] : "";
+        openEditDialog(
+          {
+            section: currentSectionKey,
+            field: fieldDef.label,
+            fieldPath: fieldDef.path,
+            list: listDef.label,
+            listPath: entriesPath,
+            entryIndex,
+          },
+          currentValue === undefined || currentValue === null ? "" : String(currentValue)
+        );
+      };
+
+      const handleInteractions = () => {
+        document.addEventListener("click", (event) => {
+          const editTrigger = event.target.closest("[data-edit-action]");
+          if (editTrigger) {
+            event.preventDefault();
+            const payload = JSON.parse(editTrigger.dataset.editAction || "{}");
+            const valueElement = editTrigger.closest(".profile-field")?.querySelector(".profile-item__value");
+            const currentValue = valueElement?.textContent?.trim() || "";
+            openEditDialog(payload, currentValue);
+            return;
+          }
+          const addTrigger = event.target.closest("[data-list-add]");
+          if (addTrigger) {
+            event.preventDefault();
+            let path = addTrigger.dataset.entriesPath;
+            const listLabel = addTrigger.dataset.listAdd;
+            const listDef = findListDefinition(listLabel);
+            console.log("[profil-section] addTrigger", {
+              label: listLabel,
+              path,
+              hasList: Boolean(listDef),
+              section: currentSectionKey,
+              entriesExisting: path ? getValueByPath(activeFormData, path) : undefined,
+            });
+            const isSpecial = SPECIAL_LIST_SET.has(listDef?.entriesPath);
+            if (isSpecial) {
+              showInlineEditor(listDef, addTrigger);
+              return;
+            }
+            if (!path && listDef?.entriesPath) {
+              path = listDef.entriesPath;
+            }
+            if (!path) return;
+            const entryTemplate = listDef?.defaultEntry ? { ...listDef.defaultEntry } : {};
+            const targetArray = ensureArrayByPath(activeFormData, path);
+            targetArray.push(entryTemplate);
+            console.log("[profil-section] afterPush", { path, length: targetArray.length, entry: targetArray[targetArray.length - 1] });
+            const entryIndex = targetArray.length - 1;
+            refreshSection();
+            persistFormData();
+            focusNewEntry(listDef, path, entryIndex);
+            return;
+          }
+          const removeTrigger = event.target.closest("[data-list-remove]");
+          if (removeTrigger) {
+            event.preventDefault();
+            const listLabel = removeTrigger.dataset.listRemove;
+            const listDef = findListDefinition(listLabel);
+            const isSpecial = SPECIAL_LIST_SET.has(listDef?.entriesPath);
+            if (isSpecial) {
+              showRemovalPicker(listDef, removeTrigger);
+              return;
+            }
+            const path = removeTrigger.dataset.entriesPath;
+            const array = getValueByPath(activeFormData, path) || [];
+            if (Array.isArray(array) && array.length > 0) {
+              array.pop();
+              refreshSection();
+              persistFormData();
+            }
+          }
+        });
+        document.getElementById("profile-edit-save")?.addEventListener("click", (event) => {
+          event.preventDefault();
+          applyEdit();
+        });
+        document.getElementById("profile-edit-cancel")?.addEventListener("click", (event) => {
+          event.preventDefault();
+          closeEditDialog();
+        });
+      };
+
+      const editModal = document.getElementById("profile-edit-modal");
+      let editInput;
+      let lastFocusedTrigger = null;
+      const updateModalElements = () => {
+        editInput = document.getElementById("profile-edit-input");
+      };
+
+      const closeEditDialog = () => {
+        if (!editModal) return;
+        editModal.classList.remove("is-open");
+        editContext = null;
+        if (lastFocusedTrigger && typeof lastFocusedTrigger.focus === "function") {
+          lastFocusedTrigger.focus();
+        } else if (document.activeElement && editModal.contains(document.activeElement)) {
+          document.activeElement.blur();
+        }
+        lastFocusedTrigger = null;
+        editModal.setAttribute("aria-hidden", "true");
+      };
+
+      const openEditDialog = (payload, currentValue) => {
+        if (!editModal) return;
+        editContext = payload;
+        const title = document.getElementById("profile-edit-title");
+        const description = document.getElementById("profile-edit-description");
+        title.textContent = payload.field;
+        description.textContent = payload.list
+          ? `${payload.list} • ligne ${payload.entryIndex + 1}`
+          : `Modifier ${payload.field}`;
+        editInput.value = currentValue || "";
+        lastFocusedTrigger = document.activeElement;
+        editModal.setAttribute("aria-hidden", "false");
+        editModal.classList.add("is-open");
+        editInput.focus();
+      };
+
+      const applyEdit = () => {
+        if (!editContext || !editInput) return;
+        const value = editInput.value;
+        const normalized = normalizeEditValue(editContext.fieldPath, value);
+        console.log("[profil-section] applyEdit", {
+          path: editContext.fieldPath,
+          list: editContext.list,
+          entryIndex: editContext.entryIndex,
+          raw: value,
+          normalized,
+        });
+        if (editContext.list && editContext.listPath) {
+          const entries = getValueByPath(activeFormData, editContext.listPath) || [];
+          const entry = entries[editContext.entryIndex];
+          if (entry) {
+            setValueByPath(entry, editContext.fieldPath, normalized);
+          }
+        } else {
+          setValueByPath(activeFormData, editContext.fieldPath, normalized);
+        }
+      closeEditDialog();
+      refreshSection();
+      persistFormData();
+    };
+
+      document.addEventListener("DOMContentLoaded", () => {
+        updateModalElements();
+        handleInteractions();
+        setupSpouseSection();
+        init();
+      });
+    </script>
+  </body>
+</html>

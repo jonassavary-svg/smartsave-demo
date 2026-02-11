@@ -1,0 +1,145 @@
+html[data-theme="revolut"] {
+  color-scheme: dark;
+  --rev-bg: #0b0f1a;
+  --rev-bg-elevated: #0e1322;
+  --rev-surface: #111827;
+  --rev-surface-2: #151c2f;
+  --rev-surface-3: #1b243b;
+  --rev-border: #253151;
+  --rev-border-strong: #2f3b5f;
+  --rev-text: #e6ecff;
+  --rev-muted: #9fb0c7;
+  --rev-accent: #3ea2ff;
+  --rev-accent-strong: #63b0ff;
+  --rev-glow: 0 0 0 1px rgba(63, 118, 255, 0.25);
+  --rev-shadow: 0 18px 40px rgba(4, 8, 20, 0.45);
+  --rev-shadow-soft: 0 12px 28px rgba(7, 12, 26, 0.38);
+}
+
+html[data-theme="revolut"] body {
+  background: radial-gradient(circle at top, #121a31 0%, #0b0f1a 48%, #080b14 100%) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] body.results {
+  background: radial-gradient(circle at 20% 10%, #182244 0%, #0b0f1a 52%, #070a12 100%) !important;
+}
+
+html[data-theme="revolut"] a {
+  color: var(--rev-accent) !important;
+}
+
+html[data-theme="revolut"] .card {
+  background: var(--rev-surface) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-shadow-soft) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .card h1,
+html[data-theme="revolut"] .card h2,
+html[data-theme="revolut"] .card h3,
+html[data-theme="revolut"] .card h4,
+html[data-theme="revolut"] .card strong {
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .pillars-tab-list {
+  background: rgba(9, 13, 24, 0.85) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-glow) !important;
+}
+
+html[data-theme="revolut"] .pillars-tab-toggle {
+  background: transparent !important;
+  color: var(--rev-muted) !important;
+  border: 1px solid transparent !important;
+}
+
+html[data-theme="revolut"] .pillars-tab-toggle.is-active {
+  background: linear-gradient(135deg, #2151ff 0%, #4cb5ff 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(82, 132, 255, 0.55) !important;
+  box-shadow: 0 12px 24px rgba(44, 111, 255, 0.4) !important;
+}
+
+html[data-theme="revolut"] .situation-subtab-toggle {
+  background: var(--rev-surface-2) !important;
+  color: var(--rev-muted) !important;
+  border: 1px solid var(--rev-border) !important;
+}
+
+html[data-theme="revolut"] .situation-subtab-toggle.is-active {
+  background: linear-gradient(140deg, #1f3b7b 0%, #2a6fb2 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(88, 146, 255, 0.5) !important;
+  box-shadow: 0 10px 22px rgba(42, 111, 178, 0.35) !important;
+}
+
+html[data-theme="revolut"] .pillars-tab-card {
+  background: var(--rev-surface-2) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-shadow-soft) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .pillars-tab-panel {
+  background: var(--rev-bg-elevated) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-shadow) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .accounts-panel__section {
+  background: var(--rev-surface-2) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-shadow-soft) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .accounts-card {
+  background: var(--rev-surface-3) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-shadow-soft) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .projection-showcase {
+  background: linear-gradient(160deg, #101735 0%, #0f1224 45%, #0b0f1a 100%) !important;
+  border: 1px solid var(--rev-border-strong) !important;
+  box-shadow: var(--rev-shadow) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .projection-card {
+  background: var(--rev-surface-2) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-shadow-soft) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .projection-roadmap {
+  background: var(--rev-surface) !important;
+  border: 1px solid var(--rev-border) !important;
+  box-shadow: var(--rev-shadow-soft) !important;
+  color: var(--rev-text) !important;
+}
+
+html[data-theme="revolut"] .pillars-tab-card p,
+html[data-theme="revolut"] .pillars-tab-panel p,
+html[data-theme="revolut"] .accounts-panel__section p,
+html[data-theme="revolut"] .accounts-card p,
+html[data-theme="revolut"] .projection-showcase p,
+html[data-theme="revolut"] .projection-card p,
+html[data-theme="revolut"] .projection-roadmap p {
+  color: var(--rev-muted) !important;
+}
+
+html[data-theme="revolut"] .pillars-tab-card span,
+html[data-theme="revolut"] .pillars-tab-panel span,
+html[data-theme="revolut"] .accounts-panel__section span,
+html[data-theme="revolut"] .accounts-card span,
+html[data-theme="revolut"] .projection-card span,
+html[data-theme="revolut"] .projection-roadmap span {
+  color: var(--rev-text) !important;
+}

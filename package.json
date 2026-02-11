@@ -1,0 +1,26 @@
+{
+  "name": "smartsave-mvp-v2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "aiAssistant.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonassavary-svg/smartsave-demo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jonassavary-svg/smartsave-demo/issues"
+  },
+  "homepage": "https://github.com/jonassavary-svg/smartsave-demo#readme",
+  "dependencies": {
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
+    "@capacitor/ios": "^8.0.2"
+  }
+}

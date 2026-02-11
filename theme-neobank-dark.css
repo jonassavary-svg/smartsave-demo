@@ -1,0 +1,327 @@
+html[data-theme="neobank-dark"] {
+  color-scheme: dark;
+  --neo-bg: #070b14;
+  --neo-bg-soft: #0b1220;
+  --neo-surface-muted: #0f172a;
+  --neo-surface-base: #141f36;
+  --neo-rail: #0b1324;
+  --neo-border: rgba(245, 247, 255, 0.12);
+  --neo-border-strong: rgba(245, 247, 255, 0.18);
+  --neo-text: rgba(245, 247, 255, 0.92);
+  --neo-muted: rgba(245, 247, 255, 0.65);
+  --neo-accent: #7c6dff;
+  --neo-accent-strong: #8b7bff;
+}
+
+html[data-theme="neobank-dark"] body,
+html[data-theme="neobank-dark"] body.dashboard,
+html[data-theme="neobank-dark"] body.results,
+html[data-theme="neobank-dark"] body.smartsave-page,
+html[data-theme="neobank-dark"] .profile-page {
+  background: radial-gradient(circle at 20% 0%, rgba(124, 109, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, #070b14 0%, #0b1220 55%, #0a0f1c 100%) !important;
+  color: var(--neo-text) !important;
+}
+
+html[data-theme="neobank-dark"] a {
+  color: var(--neo-accent) !important;
+}
+
+html[data-theme="neobank-dark"] .card,
+html[data-theme="neobank-dark"] body.results .card,
+html[data-theme="neobank-dark"] .accounts-card,
+html[data-theme="neobank-dark"] .analysis-card,
+html[data-theme="neobank-dark"] .analysis-panel__type,
+html[data-theme="neobank-dark"] .analysis-panel__pie,
+html[data-theme="neobank-dark"] .analysis-panel__category,
+html[data-theme="neobank-dark"] .analysis-panel__insights,
+html[data-theme="neobank-dark"] .expense-analysis,
+html[data-theme="neobank-dark"] .tax-panel__grid article,
+html[data-theme="neobank-dark"] .balance-sheet-section .balance-sheet,
+html[data-theme="neobank-dark"] .expense-category-card,
+html[data-theme="neobank-dark"] .debt-card,
+html[data-theme="neobank-dark"] .forecast-card,
+html[data-theme="neobank-dark"] .security-card,
+html[data-theme="neobank-dark"] .projection-summary-card,
+html[data-theme="neobank-dark"] .projection-summary-card__gain,
+html[data-theme="neobank-dark"] .tax-provision-card,
+html[data-theme="neobank-dark"] .tax-provision-widget,
+html[data-theme="neobank-dark"] .resilience-mini-card,
+html[data-theme="neobank-dark"] .resilience-assumption-card,
+html[data-theme="neobank-dark"] .resilience-diagnosis,
+html[data-theme="neobank-dark"] .resilience-scenario__summary-cards,
+html[data-theme="neobank-dark"] .resilience-scenario__summary-metrics,
+html[data-theme="neobank-dark"] .resilience-scenario__projection,
+html[data-theme="neobank-dark"] .resilience-scenario__table,
+html[data-theme="neobank-dark"] .impact-longterm__card {
+  background: var(--neo-surface-base) !important;
+  border-color: var(--neo-border) !important;
+  color: var(--neo-text) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="neobank-dark"] .pillars-tab-card,
+html[data-theme="neobank-dark"] .pillars-tab-panel,
+html[data-theme="neobank-dark"] .situation-section,
+html[data-theme="neobank-dark"] .analysis-panel,
+html[data-theme="neobank-dark"] .accounts-panel__section,
+html[data-theme="neobank-dark"] .projection-chart,
+html[data-theme="neobank-dark"] .projection-showcase,
+html[data-theme="neobank-dark"] .projection-roadmap,
+html[data-theme="neobank-dark"] .resilience-panel,
+html[data-theme="neobank-dark"] .resilience-actions,
+html[data-theme="neobank-dark"] .resilience-advanced__panel,
+html[data-theme="neobank-dark"] .resilience-advanced__block,
+html[data-theme="neobank-dark"] .profile-header,
+html[data-theme="neobank-dark"] .landing-hero,
+html[data-theme="neobank-dark"] .login-card,
+html[data-theme="neobank-dark"] .overview-metric {
+  background: var(--neo-surface-muted) !important;
+  border-color: var(--neo-border) !important;
+  color: var(--neo-text) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="neobank-dark"] .pillars-tab-list {
+  background: var(--neo-rail) !important;
+  border: 1px solid var(--neo-border) !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: none !important;
+  padding: 0.4rem !important;
+  gap: 0.35rem !important;
+}
+
+html[data-theme="neobank-dark"] .pillars-tab-toggle {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--neo-muted) !important;
+  border-radius: 999px !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="neobank-dark"] .pillars-tab-toggle:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--neo-text) !important;
+}
+
+html[data-theme="neobank-dark"] .pillars-tab-toggle.is-active {
+  background: var(--neo-surface-base) !important;
+  color: #ffffff !important;
+  border-color: rgba(124, 109, 255, 0.6) !important;
+  box-shadow: 0 0 0 1px rgba(124, 109, 255, 0.45), 0 0 14px rgba(124, 109, 255, 0.25) !important;
+}
+
+html[data-theme="neobank-dark"] .situation-subtabs {
+  display: inline-flex !important;
+  gap: 0.35rem !important;
+  padding: 0.3rem !important;
+  border-radius: 999px !important;
+  background: var(--neo-rail) !important;
+  border: 1px solid var(--neo-border) !important;
+}
+
+html[data-theme="neobank-dark"] .situation-subtab-toggle {
+  background: transparent !important;
+  color: var(--neo-muted) !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1rem !important;
+}
+
+html[data-theme="neobank-dark"] .situation-subtab-toggle.is-active {
+  background: var(--neo-surface-base) !important;
+  color: #ffffff !important;
+  border-color: rgba(124, 109, 255, 0.6) !important;
+  box-shadow: 0 0 0 1px rgba(124, 109, 255, 0.35) !important;
+}
+
+html[data-theme="neobank-dark"] .score-track,
+html[data-theme="neobank-dark"] .score-gauge-track,
+html[data-theme="neobank-dark"] .pillar-meter__track,
+html[data-theme="neobank-dark"] .pillar-gauge,
+html[data-theme="neobank-dark"] .progress-track,
+html[data-theme="neobank-dark"] .fund-progress,
+html[data-theme="neobank-dark"] .tax-provision-widget__bar,
+html[data-theme="neobank-dark"] .anticipation-event__progress {
+  background: rgba(245, 247, 255, 0.12) !important;
+  stroke: rgba(245, 247, 255, 0.12) !important;
+}
+
+html[data-theme="neobank-dark"] .score-progress,
+html[data-theme="neobank-dark"] .score-gauge-progress,
+html[data-theme="neobank-dark"] .pillar-meter__progress,
+html[data-theme="neobank-dark"] .pillar-gauge__fill,
+html[data-theme="neobank-dark"] .progress-fill,
+html[data-theme="neobank-dark"] .fund-progress__fill,
+html[data-theme="neobank-dark"] .tax-provision-widget__progress,
+html[data-theme="neobank-dark"] .anticipation-event__progress-fill {
+  background: var(--neo-accent) !important;
+  stroke: var(--neo-accent) !important;
+  filter: none !important;
+}
+
+html[data-theme="neobank-dark"] .score-value__score,
+html[data-theme="neobank-dark"] .score-number,
+html[data-theme="neobank-dark"] .score-panel__level,
+html[data-theme="neobank-dark"] .score-value__max,
+html[data-theme="neobank-dark"] .score-value,
+html[data-theme="neobank-dark"] .score-panel__text,
+html[data-theme="neobank-dark"] .score-panel__description,
+html[data-theme="neobank-dark"] .score-panel__meta,
+html[data-theme="neobank-dark"] .section-label,
+html[data-theme="neobank-dark"] .analysis-card__label,
+html[data-theme="neobank-dark"] .analysis-card__share,
+html[data-theme="neobank-dark"] .analysis-panel__summary,
+html[data-theme="neobank-dark"] .analysis-panel__overview-label,
+html[data-theme="neobank-dark"] .analysis-panel__overview-frequency,
+html[data-theme="neobank-dark"] .analysis-panel__breakdown-label,
+html[data-theme="neobank-dark"] .analysis-panel__pie h5,
+html[data-theme="neobank-dark"] .analysis-panel__legend-label,
+html[data-theme="neobank-dark"] .analysis-panel__detail-label,
+html[data-theme="neobank-dark"] .analysis-panel__category-label,
+html[data-theme="neobank-dark"] .analysis-panel__category-subtitle,
+html[data-theme="neobank-dark"] .analysis-panel__category-item,
+html[data-theme="neobank-dark"] .analysis-panel__insights-text,
+html[data-theme="neobank-dark"] .analysis-panel__levers-text,
+html[data-theme="neobank-dark"] .analysis-panel__actions h5,
+html[data-theme="neobank-dark"] .analysis-panel__insights-list li span,
+html[data-theme="neobank-dark"] .expense-analysis__actions li span,
+html[data-theme="neobank-dark"] .tax-panel__status,
+html[data-theme="neobank-dark"] .tax-provision-card__hint,
+html[data-theme="neobank-dark"] .tax-provision-widget__subtitle,
+html[data-theme="neobank-dark"] .tax-provision-widget__monthly,
+html[data-theme="neobank-dark"] .tax-provision-widget__deadline,
+html[data-theme="neobank-dark"] .tax-provision-widget__monthly-label,
+html[data-theme="neobank-dark"] .tax-provision-widget__monthly-detail,
+html[data-theme="neobank-dark"] .tax-provision-widget__monthly-target,
+html[data-theme="neobank-dark"] .tax-provision-card__list dt,
+html[data-theme="neobank-dark"] .accounts-card__label,
+html[data-theme="neobank-dark"] .accounts-card__meta,
+html[data-theme="neobank-dark"] .expense-category-card__label,
+html[data-theme="neobank-dark"] .debt-card .section-label,
+html[data-theme="neobank-dark"] .forecast-card p,
+html[data-theme="neobank-dark"] .security-card p,
+html[data-theme="neobank-dark"] .projection-chart__legend,
+html[data-theme="neobank-dark"] .projection-chart__focus,
+html[data-theme="neobank-dark"] .projection-chart__title,
+html[data-theme="neobank-dark"] .projection-summary-card__label,
+html[data-theme="neobank-dark"] .projection-summary-card__note,
+html[data-theme="neobank-dark"] .projection-summary-card__gain-title,
+html[data-theme="neobank-dark"] .projection-summary-card__gain-copy,
+html[data-theme="neobank-dark"] .resilience-panel__header p,
+html[data-theme="neobank-dark"] .resilience-actions__header p,
+html[data-theme="neobank-dark"] .resilience-recommended__header p,
+html[data-theme="neobank-dark"] .resilience-advanced__intro p,
+html[data-theme="neobank-dark"] .resilience-advanced__slider span,
+html[data-theme="neobank-dark"] .resilience-scenario__summary-metrics div,
+html[data-theme="neobank-dark"] .resilience-scenario__summary-cards div,
+html[data-theme="neobank-dark"] .profile-banner__subtitle,
+html[data-theme="neobank-dark"] .profile-field__label {
+  color: var(--neo-muted) !important;
+}
+
+html[data-theme="neobank-dark"] .projection-chart__grid {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px) !important;
+}
+
+html[data-theme="neobank-dark"] .projection-chart__axis-line,
+html[data-theme="neobank-dark"] .projection-chart__axis-tick {
+  stroke: rgba(255, 255, 255, 0.2) !important;
+}
+
+html[data-theme="neobank-dark"] .projection-chart__axis-label,
+html[data-theme="neobank-dark"] .projection-chart__axis-title {
+  fill: rgba(245, 247, 255, 0.7) !important;
+}
+
+html[data-theme="neobank-dark"] .section-chart__pie,
+html[data-theme="neobank-dark"] .analysis-panel__pie-chart {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme="neobank-dark"] .section-chart__pie::after,
+html[data-theme="neobank-dark"] .analysis-panel__pie-chart::after {
+  background: var(--neo-surface-base) !important;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-theme="neobank-dark"] .results-mobile-nav,
+html[data-theme="neobank-dark"] .profile-header {
+  backdrop-filter: none !important;
+}
+
+html[data-theme="neobank-dark"] .resilience-scenario__event-row input[type="text"],
+html[data-theme="neobank-dark"] .resilience-scenario__event-row input[type="number"],
+html[data-theme="neobank-dark"] .resilience-scenario__event-row select,
+html[data-theme="neobank-dark"] .resilience-scenario__tax-settings select,
+html[data-theme="neobank-dark"] .resilience-advanced__panel input[type="text"],
+html[data-theme="neobank-dark"] .resilience-advanced__panel input[type="number"],
+html[data-theme="neobank-dark"] .resilience-advanced__panel select {
+  background: var(--neo-surface-base) !important;
+  border: 1px solid var(--neo-border) !important;
+  color: var(--neo-text) !important;
+}
+
+html[data-theme="neobank-dark"] .form-page .page-header,
+html[data-theme="neobank-dark"] .form-progress,
+html[data-theme="neobank-dark"] .fixed-nav {
+  background: var(--neo-bg-soft) !important;
+  border-color: var(--neo-border) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-theme="neobank-dark"] .wizard-step,
+html[data-theme="neobank-dark"] .form-page .card,
+html[data-theme="neobank-dark"] .collection-row {
+  background: var(--neo-surface-base) !important;
+  border-color: var(--neo-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="neobank-dark"] .input-block input,
+html[data-theme="neobank-dark"] .input-block select,
+html[data-theme="neobank-dark"] .input-block textarea {
+  background: var(--neo-surface-muted) !important;
+  border-color: var(--neo-border) !important;
+  color: var(--neo-text) !important;
+}
+
+html[data-theme="neobank-dark"] .input-block input:focus,
+html[data-theme="neobank-dark"] .input-block select:focus,
+html[data-theme="neobank-dark"] .input-block textarea:focus {
+  border-color: var(--neo-accent) !important;
+  box-shadow: 0 0 0 3px rgba(124, 109, 255, 0.25) !important;
+}
+
+html[data-theme="neobank-dark"] .progress-track {
+  background: rgba(245, 247, 255, 0.12) !important;
+}
+
+html[data-theme="neobank-dark"] .progress-fill {
+  background: var(--neo-accent) !important;
+}
+
+html[data-theme="neobank-dark"] .ghost-btn {
+  background: transparent !important;
+  color: var(--neo-text) !important;
+  border-color: var(--neo-border) !important;
+}
+
+html[data-theme="neobank-dark"] .cta {
+  background: var(--neo-accent) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="neobank-dark"] .remove-btn {
+  background: transparent !important;
+  color: var(--neo-muted) !important;
+  border-color: var(--neo-border) !important;
+  box-shadow: none !important;
+}

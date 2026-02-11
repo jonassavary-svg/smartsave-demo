@@ -295,7 +295,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const data = buildMvpData(formData, snapshot);
   renderScore(data.score);
   renderSituation(data, formData);
-  renderRecapSmartSaveAllocation(data);
   renderPlan(data, formData);
   renderProjection(data);
   renderSpendingAnalysis(data);
@@ -537,9 +536,6 @@ function renderSituation(data, formData) {
   setCurrency("[data-balance-liquidites]", liquidity);
   const netBalance = income - (totalExpenses + debtPayments);
   setCurrency("[data-balance-net]", netBalance);
-  const recapRest = income - fixed;
-  setCurrency("[data-recap-rest]", recapRest);
-  renderRecapFixedExpensesChart(income, fixed);
 
 
   const assets = formData.assets || {};
@@ -605,75 +601,6 @@ function renderSituation(data, formData) {
   const incomeEntries = buildIncomeBreakdownEntries(formData);
   renderIncomeDistribution(incomeEntries);
   data.spendingTotals = { fixed, variable, exceptional, total: totalExpenses };
-}
-
-function renderRecapFixedExpensesChart(income, fixed) {
-  const fill = document.querySelector("[data-recap-fixed-bar-fill]");
-  const note = document.querySelector("[data-recap-fixed-bar-note]");
-  if (!fill && !note) return;
-  const safeIncome = Math.max(0, toNumber(income));
-  const safeFixed = Math.max(0, toNumber(fixed));
-  const ratio = safeIncome > 0 ? safeFixed / safeIncome : 0;
-  const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)));
-  if (fill) fill.style.width = `${percent}%`;
-  if (note) note.textContent = `${percent}% du revenu net`;
-}
-
-function renderRecapSmartSaveAllocation(data = {}) {
-  const donutNode = document.querySelector("[data-recap-allocation-donut]");
-  const totalNode = document.querySelector("[data-recap-allocation-total]");
-  const legendNode = document.querySelector("[data-recap-allocation-legend]");
-  if (!donutNode || !totalNode || !legendNode) return;
-
-  const allocations = data.allocation?.allocations || {};
-  const labels = {
-    securite: "Sécurité",
-    projets: "Anticipation",
-    impots: "Impôts",
-    investissements: "Investissements",
-    pilier3a: "3e pilier",
-    dettes: "Dettes",
-  };
-  const palette = ["#1f3a8a", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#0f766e"];
-  const entries = Object.entries(allocations)
-    .map(([key, value]) => ({
-      key,
-      label: labels[key] || key,
-      amount: Math.max(0, toNumber(value)),
-    }))
-    .filter((entry) => entry.amount > 0)
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 6);
-
-  const total = entries.reduce((sum, entry) => sum + entry.amount, 0);
-  totalNode.textContent = formatCurrency(total);
-  if (!total) {
-    donutNode.style.setProperty("--recap-allocation-gradient", "conic-gradient(#e2e8f0 0 100%)");
-    legendNode.innerHTML = '<li><span><i class="recap-allocation__dot"></i>Aucune répartition ce mois</span><strong>—</strong></li>';
-    return;
-  }
-
-  let cursor = 0;
-  const gradients = entries.map((entry, index) => {
-    const share = (entry.amount / total) * 100;
-    const from = cursor;
-    const to = cursor + share;
-    cursor = to;
-    const color = palette[index % palette.length];
-    entry.color = color;
-    return `${color} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
-  });
-  donutNode.style.setProperty("--recap-allocation-gradient", `conic-gradient(${gradients.join(", ")})`);
-  legendNode.innerHTML = entries
-    .map(
-      (entry) => `
-        <li>
-          <span><i class="recap-allocation__dot" style="background:${entry.color}"></i>${entry.label}</span>
-          <strong>${formatCurrency(entry.amount)}</strong>
-        </li>
-      `
-    )
-    .join("");
 }
 
 function renderTaxProvisionWidget(info = {}) {

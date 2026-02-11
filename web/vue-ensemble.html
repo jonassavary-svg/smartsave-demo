@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SmartSave – Vue d’ensemble</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="theme-polish.css" />
+  </head>
+  <body class="results overview" data-mvp>
+    <div class="dashboard-shell">
+      <header class="dashboard-header">
+        <a class="logo" href="index.html">
+          <div class="logo-mark" aria-hidden="true">S</div>
+          <span class="logo-text">SmartSave</span>
+        </a>
+        <div class="user-menu-wrapper">
+          <button class="user-pill" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="user-avatar" aria-live="polite">SS</span>
+            <span class="user-name">Mon Compte</span>
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+          <div class="user-menu" role="menu" aria-label="Menu Mon compte">
+            <button type="button" data-user-action="edit">Modifier mes données</button>
+            <button type="button" data-user-action="logout">Déconnexion</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="results-layout overview-layout page-container stack-lg">
+        <section class="overview-hero" data-status="watch">
+          <p class="overview-label">Vue d’ensemble</p>
+          <div class="overview-hero__headline">
+            <h1 class="overview-hero__title">
+              Situation financière&nbsp;: <span data-overview-status>À surveiller</span>
+            </h1>
+            <span class="status-badge" data-status-badge>À surveiller</span>
+          </div>
+          <p class="overview-hero__copy" data-status-copy>
+            Ta situation est globalement stable, SmartSave s’occupe du reste pour toi.
+          </p>
+          <span class="sr-only" data-mvp-score-level>SmartSave</span>
+          <div class="overview-hero__kpis">
+            <div class="overview-kpi">
+              <span class="overview-kpi__label">Sécurité</span>
+              <strong class="overview-kpi__value">
+                <span data-mvp-security-months>0</span> mois
+              </strong>
+              <small>mois sans revenu</small>
+            </div>
+            <div class="overview-kpi">
+              <span class="overview-kpi__label">Marge mensuelle</span>
+              <strong class="overview-kpi__value">
+                <span class="overview-kpi__sign" data-kpi-sign>+</span>
+                <span data-balance-net>CHF 0</span>
+              </strong>
+              <small>après charges &amp; dettes</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="overview-score" id="mvp-score-card" aria-label="Score SmartSave">
+          <div class="overview-score__content">
+            <div class="overview-score__visual">
+              <div class="score-gauge" aria-hidden="true">
+                <svg viewBox="0 0 160 160" class="score-gauge__svg">
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="15%" y1="10%" x2="90%" y2="100%">
+                      <stop offset="0%" class="score-gradient-start"></stop>
+                      <stop offset="100%" class="score-gradient-end"></stop>
+                    </linearGradient>
+                    <filter id="scoreGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"></feGaussianBlur>
+                      <feColorMatrix
+                        in="blur"
+                        type="matrix"
+                        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.6 0"
+                        result="glow"
+                      ></feColorMatrix>
+                      <feMerge>
+                        <feMergeNode in="glow"></feMergeNode>
+                        <feMergeNode in="SourceGraphic"></feMergeNode>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <circle class="score-track" cx="80" cy="80" r="70"></circle>
+                  <circle class="score-ticks" cx="80" cy="80" r="62"></circle>
+                  <circle class="score-progress" cx="80" cy="80" r="70" data-score-circle></circle>
+                  <text class="score-value" x="80" y="92" text-anchor="middle" dominant-baseline="middle">
+                    <tspan class="score-value__score" data-mvp-score-total>0</tspan>
+                    <tspan class="score-value__max">/100</tspan>
+                  </text>
+                </svg>
+              </div>
+            </div>
+            <div class="overview-score__text">
+              <p class="section-eyebrow">Score SmartSave</p>
+              <p class="overview-score__headline">Un repère simple pour suivre la stabilité globale.</p>
+              <div class="score-panel__pillar-list">
+                <p class="score-panel__pillar" data-score-pillar="securite">
+                  <span>Sécurité</span>
+                  <strong data-score-value="securite">0/100</strong>
+                  <span class="pillar-gauge">
+                    <span class="pillar-gauge__fill" data-score-gauge="securite"></span>
+                  </span>
+                </p>
+                <p class="score-panel__pillar" data-score-pillar="anticipation">
+                  <span>Anticipation</span>
+                  <strong data-score-value="anticipation">0/100</strong>
+                  <span class="pillar-gauge">
+                    <span class="pillar-gauge__fill" data-score-gauge="anticipation"></span>
+                  </span>
+                </p>
+                <p class="score-panel__pillar" data-score-pillar="croissance">
+                  <span>Croissance</span>
+                  <strong data-score-value="croissance">0/100</strong>
+                  <span class="pillar-gauge">
+                    <span class="pillar-gauge__fill" data-score-gauge="croissance"></span>
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="overview-focus">
+          <div class="section-head">
+            <p class="section-eyebrow">Ce que SmartSave fait pour toi ce mois-ci</p>
+            <h2 class="overview-section__title">Des actions simples, déjà prêtes</h2>
+            <p class="overview-section__subtitle">Tu n’as rien de technique à gérer.</p>
+          </div>
+          <div class="overview-actions" data-overview-actions>
+            <div class="overview-action" data-overview-action>
+              <span class="overview-action__icon" aria-hidden="true">🧭</span>
+              <div>
+                <p class="overview-action__title">Stabiliser ton mois</p>
+                <p class="overview-action__copy">Garder une marge positive pour éviter le stress.</p>
+              </div>
+            </div>
+            <div class="overview-action" data-overview-action>
+              <span class="overview-action__icon" aria-hidden="true">🛟</span>
+              <div>
+                <p class="overview-action__title">Assurer la sécurité</p>
+                <p class="overview-action__copy">Protéger ton quotidien avec une réserve simple.</p>
+              </div>
+            </div>
+            <div class="overview-action" data-overview-action>
+              <span class="overview-action__icon" aria-hidden="true">✅</span>
+              <div>
+                <p class="overview-action__title">Automatiser la suite</p>
+                <p class="overview-action__copy">Mettre l’épargne en pilote automatique.</p>
+              </div>
+            </div>
+          </div>
+          <a class="overview-cta" href="resultats.html#plan">Voir mon plan SmartSave</a>
+        </section>
+
+        <section class="overview-details">
+          <div class="section-head">
+            <p class="section-eyebrow">Comprendre le détail (optionnel)</p>
+            <h2 class="overview-section__title">Explorer les pages d’analyse</h2>
+            <p class="overview-section__subtitle">Tu peux aller plus loin quand tu veux.</p>
+          </div>
+          <div class="overview-links">
+            <a class="overview-link" href="resultats.html#situation">
+              <span>Ma situation financière</span>
+              <small>Revenus, dépenses, dettes en détail.</small>
+            </a>
+            <a class="overview-link" href="resultats.html#plan">
+              <span>Plan SmartSave</span>
+              <small>La répartition proposée ce mois-ci.</small>
+            </a>
+            <a class="overview-link" href="resultats.html#projection">
+              <span>Projection</span>
+              <small>Visualiser la trajectoire dans le temps.</small>
+            </a>
+            <a class="overview-link" href="resultats.html#resilience">
+              <span>Résilience</span>
+              <small>Tester la solidité face aux imprévus.</small>
+            </a>
+          </div>
+        </section>
+      </main>
+
+      <section class="mvp-empty-state" data-mvp-no-profile hidden>
+        <div class="card">
+          <h2>Profil manquant</h2>
+          <p>Commence par remplir le formulaire SmartSave pour activer cette page.</p>
+          <a class="cta" href="index.html">Ouvrir le formulaire</a>
+        </div>
+      </section>
+    </div>
+
+    <script src="financialScoreEngine.js" defer></script>
+    <script src="allocationEngine.js" defer></script>
+    <script src="projectionEngine.js" defer></script>
+    <script src="taxEngine.js" defer></script>
+    <script src="spendingAnalysisEngine.js" defer></script>
+    <script src="smartsaveSnapshot.js" defer></script>
+    <script src="mvp-v2.js" defer></script>
+    <script>
+      window.addEventListener("load", () => {
+        const statusNode = document.querySelector("[data-mvp-score-level]");
+        const statusText = document.querySelector("[data-overview-status]");
+        const badge = document.querySelector("[data-status-badge]");
+        const copy = document.querySelector("[data-status-copy]");
+        const hero = document.querySelector(".overview-hero");
+        const actions = Array.from(document.querySelectorAll("[data-overview-action]"));
+        const balanceNode = document.querySelector("[data-balance-net]");
+        const signNode = document.querySelector("[data-kpi-sign]");
+
+        const STORAGE_KEY_FORM = "smartsaveFormData";
+        const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
+
+        const loadActiveUser = () => {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY_ACTIVE_USER);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed?.id ? parsed : null;
+          } catch (_error) {
+            return null;
+          }
+        };
+
+        const loadUserForm = (userId) => {
+          if (!userId) return null;
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY_FORM);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed?.[userId] || parsed?.__default || null;
+          } catch (_error) {
+            return null;
+          }
+        };
+
+        const activeUser = loadActiveUser();
+        const formData = loadUserForm(activeUser?.id);
+        if (!formData) {
+          window.location.href = "formulaire.html";
+          return;
+        }
+
+        const scoreEngine = window.FinancialScoreEngine;
+        const scoreData = scoreEngine?.calculateScore ? scoreEngine.calculateScore(formData) : null;
+        const rawLabel = (statusNode?.textContent || scoreData?.level || "").trim().toLowerCase();
+
+        let status = "watch";
+        if (rawLabel.includes("critique") || rawLabel.includes("risque")) {
+          status = "risk";
+        } else if (rawLabel.includes("optimal") || rawLabel.includes("sain")) {
+          status = "solid";
+        } else if (rawLabel.includes("perfectible")) {
+          status = "watch";
+        }
+
+        const statusLabels = {
+          solid: "Solide",
+          watch: "À surveiller",
+          risk: "À risque",
+        };
+
+        const copyMap = {
+          solid: "Ta situation est stable. SmartSave peut automatiser la suite.",
+          watch: "C’est globalement stable, mais une marge reste à surveiller.",
+          risk: "C’est tendu en ce moment. SmartSave priorise l’essentiel pour te sécuriser.",
+        };
+
+        const titlesMap = {
+          solid: ["Stabiliser le mois", "Assurer la sécurité", "Automatiser la suite"],
+          watch: ["Stabiliser le mois", "Assurer la sécurité", "Automatiser la suite"],
+          risk: ["Stabiliser le mois", "Assurer la sécurité", "Automatiser la suite"],
+        };
+
+        const fallbackDescriptions = {
+          solid: [
+            "Garder une marge positive pour éviter le stress.",
+            "Protéger ton quotidien avec une réserve simple.",
+            "Mettre l’épargne en pilote automatique.",
+          ],
+          watch: [
+            "Garder une marge positive pour éviter le stress.",
+            "Protéger ton quotidien avec une réserve simple.",
+            "Mettre l’épargne en pilote automatique.",
+          ],
+          risk: [
+            "Garder une marge positive pour éviter le stress.",
+            "Protéger ton quotidien avec une réserve simple.",
+            "Mettre l’épargne en pilote automatique.",
+          ],
+        };
+
+        if (hero) hero.dataset.status = status;
+        if (statusText) statusText.textContent = statusLabels[status];
+        if (badge) badge.textContent = statusLabels[status];
+        if (copy) copy.textContent = copyMap[status];
+
+        const recommandations = Array.isArray(scoreData?.recommandations)
+          ? scoreData.recommandations.slice(0, 3)
+          : [];
+
+        actions.forEach((card, index) => {
+          const titleNode = card.querySelector(".overview-action__title");
+          const copyNode = card.querySelector(".overview-action__copy");
+          if (titleNode) titleNode.textContent = titlesMap[status][index] || `Action ${index + 1}`;
+          if (copyNode) {
+            copyNode.textContent =
+              recommandations[index] || fallbackDescriptions[status][index] || "À ajuster selon ta situation.";
+          }
+        });
+
+        if (balanceNode && signNode) {
+          const rawText = balanceNode.textContent || "";
+          const numeric = Number(rawText.replace(/[^0-9-]/g, "")) || 0;
+          signNode.textContent = numeric < 0 ? "–" : "+";
+          if (rawText.includes("-") || rawText.includes("−")) {
+            balanceNode.textContent = rawText.replace("-", "").replace("−", "").trim();
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#eef2ff" />
+    <script src="seed-data.js"></script>
+    <title>SmartSave – Allocation</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="theme-polish.css" />
+  </head>
+  <body class="dashboard app-page" data-page="smartsave" data-mvp>
+    <div class="dashboard-shell app-shell">
+      <header class="dashboard-header app-header">
+        <div class="brand-block">
+          <a class="logo" href="mon-argent.html">
+            <div class="logo-mark" aria-hidden="true">S</div>
+            <span class="logo-text">SmartSave</span>
+          </a>
+          <span class="logo-subtitle">Personal Finance</span>
+        </div>
+
+        <div class="header-search">
+          <span class="header-search__icon" aria-hidden="true">🔍</span>
+          <input class="header-search__input" type="search" placeholder="Rechercher" aria-label="Rechercher">
+        </div>
+        <div class="header-actions">
+          <div class="user-menu-wrapper">
+            <button class="user-pill user-pill--account" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="user-avatar user-avatar--icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="currentColor" />
+                </svg>
+              </span>
+              <span class="user-info">
+                <span class="user-name">Marie Dupont</span>
+                <span class="user-email">marie@example.ch</span>
+              </span>
+              <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <div class="user-menu" role="menu" aria-label="Menu Mon compte">
+              <div class="user-menu__header">
+                <strong data-user-name>Marie Dupont</strong>
+                <span data-user-email>marie@example.ch</span>
+              </div>
+
+              <a class="user-menu-link" href="mes-depenses.html">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+                <span>Mes dépenses</span>
+              </a>
+
+              <button type="button" data-user-action="edit">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm8 3.5-1.9-.3a6.8 6.8 0 0 0-.7-1.7l1.1-1.6-1.4-1.4-1.6 1.1c-.5-.3-1.1-.6-1.7-.7L12 4l-1.8 1.9c-.6.1-1.2.4-1.7.7L6.9 5.5 5.5 6.9l1.1 1.6c-.3.5-.6 1.1-.7 1.7L4 12l1.9 1.8c.1.6.4 1.2.7 1.7l-1.1 1.6 1.4 1.4 1.6-1.1c.5.3 1.1.6 1.7.7L12 20l1.8-1.9c.6-.1 1.2-.4 1.7-.7l1.6 1.1 1.4-1.4-1.1-1.6c.3-.5.6-1.1.7-1.7L20 12z" fill="currentColor" />
+                </svg>
+                <span>Mes données</span>
+              </button>
+              <button type="button" data-user-action="logout" class="danger">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 6h-2V4h2a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-2v-2h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zM4 12l4-4v3h7v2H8v3z" fill="currentColor" />
+                </svg>
+                <span>Déconnexion</span>
+              </button>
+            </div>
+          </div>
+          <div class="hamburger-wrapper">
+            <button class="icon-button menu-button" type="button" aria-label="Menu" aria-expanded="false" aria-controls="app-nav">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Home</a>
+              <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
+              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Actions</a>
+              <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Score</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="page-title">
+          <h1>SmartSave Allocation</h1>
+          <p>Your money organized for security, goals, and growth</p>
+        </section>
+
+        <section class="allocation-layout">
+          <div class="allocation-main">
+            <div class="card allocation-total">
+              <p class="card-label">Total Allocated</p>
+              <div class="allocation-total__value" data-allocation-total>CHF 0</div>
+              <p class="allocation-total__note">
+                <span class="allocation-total__info">i</span>
+                Optimized allocation across 3 pillars
+              </p>
+            </div>
+
+            <h3 class="section-title">Current Allocation</h3>
+            <div class="allocation-list" data-allocation-list></div>
+          </div>
+
+          <aside class="allocation-aside">
+            <div class="card how-card">
+              <h3>How SmartSave Works</h3>
+              <ol class="how-list">
+                <li>
+                  <span class="how-step how-step--blue">1</span>
+                  Security first: Build your emergency fund (3-6 months of expenses)
+                </li>
+                <li>
+                  <span class="how-step how-step--purple">2</span>
+                  Plan ahead: Save for upcoming goals and planned expenses
+                </li>
+                <li>
+                  <span class="how-step how-step--green">3</span>
+                  Grow wealth: Invest remaining funds for long-term growth
+                </li>
+              </ol>
+            </div>
+            <div class="card next-card">
+              <h3>What to do next?</h3>
+              <p data-allocation-next>Focus on building your emergency fund.</p>
+              <button class="cta" type="button" data-allocation-next-action>Set Up Auto-Transfer</button>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Suivi</span>
+      </a>
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+        <span>SmartSave</span>
+      </a>
+      <a class="bottom-nav__link" href="actions.html" data-nav="actions">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span>Actions</span>
+      </a>
+      <a class="bottom-nav__link" href="future.html" data-nav="future">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 16l5-5 4 3 7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Future</span>
+      </a>
+      <a class="bottom-nav__link" href="score.html" data-nav="score">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Score</span>
+      </a>
+    </nav>
+
+    <script src="financialScoreEngine.js" defer></script>
+    <script src="allocationEngine.js" defer></script>
+    <script src="projectionEngine.js" defer></script>
+    <script src="taxEngine.js" defer></script>
+    <script src="spendingAnalysisEngine.js" defer></script>
+    <script src="smartsaveSnapshot.js" defer></script>
+    <script src="runtimeConfig.js" defer></script>
+    <script src="mvp-v2.js" defer></script>
+    <script src="app-pages.js" defer></script>
+    <script src="/dev-reload.js" defer></script>
+    <script>
+      localStorage.setItem("profileLastMain", "smartsave.html");
+    </script>
+</body>
+</html>

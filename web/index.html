@@ -57,7 +57,6 @@
       const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
       const NAME_INDEX_KEY = "smartsaveNameIndex";
       const PENDING_NAME_KEY = "smartsavePendingName";
-      const RECAP_PENDING_KEY = "smartsaveRecapPendingByUser";
       const form = document.querySelector(".landing-form");
       const firstNameInput = form?.querySelector("input[name='prenom']");
       const lastNameInput = form?.querySelector("input[name='nom']");
@@ -69,7 +68,7 @@
       const activeUser = safeParse(localStorage.getItem(STORAGE_KEY_ACTIVE_USER));
       const storedForms = safeParse(localStorage.getItem(STORAGE_KEY_FORM)) || {};
       if (activeUser?.id && (storedForms[activeUser.id] || storedForms.__default)) {
-        window.location.href = resolvePostLoginTarget(activeUser.id);
+        window.location.href = "mon-argent.html";
         return;
       }
 
@@ -86,7 +85,7 @@
           event.preventDefault();
           activateUser(match, firstName, lastName);
           cleanupPendingName();
-          window.location.href = resolvePostLoginTarget(match.id);
+          window.location.href = "mon-argent.html";
           return;
         }
 
@@ -103,16 +102,6 @@
         event.preventDefault();
         window.location.href = "formulaire.html";
       });
-
-      function resolvePostLoginTarget(userId) {
-        return isRecapPending(userId) ? "resultats.html" : "mon-argent.html";
-      }
-
-      function isRecapPending(userId) {
-        if (!userId) return false;
-        const map = safeParse(localStorage.getItem(RECAP_PENDING_KEY)) || {};
-        return Boolean(map?.[userId]);
-      }
 
       function findMatchingProfile(key) {
         if (!key) return null;
