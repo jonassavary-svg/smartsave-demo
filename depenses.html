@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
     <title>SmartSave – Dépenses</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
   </head>
   <body class="dashboard app-page" data-page="expenses-history" data-mvp>
@@ -50,7 +50,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                 </svg>
-                <span>Mes dépenses</span>
+                <span>Mois précédents</span>
               </a>
 
               <button type="button" data-user-action="edit">
@@ -74,11 +74,11 @@
               </svg>
             </button>
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
-              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Home</a>
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Actions</a>
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
+              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
-              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Score</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
             </div>
           </div>
         </div>
@@ -96,12 +96,6 @@
     </div>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-        </svg>
-        <span>Suivi</span>
-      </a>
       <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
@@ -109,11 +103,17 @@
         </svg>
         <span>SmartSave</span>
       </a>
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Suivi</span>
+      </a>
       <a class="bottom-nav__link" href="actions.html" data-nav="actions">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Actions</span>
+        <span>Home</span>
       </a>
       <a class="bottom-nav__link" href="future.html" data-nav="future">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -125,18 +125,18 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Score</span>
+        <span>Objectifs</span>
       </a>
     </nav>
 
-    <script src="financialScoreEngine.js" defer></script>
-    <script src="allocationEngine.js" defer></script>
-    <script src="projectionEngine.js" defer></script>
-    <script src="taxEngine.js" defer></script>
-    <script src="spendingAnalysisEngine.js" defer></script>
-    <script src="smartsaveSnapshot.js" defer></script>
-    <script src="mvp-v2.js" defer></script>
-    <script src="app-pages.js" defer></script>
+    <script src="financialScoreEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="projectionEngine.js?v=20260212-01" defer></script>
+    <script src="taxEngine.js?v=20260212-01" defer></script>
+    <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
+    <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260212-01" defer></script>
+    <script src="app-pages.js?v=20260212-01" defer></script>
     <script src="/dev-reload.js" defer></script>
 </body>
 </html>

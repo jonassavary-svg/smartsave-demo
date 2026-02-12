@@ -295,6 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const data = buildMvpData(formData, snapshot);
   renderScore(data.score);
   renderSituation(data, formData);
+  renderRecapSmartSaveAllocation(data);
   renderPlan(data, formData);
   renderProjection(data);
   renderSpendingAnalysis(data);
@@ -536,6 +537,9 @@ function renderSituation(data, formData) {
   setCurrency("[data-balance-liquidites]", liquidity);
   const netBalance = income - (totalExpenses + debtPayments);
   setCurrency("[data-balance-net]", netBalance);
+  const recapRest = income - fixed;
+  setCurrency("[data-recap-rest]", recapRest);
+  renderRecapFixedExpensesChart(income, fixed);
 
 
   const assets = formData.assets || {};
@@ -550,7 +554,7 @@ function renderSituation(data, formData) {
     savings: ["securitySavings", "savingsAccount", "emergencyFund", "savings", "epargne"],
     blocked: ["blocked", "securityBlocked", "blockedAccounts", "blockedAccount", "compteBloque"],
     tax: ["taxProvision", "impotsProvision", "provisionImpots", "impots", "taxesProvision"],
-    third: ["thirdPillarAmount", "thirdPillar", "pillar3", "pilier3a", "thirdPillarValue"],
+    third: ["pillar3a", "thirdPillarAmount", "thirdPillar", "pillar3", "pilier3a", "thirdPillarValue"],
     investments: ["investments", "investmentAccount", "portfolio", "portefeuille", "placements"],
   };
   const currentValue = accountValue(assetBuckets.current);
@@ -601,6 +605,80 @@ function renderSituation(data, formData) {
   const incomeEntries = buildIncomeBreakdownEntries(formData);
   renderIncomeDistribution(incomeEntries);
   data.spendingTotals = { fixed, variable, exceptional, total: totalExpenses };
+}
+
+function renderRecapFixedExpensesChart(income, fixed) {
+  const fill = document.querySelector("[data-recap-fixed-bar-fill]");
+  const note = document.querySelector("[data-recap-fixed-bar-note]");
+  if (!fill && !note) return;
+  const safeIncome = Math.max(0, toNumber(income));
+  const safeFixed = Math.max(0, toNumber(fixed));
+  const ratio = safeIncome > 0 ? safeFixed / safeIncome : 0;
+  const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+  if (fill) fill.style.width = `${percent}%`;
+  if (note) note.textContent = `${percent}% du revenu net`;
+}
+
+function renderRecapSmartSaveAllocation(data = {}) {
+  const donutNode = document.querySelector("[data-recap-allocation-donut]");
+  const totalNode = document.querySelector("[data-recap-allocation-total]");
+  const legendNode = document.querySelector("[data-recap-allocation-legend]");
+  if (!donutNode || !totalNode || !legendNode) return;
+
+  const allocations = data.allocation?.allocations || {};
+  const shortTermAccount = data.allocation?.shortTermAccount || data.allocation?.debug?.shortTermAccount || {};
+  const shortTermKey = String(shortTermAccount.key || "projetsCourtTerme").trim();
+  const longTermKey = "projetsLongTerme";
+  const labels = {
+    securite: "Sécurité",
+    projets: "Objectifs long terme",
+    [longTermKey]: "Objectifs long terme",
+    [shortTermKey]: shortTermAccount.label || `Compte ${shortTermAccount.name || "court terme"}`,
+    impots: "Impôts",
+    investissements: "Investissements",
+    pilier3a: "3e pilier",
+    dettes: "Dettes",
+  };
+  const palette = ["#1f3a8a", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#0f766e"];
+  const entries = Object.entries(allocations)
+    .map(([key, value]) => ({
+      key,
+      label: labels[key] || key,
+      amount: Math.max(0, toNumber(value)),
+    }))
+    .filter((entry) => entry.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 6);
+
+  const total = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  totalNode.textContent = formatCurrency(total);
+  if (!total) {
+    donutNode.style.setProperty("--recap-allocation-gradient", "conic-gradient(#e2e8f0 0 100%)");
+    legendNode.innerHTML = '<li><span><i class="recap-allocation__dot"></i>Aucune répartition ce mois</span><strong>—</strong></li>';
+    return;
+  }
+
+  let cursor = 0;
+  const gradients = entries.map((entry, index) => {
+    const share = (entry.amount / total) * 100;
+    const from = cursor;
+    const to = cursor + share;
+    cursor = to;
+    const color = palette[index % palette.length];
+    entry.color = color;
+    return `${color} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
+  });
+  donutNode.style.setProperty("--recap-allocation-gradient", `conic-gradient(${gradients.join(", ")})`);
+  legendNode.innerHTML = entries
+    .map(
+      (entry) => `
+        <li>
+          <span><i class="recap-allocation__dot" style="background:${entry.color}"></i>${entry.label}</span>
+          <strong>${formatCurrency(entry.amount)}</strong>
+        </li>
+      `
+    )
+    .join("");
 }
 
 function renderTaxProvisionWidget(info = {}) {
@@ -1040,7 +1118,7 @@ function renderPlan(data, formData = {}, options = {}) {
       ? "tes investissements"
       : entryMap.pilier3a
       ? "ton 3e pilier"
-      : "tes projets";
+      : "tes objectifs long terme";
     const savingsMention =
       savingsOverflow > 0
         ? ` (${formatCurrency(savingsBalance)} contre ${formatCurrency(savingsLimit)})`
@@ -2841,7 +2919,7 @@ function buildResilienceActions(baseline) {
   }
   return [
     "Alimente ton compte sécurité et vises 6 mois de charges fixes.",
-    `Réinvestis le surplus vers tes projets ou 3e pilier tout en surveillant la provision impôts (${formatCurrency(
+    `Réinvestis le surplus vers tes objectifs long terme ou 3e pilier tout en surveillant la provision impôts (${formatCurrency(
       baseline.taxMonthly
     )}).`,
     "Anticipe les échéances exceptionnelles et garde ton runway supérieur à 3 mois.",
@@ -3386,9 +3464,15 @@ function setupExpenseDetailsToggle() {
 
 function buildIncomeBreakdownEntries(formData = {}) {
   const incomes = ensureArray(formData.incomes?.entries);
+  const now = new Date();
   const entries = incomes
+    .filter((income) => {
+      const sourceType = String(income?.sourceType || "").toLowerCase();
+      const autoKind = String(income?.autoApplyKind || "").toLowerCase();
+      return sourceType !== "transaction" && autoKind !== "income";
+    })
     .map((income, index) => {
-      const monthly = getIncomeMonthlyAmount(income);
+      const monthly = getIncomeMonthlyAmount(income, { refDate: now, realistic13th: true });
       if (!monthly) return null;
       const label =
         income?.label ||
@@ -3449,7 +3533,7 @@ function renderIncomeDistribution(entries = []) {
   }
 }
 
-function getIncomeMonthlyAmount(entry = {}) {
+function getIncomeMonthlyAmount(entry = {}, options = {}) {
   const amount = toNumber(entry?.amount || entry?.montant);
   if (!amount) return 0;
   const type = String(entry?.amountType || "net").toLowerCase();
@@ -3459,7 +3543,21 @@ function getIncomeMonthlyAmount(entry = {}) {
   const hasThirteenth =
     entry?.thirteenth === true || entry?.thirteenth === "oui";
   const netMonthly = amount * coefficient;
-  return hasThirteenth ? (netMonthly * 13) / 12 : netMonthly;
+  if (!hasThirteenth) return netMonthly;
+
+  const realistic13th = options.realistic13th !== false;
+  if (!realistic13th) return (netMonthly * 13) / 12;
+
+  const rawMonth =
+    entry?.thirteenthMonth ??
+    entry?.thirteenthSalaryMonth ??
+    entry?.salary13Month ??
+    entry?.month13 ??
+    12;
+  const monthNumber = Math.max(1, Math.min(12, Number(rawMonth) || 12));
+  const refDate = options.refDate instanceof Date ? options.refDate : new Date();
+  const isBonusMonth = refDate.getMonth() + 1 === monthNumber;
+  return netMonthly + (isBonusMonth ? netMonthly : 0);
 }
 
 function getUserDisplayName(activeUser = {}, formData = {}) {
@@ -3712,15 +3810,68 @@ const ACCOUNT_PRIMARY_ASSET = {
   pillar3a: "pillar3a",
 };
 
+const ACCOUNT_ASSET_ALIASES = {
+  current: ["currentAccount", "compteCourant", "checking", "paymentAccount", "paymentBalance", "current"],
+  security: [
+    "securitySavings",
+    "securityBalance",
+    "savingsAccount",
+    "savings",
+    "epargne",
+    "security",
+  ],
+  tax: ["taxProvision", "impotsProvision", "provisionImpots", "impots", "taxesProvision", "tax"],
+  investments: ["investments", "investmentAccount", "portfolio", "portefeuille", "placements"],
+  pillar3a: ["pillar3a", "pilier3a", "thirdPillarAmount", "thirdPillar", "pillar3", "thirdPillarValue"],
+};
+
+function resolveAccountAssetKeys(accountKey) {
+  const normalizedKey = String(accountKey || "").trim();
+  if (!normalizedKey) return [];
+  const aliases = ACCOUNT_ASSET_ALIASES[normalizedKey];
+  if (Array.isArray(aliases) && aliases.length) return aliases;
+  const primary = ACCOUNT_PRIMARY_ASSET[normalizedKey] || normalizedKey;
+  return [primary];
+}
+
 function adjustProfileAsset(formData, accountKey, delta) {
   if (!formData) return;
   formData.assets = formData.assets || {};
-  const targetKey = ACCOUNT_PRIMARY_ASSET[accountKey] || accountKey;
   const normalized = Number.isFinite(delta) ? delta : toNumber(delta);
-  const nextValue =
-    (Number.isFinite(toNumber(formData.assets[targetKey])) ? toNumber(formData.assets[targetKey]) : 0) +
-    normalized;
-  formData.assets[targetKey] = Number.isFinite(nextValue) ? nextValue : 0;
+  if (!normalized) return;
+
+  const keys = resolveAccountAssetKeys(accountKey);
+  if (!keys.length) return;
+  const primaryKey = ACCOUNT_PRIMARY_ASSET[accountKey] || keys[0];
+
+  if (normalized > 0) {
+    const current = toNumber(formData.assets[primaryKey]);
+    formData.assets[primaryKey] = current + normalized;
+    return;
+  }
+
+  let remaining = Math.abs(normalized);
+  keys.forEach((key) => {
+    if (!remaining) return;
+    const current = Math.max(0, toNumber(formData.assets[key]));
+    if (!current) return;
+    const used = Math.min(current, remaining);
+    formData.assets[key] = current - used;
+    remaining -= used;
+  });
+
+  if (remaining > 0) {
+    const current = toNumber(formData.assets[primaryKey]);
+    formData.assets[primaryKey] = current - remaining;
+  }
+}
+
+function normalizeString(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function upsertProfileIncomeFromTransaction(entry, profile, amount) {
@@ -3766,7 +3917,13 @@ function applyTransactionToProfile(entry, profile) {
   if (!amount) return;
   if (entry.type === "income") {
     adjustProfileAsset(profile, entry.account || "current", amount);
-    upsertProfileIncomeFromTransaction(entry, profile, amount);
+    // Keep form income baseline stable: auto-generated monthly apply entries
+    // must not mutate recurring income settings.
+    const isAutoGeneratedMonthlyIncome =
+      Boolean(entry.autoGenerated) || Boolean(entry.autoApplyMonthId) || entry.autoApplyKind === "income";
+    if (!isAutoGeneratedMonthlyIncome) {
+      upsertProfileIncomeFromTransaction(entry, profile, amount);
+    }
   } else if (entry.type === "expense") {
     adjustProfileAsset(profile, entry.account || "current", -amount);
   } else if (entry.type === "transfer") {
@@ -3894,16 +4051,15 @@ function computeMonthlyIncome(formData = {}) {
     ? [formData.incomes.entries]
     : [];
   let total = 0;
+  const now = new Date();
   incomes.forEach((income = {}) => {
-    const amount = toNumber(income.amount);
-    if (!amount) return;
-    const type = String(income.amountType || "net").toLowerCase();
-    const status = String(income.employmentStatus || "").toLowerCase();
-    const coefficient =
-      type === "brut" ? (status.includes("indep") ? 0.75 : 0.86) : 1;
-    const hasThirteenth = income.thirteenth === true || income.thirteenth === "oui";
-    const netMonthly = amount * coefficient;
-    total += hasThirteenth ? (netMonthly * 13) / 12 : netMonthly;
+    const sourceType = String(income?.sourceType || "").toLowerCase();
+    const autoKind = String(income?.autoApplyKind || "").toLowerCase();
+    if (sourceType === "transaction" || autoKind === "income") return;
+    total += Math.max(
+      0,
+      toNumber(getIncomeMonthlyAmount(income, { refDate: now, realistic13th: true }))
+    );
   });
   const spouseIncome =
     toNumber(formData.incomes?.spouseNetIncome) ||
@@ -4069,7 +4225,9 @@ function formatAllocationLabel(key) {
     securite: "Compte épargne",
     impots: "Provision impôts",
     investissements: "Investissements",
-    projets: "Compte pour projets",
+    projets: "Compte long terme",
+    projetsLongTerme: "Compte long terme",
+    projetsCourtTerme: "Compte court terme",
     pilier3a: "3e pilier",
     bloque: "Épargne bloquée",
     compteCourant: "Compte courant",

@@ -3,23 +3,477 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-
-    <title>SmartSave – Actions</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta name="theme-color" content="#eef2ff" />
+    <script src="seed-data.js"></script>
+    <title>SmartSave - Home</title>
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
+    <style>
+      .home-dashboard-main {
+        display: grid;
+        gap: 16px;
+        padding-bottom: 110px;
+      }
+
+      .home-dashboard-grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .home-title-inline {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .home-title-inline [data-home-month] {
+        font: inherit;
+        color: inherit;
+      }
+
+      .home-today-hero {
+        display: grid;
+        gap: 12px;
+      }
+
+      .home-today-hero--center {
+        text-align: center;
+      }
+
+      .home-today-hero .card-header {
+        text-align: left;
+      }
+
+      .home-today-hero__line {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 12px;
+      }
+
+      .home-today-hero__value {
+        font-size: clamp(2rem, 4.8vw, 3.2rem);
+        font-weight: 800;
+        line-height: 1.1;
+        font-family: "Avenir Next", "SF Pro Display", "Segoe UI", sans-serif;
+        letter-spacing: -0.02em;
+      }
+
+      .home-today-hero__label {
+        font-size: 0.82rem;
+        color: #6b7280;
+      }
+
+      .home-today-hero__trend {
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .home-today-hero__trend.is-up { color: #047857; }
+      .home-today-hero__trend.is-down { color: #b91c1c; }
+      .home-today-hero__trend.is-flat { color: #6b7280; }
+
+      .home-budget__progress {
+        margin: 10px 0 8px;
+      }
+
+      .home-budget__line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.93rem;
+      }
+
+      .home-budget__msg {
+        margin: 8px 0 0;
+        font-size: 0.88rem;
+        font-weight: 600;
+      }
+
+      .home-budget__msg.is-ok { color: #047857; }
+      .home-budget__msg.is-warn { color: #b45309; }
+      .home-budget__msg.is-bad { color: #b91c1c; }
+
+      .home-row-actions {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .home-row-link {
+        font-size: 0.86rem;
+        color: #1d4ed8;
+        text-decoration: none;
+      }
+
+      .home-row-link:hover,
+      .home-row-link:focus-visible {
+        text-decoration: underline;
+      }
+
+      .home-plan__kpis {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin: 10px 0 0;
+      }
+
+      .home-plan__kpi {
+        padding: 10px;
+        border-radius: 12px;
+        background: #f8fafc;
+      }
+
+      .home-plan__kpi strong {
+        display: block;
+        font-size: 1.05rem;
+      }
+
+      .home-plan__kpi span {
+        font-size: 0.76rem;
+        color: #64748b;
+      }
+
+      .home-plan--link {
+        cursor: pointer;
+      }
+
+      .home-plan__line-main {
+        margin: 0;
+        font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+        font-weight: 800;
+        line-height: 1.12;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+      }
+
+      .home-plan__total-block {
+        margin-top: 0.45rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 0.58rem 0.7rem;
+      }
+
+      .home-plan__total-label {
+        margin: 0 0 0.2rem;
+        color: #64748b;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+      }
+
+      .home-plan__micro {
+        margin: 8px 0 0;
+        font-size: 0.78rem;
+        color: #64748b;
+      }
+
+      .home-plan__breakdown {
+        margin-top: 0.55rem;
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .home-plan__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.38rem 0.55rem;
+        background: #fff;
+      }
+
+      .home-plan__row-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.38rem;
+        min-width: 0;
+      }
+
+      .home-plan__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        display: inline-block;
+        flex: 0 0 auto;
+      }
+
+      .home-plan__dot--current { background: #0f172a; }
+      .home-plan__dot--security { background: #16a34a; }
+      .home-plan__dot--tax { background: #f59e0b; }
+      .home-plan__dot--pillar3a { background: #2563eb; }
+      .home-plan__dot--invest { background: #7c3aed; }
+
+      .home-plan__label {
+        font-size: 0.78rem;
+        color: #334155;
+        white-space: nowrap;
+      }
+
+      .home-plan__row-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        white-space: nowrap;
+      }
+
+      .home-plan__amount {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      .home-plan__pct {
+        font-size: 0.68rem;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        padding: 0.08rem 0.35rem;
+      }
+
+      .home-goals-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .home-goal-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+      }
+
+      .home-goal-item h4 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .home-goal-item p {
+        margin: 6px 0 0;
+        font-size: 0.86rem;
+        color: #475569;
+      }
+
+      .home-goal-diagnostic {
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      .home-goal-diagnostic.is-warn { color: #b45309; }
+      .home-goal-diagnostic.is-bad { color: #b91c1c; }
+      .home-goal-diagnostic.is-good { color: #047857; }
+
+      .home-accounts-list {
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 8px;
+      }
+
+      .home-accounts-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.92rem;
+      }
+
+      .home-accounts-list strong {
+        font-size: 0.95rem;
+      }
+
+      .home-quick-fixed {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 82px;
+        z-index: 35;
+        padding: 0 12px;
+      }
+
+      .home-quick-fixed__inner {
+        max-width: 840px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid #dbeafe;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+        border-radius: 16px;
+        padding: 10px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .home-quick-fixed .quick-action {
+        min-height: 48px;
+        padding: 10px;
+      }
+
+      .home-quick-fixed .quick-action__label {
+        font-size: 0.8rem;
+      }
+
+      body[data-page="home"] .bottom-nav__link[data-nav="actions"] { order: 2; }
+      body[data-page="home"] .bottom-nav__link[data-nav="home"] { order: 3; }
+
+      body[data-page="home"] .hub-modal__content {
+        width: min(92vw, 380px);
+        max-height: calc(100vh - 28px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+
+      body[data-page="home"] .hub-modal__header {
+        padding: 12px 14px;
+      }
+
+      body[data-page="home"] .hub-modal__form {
+        padding: 10px 14px 14px;
+        gap: 9px;
+      }
+
+      body[data-page="home"] .hub-field label {
+        font-size: 0.82rem;
+      }
+
+      body[data-page="home"] .hub-field input,
+      body[data-page="home"] .hub-field select {
+        min-height: 34px;
+        padding: 7px 9px;
+      }
+
+      body[data-page="home"] .hub-field {
+        padding: 8px 9px;
+        border-radius: 11px;
+        box-shadow: none;
+      }
+
+      @media (max-width: 760px) {
+        .home-plan__kpis {
+          grid-template-columns: 1fr;
+        }
+
+        .home-quick-fixed__inner {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          padding: 4px;
+          gap: 4px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+        }
+
+        .home-quick-fixed {
+          bottom: 74px;
+          padding: 0 8px;
+        }
+
+        .home-quick-fixed .quick-action {
+          min-height: 26px;
+          padding: 3px 6px;
+          border-radius: 6px;
+          box-shadow: none;
+        }
+
+        .home-quick-fixed .quick-action__label {
+          font-size: 0.66rem;
+          font-weight: 500;
+          line-height: 1;
+          letter-spacing: 0;
+          text-align: center;
+        }
+
+        .home-row-actions .cta {
+          min-height: 34px;
+          padding: 7px 10px;
+          border-radius: 9px;
+          font-size: 0.8rem;
+        }
+
+        .home-row-link {
+          font-size: 0.78rem;
+        }
+
+        .home-dashboard-main {
+          padding-bottom: 110px;
+        }
+
+        body[data-page="home"] .hub-modal {
+          align-items: flex-start;
+          padding: 10px 0;
+        }
+
+        body[data-page="home"] .hub-modal__content {
+          width: calc(100vw - 14px);
+          max-height: calc(100vh - 20px);
+          border-radius: 14px;
+          padding: 8px 10px 10px;
+          overflow-y: auto;
+        }
+
+        body[data-page="home"] .hub-modal__header {
+          margin-bottom: 6px;
+          padding: 2px 2px 6px;
+        }
+
+        body[data-page="home"] .hub-modal__form {
+          gap: 6px;
+          padding: 0 2px 2px;
+        }
+
+        body[data-page="home"] .hub-field {
+          padding: 6px 8px;
+          border-radius: 10px;
+        }
+
+        body[data-page="home"] .hub-field label {
+          font-size: 0.76rem;
+          line-height: 1.1;
+        }
+
+        body[data-page="home"] .hub-field input,
+        body[data-page="home"] .hub-field select {
+          min-height: 30px;
+          height: 30px;
+          padding: 4px 6px;
+          font-size: 0.86rem;
+        }
+
+        body[data-page="home"] .hub-field--inline {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+
+        body[data-page="home"] .hub-modal .hub-cta {
+          padding: 8px 10px;
+          min-height: 32px;
+          font-size: 0.86rem;
+        }
+      }
+    </style>
   </head>
-  <body class="dashboard app-page" data-page="actions" data-mvp>
+  <body class="dashboard app-page" data-page="home" data-mvp>
     <div class="dashboard-shell app-shell">
       <header class="dashboard-header app-header">
         <div class="brand-block">
-          <a class="logo" href="mon-argent.html">
+          <a class="logo" href="actions.html">
             <div class="logo-mark" aria-hidden="true">S</div>
             <span class="logo-text">SmartSave</span>
           </a>
           <span class="logo-subtitle">Personal Finance</span>
+        </div>
+
+        <div class="header-search">
+          <span class="header-search__icon" aria-hidden="true">🔍</span>
+          <input class="header-search__input" type="search" placeholder="Rechercher" aria-label="Rechercher">
         </div>
         <div class="header-actions">
           <div class="user-menu-wrapper">
@@ -47,7 +501,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                 </svg>
-                <span>Mes dépenses</span>
+                <span>Mois précédents</span>
               </a>
 
               <button type="button" data-user-action="edit">
@@ -71,52 +525,159 @@
               </svg>
             </button>
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
-              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Home</a>
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Actions</a>
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="actions">Suivi</a>
+              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="home">Home</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
-              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Score</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
             </div>
           </div>
         </div>
       </header>
 
-      <main class="app-main">
+      <main class="app-main home-dashboard-main" data-home-dashboard-root>
         <section class="page-title">
-          <h1>Monthly Actions</h1>
-          <p data-actions-month>December 2025</p>
+          <h1 class="home-title-inline">Home - <span data-home-month>mois annee</span></h1>
         </section>
 
-        <section class="actions-summary">
-          <div class="card progress-card">
-            <div>
-              <p class="card-label">Progress This Month</p>
-              <div class="progress-count">
-                <strong data-actions-done>0</strong> of <span data-actions-total>0</span>
-              </div>
-              <div class="progress-track">
-                <span class="progress-fill" data-actions-progress></span>
-              </div>
-              <small data-actions-progress-note>Great progress! Keep it up!</small>
-            </div>
-            <div class="progress-badge" data-actions-percent>0%</div>
+        <section class="card home-today-hero home-today-hero--center" aria-labelledby="home-today-title">
+          <div class="card-header">
+            <h3 id="home-today-title">Patrimoine total</h3>
           </div>
+          <div>
+            <div class="home-today-hero__value" data-home-total-wealth>CHF 0</div>
+          </div>
+          <div class="home-today-hero__trend is-flat" data-home-wealth-trend>0 ce mois</div>
         </section>
 
-        <section class="actions-list">
-          <h3>Your Actions</h3>
-          <ul class="action-list" data-actions-list></ul>
+        <section class="home-dashboard-grid">
+          <section class="card home-budget" aria-labelledby="home-budget-title">
+            <div class="card-header">
+              <h3 id="home-budget-title">Budget du mois</h3>
+            </div>
+            <div class="progress-track home-budget__progress">
+              <span class="progress-fill" data-home-budget-progress></span>
+            </div>
+            <p class="home-budget__line">
+              <strong data-home-budget-ratio>CHF 0 / CHF 0</strong>
+            </p>
+            <p class="home-budget__line">
+              <span>Reste :</span>
+              <strong data-home-budget-remaining>CHF 0</strong>
+            </p>
+            <p class="home-budget__msg is-ok" data-home-budget-message>Tu es dans ton budget.</p>
+            <div class="home-row-actions">
+              <a class="cta" href="mon-argent.html">Voir le suivi</a>
+              <a class="home-row-link" href="score.html">Modifier mes choix</a>
+            </div>
+          </section>
+
+          <section class="card home-plan home-plan--link" aria-labelledby="home-plan-title" data-home-plan-link data-home-plan-route="smartsave.html" tabindex="0" role="link">
+            <div class="card-header">
+              <h3 id="home-plan-title">Mon plan SmartSave</h3>
+            </div>
+            <div class="home-plan__total-block">
+              <p class="home-plan__total-label">Montant total réparti ce mois</p>
+              <p class="home-plan__line-main" data-home-plan-main><span data-home-plan-total>CHF 0</span></p>
+            </div>
+            <div class="home-plan__breakdown" data-home-plan-breakdown></div>
+            <p class="home-plan__micro" data-home-plan-micro>Inclut epargne, impots et 3e pilier</p>
+            <div class="home-row-actions">
+              <a class="cta" href="smartsave.html" data-home-plan-cta>Voir la repartition</a>
+            </div>
+          </section>
+
+          <section class="card home-goals" aria-labelledby="home-goals-title">
+            <div class="card-header">
+              <h3 id="home-goals-title">Mes objectifs</h3>
+            </div>
+            <div class="home-goals-grid">
+              <article class="home-goal-item">
+                <h4 data-home-goal-ct-name>Objectif CT</h4>
+                <p data-home-goal-ct-progress>0% • CHF 0 / CHF 0</p>
+                <div class="progress-track">
+                  <span class="progress-fill" data-home-goal-ct-bar></span>
+                </div>
+              </article>
+              <article class="home-goal-item">
+                <h4 data-home-goal-lt-name>Objectif LT</h4>
+                <p class="home-goal-diagnostic is-warn" data-home-goal-lt-diagnostic>A ce rythme: --</p>
+              </article>
+            </div>
+            <div class="home-row-actions">
+              <a class="cta" href="formulaire.html#objectifs">Gerer mes objectifs</a>
+            </div>
+          </section>
+
+          <section class="card home-accounts" aria-labelledby="home-accounts-title">
+            <div class="card-header">
+              <h3 id="home-accounts-title">Mes comptes</h3>
+            </div>
+            <ul class="home-accounts-list" data-home-accounts-list>
+              <li><span>Compte courant</span><strong>CHF 0</strong></li>
+            </ul>
+            <div class="home-row-actions">
+              <a class="cta" href="mon-argent.html?tab=comptes">Voir les comptes</a>
+            </div>
+          </section>
         </section>
       </main>
     </div>
 
+    <div class="hub-modal" data-quick-modal>
+      <div class="hub-modal__overlay" data-quick-close></div>
+      <div class="hub-modal__content" role="dialog" aria-modal="true" aria-labelledby="quick-modal-title">
+        <header class="hub-modal__header">
+          <h2 id="quick-modal-title">Ajouter une operation</h2>
+          <button class="hub-modal__close" type="button" data-quick-close aria-label="Fermer">x</button>
+        </header>
+        <form class="hub-modal__form" data-quick-form>
+          <div class="hub-field">
+            <label for="quick-amount">Montant (CHF)</label>
+            <input id="quick-amount" name="amount" type="number" min="0" step="1" placeholder="0" required />
+          </div>
+          <div class="hub-field" data-quick-field="category">
+            <label for="quick-category">Categorie</label>
+            <select id="quick-category" name="category">
+              <option value="">Selectionner</option>
+              <option value="Logement">Logement</option>
+              <option value="Transport">Transport</option>
+              <option value="Alimentation">Alimentation</option>
+              <option value="Sante">Sante</option>
+              <option value="Loisirs">Loisirs</option>
+              <option value="Autre">Autre</option>
+            </select>
+            <input id="quick-category-other" name="categoryOther" type="text" placeholder="Nom" data-quick-other="category" hidden />
+          </div>
+          <div class="hub-field" data-quick-field="account">
+            <label for="quick-account">Compte</label>
+            <select id="quick-account" name="account"></select>
+            <input id="quick-account-other" name="accountOther" type="text" placeholder="Nom du compte" data-quick-other="account" hidden />
+          </div>
+          <div class="hub-field hub-field--inline" data-quick-field="transfer">
+            <div>
+              <label for="quick-from">Compte source</label>
+              <select id="quick-from" name="from"></select>
+            </div>
+            <div>
+              <label for="quick-to">Compte destination</label>
+              <select id="quick-to" name="to"></select>
+            </div>
+          </div>
+          <div class="hub-field">
+            <label for="quick-date">Date</label>
+            <input id="quick-date" name="date" type="date" required />
+          </div>
+          <div class="hub-field">
+            <label for="quick-note">Note (optionnelle)</label>
+            <input id="quick-note" name="note" type="text" placeholder="Ex: courses" />
+          </div>
+          <button class="cta hub-cta" type="submit">Enregistrer</button>
+        </form>
+      </div>
+    </div>
+
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-        </svg>
-        <span>Home</span>
-      </a>
       <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
@@ -124,11 +685,17 @@
         </svg>
         <span>SmartSave</span>
       </a>
-      <a class="bottom-nav__link" href="actions.html" data-nav="actions">
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="actions">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Actions</span>
+        <span>Suivi</span>
+      </a>
+      <a class="bottom-nav__link" href="actions.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span>Home</span>
       </a>
       <a class="bottom-nav__link" href="future.html" data-nav="future">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -140,17 +707,22 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Score</span>
+        <span>Objectifs</span>
       </a>
     </nav>
 
-    <script src="financialScoreEngine.js" defer></script>
-    <script src="allocationEngine.js" defer></script>
-    <script src="projectionEngine.js" defer></script>
-    <script src="taxEngine.js" defer></script>
-    <script src="spendingAnalysisEngine.js" defer></script>
-    <script src="smartsaveSnapshot.js" defer></script>
-    <script src="mvp-v2.js" defer></script>
-    <script src="app-pages.js" defer></script>
+    <script src="financialScoreEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="projectionEngine.js?v=20260212-01" defer></script>
+    <script src="taxEngine.js?v=20260212-01" defer></script>
+    <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
+    <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260212-01" defer></script>
+    <script src="monthlyStore.js?v=20260212-01" defer></script>
+    <script src="app-pages.js?v=20260212-01" defer></script>
+    <script src="/dev-reload.js" defer></script>
+    <script>
+      localStorage.setItem("profileLastMain", "actions.html");
+    </script>
   </body>
 </html>

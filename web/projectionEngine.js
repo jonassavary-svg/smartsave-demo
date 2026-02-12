@@ -356,7 +356,8 @@
         return clamp(userEstimate, config.avs.minMonthly, config.avs.maxMonthly);
       }
       const grossAnnual = Math.max(0, computeGrossAnnual(context));
-      const annualNet = incomeInfo.monthlyNetIncome * 12;
+      const annualNet =
+        incomeInfo.monthlyNetIncome * 12 + Math.max(0, toNumber(incomeInfo.annualThirteenth || 0));
       const baseGross =
         grossAnnual > 0 ? grossAnnual : annualNet * approximateGrossCoefficient(context);
       const salaryGrowthRate = config.avs.salaryGrowthRate;
@@ -419,7 +420,10 @@
         )
       );
       const baseGrossAnnual = Math.max(0, computeGrossAnnual(context));
-      const fallbackGross = Math.max(0, incomeInfo.monthlyNetIncome * 12);
+      const fallbackGross = Math.max(
+        0,
+        incomeInfo.monthlyNetIncome * 12 + Math.max(0, toNumber(incomeInfo.annualThirteenth || 0))
+      );
       const startingGross = baseGrossAnnual > 0 ? baseGrossAnnual : fallbackGross;
       const minAffiliationSalary = lppConfig.minAffiliationSalary * occupationRate;
       const deduction = lppConfig.deductionCoordination * occupationRate;
@@ -702,6 +706,7 @@
     function computeIncome(context) {
       let monthlyNet = 0;
       let thirteenthBase = 0;
+      const thirteenthPayments = [];
       const personalStatus = (context.personal.employmentStatus || "").toLowerCase();
 
       context.incomes.forEach((income = {}) => {
@@ -720,8 +725,16 @@
 
         const netMonthly = amount * coefficient;
         if (hasThirteenth) {
-          monthlyNet += netMonthly * (13 / 12);
+          monthlyNet += netMonthly;
           thirteenthBase += netMonthly;
+          const rawMonth =
+            income?.thirteenthMonth ??
+            income?.thirteenthSalaryMonth ??
+            income?.salary13Month ??
+            income?.month13 ??
+            12;
+          const month = Math.max(1, Math.min(12, Number(rawMonth) || 12));
+          thirteenthPayments.push({ month, amount: netMonthly });
         } else {
           monthlyNet += netMonthly;
         }
@@ -729,9 +742,22 @@
 
       return {
         monthlyNetIncome: monthlyNet,
-        annualThirteenth: 0,
+        annualThirteenth: thirteenthBase,
         thirteenthReference: thirteenthBase,
+        thirteenthPayments,
       };
+    }
+
+    function computeThirteenthForMonth(incomeInfo = {}, iterationDate = new Date()) {
+      const month = (iterationDate instanceof Date ? iterationDate : new Date(iterationDate)).getMonth() + 1;
+      const payments = Array.isArray(incomeInfo.thirteenthPayments)
+        ? incomeInfo.thirteenthPayments
+        : [];
+      return payments.reduce((sum, item) => {
+        const paymentMonth = Math.max(1, Math.min(12, Number(item?.month) || 12));
+        if (paymentMonth !== month) return sum;
+        return sum + Math.max(0, toNumber(item?.amount));
+      }, 0);
     }
 
     function computeExpenses(context) {
@@ -739,8 +765,7 @@
       const variable = sumMonthly(context.expenses.variable);
       const exceptional =
         sumMonthly(context.expenses.exceptional) + sumMonthly(context.exceptionalAnnual);
-      const debts = context.loans.reduce((sum, loan) => {
-        const amount = toNumber(loan?.monthlyAmount || loan?.monthly || loan?.mensualite);
+      const debts = context.loans.reduce((sum, loan) => {        const amount = toNumber(loan?.monthlyAmount || loan?.monthly || loan?.mensualite);
         return sum + amount;
       }, 0);
 
@@ -802,7 +827,7 @@
       if (taxEngine && typeof taxEngine.calculateAnnualTax === "function") {
         taxData = taxEngine.calculateAnnualTax(context.raw || {});
       }
-      const annualIncome = incomeInfo.monthlyNetIncome * 12;
+      const annualIncome = incomeInfo.monthlyNetIncome * 12 + Math.max(0, toNumber(incomeInfo.annualThirteenth || 0));
       const householdTax =
         toNumber(taxData?.total) ||
         estimateAnnualTaxByBracket(
@@ -846,8 +871,12 @@
       iterationDate,
       strategyCallback
     ) {
+      const thirteenthIncome = computeThirteenthForMonth(incomeInfo, iterationDate);
+      trackThirteenth(scenario, thirteenthIncome);
       const available =
-        incomeInfo.monthlyNetIncome - expensesInfo.total +
+        incomeInfo.monthlyNetIncome +
+        thirteenthIncome -
+        expensesInfo.total +
         computeAdditionalSavings(context, iterationDate);
       noteMonthlyAvailable(scenario, available);
 

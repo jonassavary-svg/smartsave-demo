@@ -2,8 +2,25 @@
   const AllocationEngine = (function () {
     const THIRD_PILLAR_CAP_EMPLOYEE = 7056;
     const THIRD_PILLAR_CAP_SELF_EMPLOYED = 35280;
+    const GROWTH_PILLAR_SHARE = 0.6;
+    const SECURITY_MIN_FLOOR_CHF = 10000;
+    const SECURITY_INCOME_FLOOR_MULTIPLIER = 2;
 
     const LOW_CAPACITY_THRESHOLD = 300;
+    const SHORT_TERM_LABELS = {
+      vacances: "Vacances",
+      cadeaux: "Cadeaux",
+      voiture: "Voiture",
+      mariage: "Mariage",
+      autre: "Projet court terme",
+    };
+    const LONG_TERM_LABELS = {
+      security: "sécurité financière",
+      home: "achat immobilier",
+      invest: "investissement long terme",
+      children: "épargne pour enfants",
+      retirement: "retraite",
+    };
 
     function calculateAllocation(userData = {}) {
     const context = normaliseInput(userData);
@@ -11,17 +28,31 @@
 
     const monthlyNetIncome = computeMonthlyNetIncome(context);
     const monthlyExpenses = computeMonthlyExpenses(context);
+    const allocationPlan = normaliseAllocationPlan(context.allocationPlan);
+    const monthlyAvailableBeforePlan =
+      monthlyNetIncome -
+      (monthlyExpenses.fixed +
+        monthlyExpenses.variable +
+        monthlyExpenses.debts);
+    const leisureDeduction = Math.min(
+      Math.max(0, monthlyAvailableBeforePlan),
+      Math.max(0, toNumber(allocationPlan.leisureMonthly))
+    );
+    const shortTermPlan = buildShortTermPlan(allocationPlan.shortTerm);
+    const shortTermDeduction = Math.min(
+      Math.max(0, monthlyAvailableBeforePlan - leisureDeduction),
+      shortTermPlan.monthlyAmount
+    );
     context.debug = {
       monthlyNetIncome,
       monthlyExpenses,
+      monthlyAvailableBeforePlan: round2(monthlyAvailableBeforePlan),
+      leisureDeduction: round2(leisureDeduction),
+      shortTermDeduction: round2(shortTermDeduction),
     };
 
       let monthlyAvailable =
-        monthlyNetIncome -
-        (monthlyExpenses.fixed +
-          monthlyExpenses.variable +
-          monthlyExpenses.exceptional +
-          monthlyExpenses.debts);
+        monthlyAvailableBeforePlan - leisureDeduction - shortTermDeduction;
       if (context.overrideMonthlyAvailable != null) {
         monthlyAvailable = context.overrideMonthlyAvailable;
       }
@@ -34,7 +65,7 @@
         taxBalance: context.assets.taxProvision || 0,
         impotsProvisioned: 0,
         investments: 0,
-        projects: 0,
+        longTermProjects: 0,
         thirdPillar: 0,
         securityAdded: 0,
         debtsRepaid: 0,
@@ -70,12 +101,25 @@
       allocation.allocations.securite = round2(state.securityAdded);
       allocation.allocations.impots = round2(state.impotsProvisioned);
       allocation.allocations.investissements = round2(state.investments);
-      allocation.allocations.projets = round2(state.projects);
+      allocation.allocations.projetsLongTerme = round2(state.longTermProjects);
       allocation.allocations.pilier3a = round2(state.thirdPillar);
       allocation.allocations.dettes = round2(state.debtsRepaid);
+      allocation.allocations.projetsCourtTerme = round2(shortTermDeduction);
       allocation.objectifsFinances = state.goalsFunded;
       allocation.dettesDetail = state.debtActions;
       allocation.reste = round2(state.surplus);
+      allocation.shortTermAccount = {
+        key: "projetsCourtTerme",
+        name: shortTermPlan.name,
+        label: `Compte ${shortTermPlan.name}`,
+        amount: round2(shortTermDeduction),
+      };
+      allocation.longTermDiagnostic = buildLongTermDiagnostic(
+        allocationPlan.longTerm,
+        allocation.allocations
+      );
+      context.debug.shortTermAccount = allocation.shortTermAccount;
+      context.debug.longTermDiagnostic = allocation.longTermDiagnostic;
       allocation.debug = context.debug || {};
       root.SmartSaveDebug = allocation.debug;
 
@@ -146,6 +190,7 @@
         },
         investments: data.investments || {},
         goals: ensureArray(data.goals),
+        allocationPlan: data.allocationPlan || {},
         profile:
           data.profile ||
           data.personal?.priorityProfile ||
@@ -166,16 +211,15 @@
           if (!raw) return sum;
           const type = String(income?.amountType || "net").toLowerCase();
           const status = (income?.employmentStatus || personalStatus).toLowerCase();
-          const has13th = income?.thirteenth === "oui" || income?.thirteenth === true;
           const coefficient =
             type === "brut"
               ? status.includes("indep") || status.includes("indépendent")
                 ? 0.75
                 : 0.86
               : 1;
+          // Base SmartSave: revenu mensuel net, sans prise en compte du 13e.
           const netMonthly = raw * coefficient;
-          const annualised = has13th ? netMonthly * (13 / 12) : netMonthly;
-          return sum + annualised;
+          return sum + netMonthly;
         }, 0) + context.spouseIncome / 12
       );
     }
@@ -185,10 +229,114 @@
       const variable = sumMonthly(context.expenses.variable);
       const exceptional = sumMonthly(context.expenses.exceptional) + sumMonthly(context.exceptionalAnnual);
       const debts = context.loans.reduce((sum, loan) => {
-        const amount = toNumber(loan?.monthlyAmount || loan?.monthly || loan?.mensualite);
+        const amount = toNumber(
+          loan?.monthlyAmount || loan?.monthlyPayment || loan?.monthly || loan?.mensualite
+        );
         return sum + amount;
       }, 0);
       return { fixed, variable, exceptional, debts };
+    }
+
+    function normaliseAllocationPlan(plan) {
+      const source = plan && typeof plan === "object" ? plan : {};
+      const shortSource = source.shortTerm && typeof source.shortTerm === "object"
+        ? source.shortTerm
+        : {};
+      const longSource = source.longTerm && typeof source.longTerm === "object"
+        ? source.longTerm
+        : {};
+      return {
+        leisureMonthly: Math.max(0, toNumber(source.leisureMonthly || 0)),
+        shortTerm: {
+          enabled: Boolean(shortSource.enabled),
+          type: String(shortSource.type || "vacances").toLowerCase(),
+          horizonYears: Math.min(3, Math.max(1, toNumber(shortSource.horizonYears || 1))),
+          amount: Math.max(0, toNumber(shortSource.amount || 0)),
+          name: String(shortSource.name || shortSource.label || "").trim(),
+        },
+        longTerm: {
+          enabled: Boolean(longSource.enabled),
+          type: String(longSource.type || "security").toLowerCase(),
+          horizonYears: Math.min(30, Math.max(3, toNumber(longSource.horizonYears || 10))),
+          amount: Math.max(0, toNumber(longSource.amount || 0)),
+        },
+      };
+    }
+
+    function buildShortTermPlan(shortTerm = {}) {
+      const enabled = Boolean(shortTerm.enabled);
+      if (!enabled) {
+        return { enabled: false, name: "Objectif court terme", monthlyAmount: 0 };
+      }
+      const type = String(shortTerm.type || "vacances").toLowerCase();
+      const name = String(shortTerm.name || SHORT_TERM_LABELS[type] || "Objectif court terme");
+      const years = Math.max(1, toNumber(shortTerm.horizonYears || 1));
+      const target = Math.max(0, toNumber(shortTerm.amount || 0));
+      const monthlyAmount = target > 0 ? target / (years * 12) : 0;
+      return {
+        enabled: true,
+        name,
+        monthlyAmount: Math.max(0, monthlyAmount),
+      };
+    }
+
+    function buildLongTermDiagnostic(longTerm = {}, allocations = {}) {
+      const enabled = Boolean(longTerm?.enabled);
+      const type = String(longTerm?.type || "security").toLowerCase();
+      const targetAmount = Math.max(0, toNumber(longTerm?.amount || 0));
+      const horizonYears = Math.max(3, toNumber(longTerm?.horizonYears || 10));
+      if (!enabled || targetAmount <= 0) {
+        return {
+          enabled: false,
+          type,
+          targetAmount,
+          horizonYears,
+          monthlyContribution: 0,
+          estimatedYears: null,
+          onTrack: null,
+          message: "Aucun objectif long terme actif.",
+        };
+      }
+
+      const monthlyContribution = resolveLongTermMonthlyContribution(type, allocations);
+      const label = LONG_TERM_LABELS[type] || "objectif long terme";
+      if (monthlyContribution <= 0) {
+        return {
+          enabled: true,
+          type,
+          targetAmount,
+          horizonYears,
+          monthlyContribution: 0,
+          estimatedYears: null,
+          onTrack: false,
+          message: `A ce rythme, l'objectif ${label} n'est pas finançable.`,
+        };
+      }
+
+      const estimatedYears = targetAmount / monthlyContribution / 12;
+      const roundedYears = round2(estimatedYears);
+      const onTrack = estimatedYears <= horizonYears + 1e-6;
+      return {
+        enabled: true,
+        type,
+        targetAmount: round2(targetAmount),
+        horizonYears: round2(horizonYears),
+        monthlyContribution: round2(monthlyContribution),
+        estimatedYears: roundedYears,
+        onTrack,
+        message: `A ce rythme, l'objectif ${label} sera atteint en ${roundedYears} ans.`,
+      };
+    }
+
+    function resolveLongTermMonthlyContribution(type, allocations = {}) {
+      const safe = (key) => Math.max(0, toNumber(allocations?.[key] || 0));
+      if (type === "security") return safe("securite");
+      if (type === "home" || type === "children") {
+        return safe("projetsLongTerme") || safe("projets");
+      }
+      if (type === "invest") return safe("investissements");
+      if (type === "retirement") return safe("investissements") + safe("pilier3a");
+      return safe("investissements") + (safe("projetsLongTerme") || safe("projets"));
     }
 
     function sumMonthly(list) {
@@ -276,11 +424,11 @@
 
     function runLowCapacityPlan(context, monthlyExpenses, fiscalInfo, state, allocation, monthlyNetIncome) {
       const fixedMonthly = monthlyExpenses.fixed;
-      const currentTarget = Math.max(0, fixedMonthly);
+      const obligatoryMonthly = monthlyExpenses.variable;
+      const currentTarget = Math.max(0, fixedMonthly + obligatoryMonthly * 0.5);
       const totalMonthlyOutflow =
         monthlyExpenses.fixed +
         monthlyExpenses.variable +
-        monthlyExpenses.exceptional +
         monthlyExpenses.debts;
       const savingsTargets = computeSavingsTargets(
         context,
@@ -315,11 +463,11 @@
       monthlyNetIncome
     ) {
       const fixedMonthly = monthlyExpenses.fixed;
-      const currentTarget = Math.max(0, fixedMonthly);
+      const obligatoryMonthly = monthlyExpenses.variable;
+      const currentTarget = Math.max(0, fixedMonthly + obligatoryMonthly * 0.5);
       const totalMonthlyOutflow =
         monthlyExpenses.fixed +
         monthlyExpenses.variable +
-        monthlyExpenses.exceptional +
         monthlyExpenses.debts;
       const savingsTargets = computeSavingsTargets(
         context,
@@ -350,7 +498,8 @@
         state,
         allocation,
         savingsTargets,
-        currentTarget
+        currentTarget,
+        pillarStatus
       );
       if (state.surplus <= 0) return;
 
@@ -447,16 +596,23 @@
       );
       if (personalStatus.includes("indep") || personalStatus.includes("indépend")) months += 0.5;
       if (!hasThirteenth) months += 0.5;
-      if (toNumber(context.assets?.securityBalance) < monthlyNetIncome) months += 0.5;
       const debtMonthly = monthlyExpenses.debts;
       const debtRatio = monthlyNetIncome > 0 ? debtMonthly / monthlyNetIncome : 0;
       if (debtRatio > 0.15) months += 0.5;
       months = Math.min(6, months);
-      const targetAmount = totalMonthlyOutflow * months;
+      const baseTargetAmount = totalMonthlyOutflow * months;
+      const floorByIncome = Math.max(
+        0,
+        monthlyNetIncome * SECURITY_INCOME_FLOOR_MULTIPLIER
+      );
+      const securityFloor = Math.max(SECURITY_MIN_FLOOR_CHF, floorByIncome);
+      const targetAmount = Math.max(baseTargetAmount, securityFloor);
       const hardStopAmount = totalMonthlyOutflow * 8;
 
       return {
         targetMonths: months,
+        baseTargetAmount,
+        securityFloor,
         targetAmount,
         hardStopAmount,
       };
@@ -506,8 +662,9 @@
     function buildThirdPillarStatus(context, state, monthlyNetIncome) {
       const status = (context.personal.employmentStatus || "").toLowerCase();
       const annualIncome = Math.max(0, monthlyNetIncome * 12);
+      const selfEmployedCap = Math.min(annualIncome * 0.2, THIRD_PILLAR_CAP_SELF_EMPLOYED);
       const baseCap = status.includes("indep")
-        ? Math.min(annualIncome * 0.2, THIRD_PILLAR_CAP_SELF_EMPLOYED)
+        ? Math.max(THIRD_PILLAR_CAP_EMPLOYEE, selfEmployedCap)
         : THIRD_PILLAR_CAP_EMPLOYEE;
       const cap = Math.max(0, baseCap);
       const maxAllowed = cap * 1.2;
@@ -531,16 +688,23 @@
 
       const coverage = statusInfo.cap > 0 ? statusInfo.totalContributed / statusInfo.cap : 0;
       let factor = 0;
-      if (coverage < 0.2) factor = 0.15;
-      else if (coverage < 0.3) factor = 0.25;
-      else if (coverage < 1.2) factor = 0.4;
+      if (coverage < 0.2) factor = 0.4;
+      else if (coverage < 0.6) factor = 0.55;
+      else if (coverage < 1.2) factor = 0.65;
       else factor = 0;
 
       if (factor > 0) {
         const remainingToCap = Math.max(0, statusInfo.cap - statusInfo.totalContributed);
         const remainingToMax = Math.max(0, statusInfo.maxAllowed - statusInfo.totalContributed);
         const eligibleTarget = remainingToCap > 0 ? remainingToCap : remainingToMax;
-        const amount = Math.min(state.surplus * factor, eligibleTarget);
+        const floorTarget = Math.min(
+          eligibleTarget,
+          Math.max(0, Math.min(300, state.surplus * 0.2))
+        );
+        const amount = Math.min(
+          eligibleTarget,
+          Math.max(floorTarget, state.surplus * factor)
+        );
         if (amount > 0) {
           allocateAmount(amount, "pilier3a", state, allocation, (value) => {
             state.thirdPillar += value;
@@ -556,7 +720,54 @@
       return statusInfo;
     }
 
-    function allocateInvestments(state, allocation, savingsTargets, currentTarget) {
+    function allocateGrowthSplit(
+      state,
+      allocation,
+      pillarStatusInfo,
+      totalAmount,
+      pillarShare = GROWTH_PILLAR_SHARE
+    ) {
+      const chunk = Math.min(Math.max(0, toNumber(totalAmount)), state.surplus);
+      if (chunk <= 0) return;
+
+      const share = Math.max(0, Math.min(1, toNumber(pillarShare)));
+      let pillarAllocated = 0;
+      const canAllocatePillar =
+        pillarStatusInfo &&
+        toNumber(pillarStatusInfo.maxAllowed) > 0 &&
+        !pillarStatusInfo.reachedMax;
+
+      if (canAllocatePillar && share > 0) {
+        const pillarCapacity = Math.max(
+          0,
+          toNumber(pillarStatusInfo.maxAllowed) - toNumber(pillarStatusInfo.totalContributed)
+        );
+        const pillarTarget = Math.min(chunk * share, pillarCapacity);
+        if (pillarTarget > 0) {
+          allocateAmount(pillarTarget, "pilier3a", state, allocation, (value) => {
+            state.thirdPillar += value;
+            state.surplus -= value;
+          });
+          pillarAllocated = pillarTarget;
+          pillarStatusInfo.totalContributed += pillarTarget;
+          pillarStatusInfo.reachedCap =
+            pillarStatusInfo.totalContributed >= (pillarStatusInfo.cap || 0) - 1e-6;
+          pillarStatusInfo.reachedMax =
+            pillarStatusInfo.totalContributed >= (pillarStatusInfo.maxAllowed || 0) - 1e-6;
+          state.pillarCapReached = pillarStatusInfo.reachedCap;
+        }
+      }
+
+      const investAmount = Math.min(chunk - pillarAllocated, state.surplus);
+      if (investAmount > 0) {
+        allocateAmount(investAmount, "investissements", state, allocation, (value) => {
+          state.investments += value;
+          state.surplus -= value;
+        });
+      }
+    }
+
+    function allocateInvestments(state, allocation, savingsTargets, currentTarget, pillarStatusInfo) {
       if (state.surplus <= 0) return;
       const currentCoverage = currentTarget > 0 ? state.accountBalance / currentTarget : 1;
       const savingsCoverage = savingsTargets.targetAmount > 0
@@ -585,11 +796,7 @@
 
       const amount = Math.min(state.surplus * factor, state.surplus);
       if (amount <= 0) return;
-
-      allocateAmount(amount, "investissements", state, allocation, (value) => {
-        state.investments += value;
-        state.surplus -= value;
-      });
+      allocateGrowthSplit(state, allocation, pillarStatusInfo, amount);
     }
 
     function distributeBonusRemainder(
@@ -691,29 +898,7 @@
 
         const pillarStatusInfo =
           pillarStatus || buildThirdPillarStatus(context, state, monthlyNetIncome);
-        const pillarCapacity = Math.max(
-          0,
-          (pillarStatusInfo?.maxAllowed || 0) - (pillarStatusInfo?.totalContributed || 0)
-        );
-        if (pillarCapacity > 1e-6) {
-          const amount = Math.min(pillarCapacity, state.surplus);
-          allocateAmount(amount, "pilier3a", state, allocation, (value) => {
-            state.thirdPillar += value;
-            state.surplus -= value;
-          });
-          pillarStatusInfo.totalContributed += amount;
-          pillarStatusInfo.reachedCap =
-            pillarStatusInfo.totalContributed >= (pillarStatusInfo.cap || 0) - 1e-6;
-          pillarStatusInfo.reachedMax =
-            pillarStatusInfo.totalContributed >= (pillarStatusInfo.maxAllowed || 0) - 1e-6;
-          state.pillarCapReached = pillarStatusInfo.reachedCap;
-          continue;
-        }
-
-        allocateAmount(state.surplus, "investissements", state, allocation, (value) => {
-          state.investments += value;
-          state.surplus -= value;
-        });
+        allocateGrowthSplit(state, allocation, pillarStatusInfo, state.surplus);
         break;
       }
       state.surplus = Math.max(0, state.surplus);
@@ -752,7 +937,7 @@
           } else if (type === "croissance") {
             state.investments += value;
           } else {
-            state.projects += value;
+            state.longTermProjects += value;
           }
           state.surplus -= value;
         });
@@ -797,8 +982,8 @@
           state.surplus -= value;
         });
       } else if (normalized.includes("projet")) {
-        allocateAmount(available, "projets", state, allocation, (value) => {
-          state.projects += value;
+        allocateAmount(available, "projetsLongTerme", state, allocation, (value) => {
+          state.longTermProjects += value;
           state.surplus -= value;
         });
       } else if (normalized.includes("croiss")) {
@@ -899,7 +1084,7 @@
           impots: 0,
           securite: 0,
           pilier3a: 0,
-          projets: 0,
+          projetsLongTerme: 0,
           investissements: 0,
           dettes: 0,
         },
@@ -929,7 +1114,7 @@
     function goalAllocationKey(type) {
       if (type === "securite") return "securite";
       if (type === "croissance") return "investissements";
-      return "projets";
+      return "projetsLongTerme";
     }
 
     function monthsUntilFiscalDeadline(referenceDate) {

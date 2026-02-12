@@ -23,6 +23,9 @@
       const fallbackExpenses = personalIncome.monthly > 0 ? personalIncome.monthly * 0.7 : 0;
       const useFallbackExpenses = expenseData.total <= 0 && fallbackExpenses > 0;
       const monthlyExpenses = useFallbackExpenses ? fallbackExpenses : expenseData.total;
+      const hasShortTermPlan =
+        Boolean(formData?.allocationPlan?.shortTerm?.enabled) &&
+        toNumber(formData?.allocationPlan?.shortTerm?.amount) > 0;
       const spendingRatio =
         personalIncome.monthly > 0 && Number.isFinite(monthlyExpenses)
           ? monthlyExpenses / personalIncome.monthly
@@ -35,7 +38,8 @@
           : null;
 
       const liquidAssets = computeLiquidAssets(formData.assets);
-      const safetyMonths = monthlyExpenses > 0 ? liquidAssets.total / monthlyExpenses : 0;
+      const essentialMonthlyOutflow = Math.max(0, monthlyExpenses + debtData.monthlyPayments);
+      const safetyMonths = essentialMonthlyOutflow > 0 ? liquidAssets.total / essentialMonthlyOutflow : 0;
 
       const autoSavingsMonthly = computeAutomaticSavings(formData.assets);
       const autoSavingsRatio =
@@ -87,7 +91,9 @@
 
       const globalScore = computeGeometricMean(pillars);
       const level = determineLevel(globalScore);
-      const recommandations = buildRecommendations(pillars, taxDetails.metrics);
+      const recommandations = buildRecommendations(pillars, taxDetails.metrics, {
+        hasShortTermPlan,
+      });
 
       return {
         score: globalScore,
@@ -105,6 +111,7 @@
         metrics: {
           monthlyNetIncome: personalIncome.monthly,
           monthlyExpenses,
+          monthlyEssentialOutflow: essentialMonthlyOutflow,
           expensesFallbackApplied: useFallbackExpenses,
           safetyMonths,
           debtRatio,
@@ -173,7 +180,8 @@
     function computeMonthlyExpenses(expenses = {}) {
       const fixed = sumMonthly(expenses.fixed);
       const variable = sumMonthly(expenses.variable);
-      const exceptional = sumMonthly(expenses.exceptional);
+      // Exceptional/CT are not part of score pressure in the new flow.
+      const exceptional = 0;
 
       return {
         total: fixed + variable + exceptional,
@@ -192,7 +200,7 @@
       let outstanding = 0;
       loans.forEach((loan = {}) => {
         monthlyPayments += toNumber(
-          loan.monthlyAmount || loan.monthly || loan.mensualite
+          loan.monthlyAmount || loan.monthlyPayment || loan.monthly || loan.mensualite
         );
         outstanding += toNumber(loan.outstanding);
       });
@@ -762,8 +770,9 @@
       return entry.label;
     }
 
-    function buildRecommendations(pillars, taxMetrics = {}) {
+    function buildRecommendations(pillars, taxMetrics = {}, options = {}) {
       const recs = [];
+      const hasShortTermPlan = Boolean(options?.hasShortTermPlan);
 
       const security = pillars.securite || {};
       const anticipation = pillars.anticipation || {};
@@ -778,7 +787,11 @@
         if (safetyMonths < 1) {
           recs.push("Constitue en priorité un mois de dépenses sur un compte facilement accessible.");
         } else if (Number.isFinite(spendingRatio) && spendingRatio > 0.9) {
-          recs.push("Resserre tes dépenses récurrentes pour rester sous 80 % de ton revenu net.");
+          recs.push(
+            hasShortTermPlan
+              ? "Préserve ton plan court terme et ajuste d'abord les charges fixes/obligatoires pour rester sous 80 % du revenu net."
+              : "Resserre tes dépenses récurrentes pour rester sous 80 % de ton revenu net."
+          );
         } else if (Number.isFinite(debtRatio) && debtRatio > 0.25) {
           recs.push("Allège tes dettes pour ramener les mensualités sous 15 % de ton revenu.");
         } else if (autoSavingsRatio < 0.04) {
@@ -809,7 +822,11 @@
       }
 
       if (!recs.length) {
-        recs.push("Ta structure financière est équilibrée : continue sur cette lancée.");
+        recs.push(
+          hasShortTermPlan
+            ? "Ta structure financière est équilibrée et ton objectif court terme est planifié : continue sur cette lancée."
+            : "Ta structure financière est équilibrée : continue sur cette lancée."
+        );
       }
 
       return recs;

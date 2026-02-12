@@ -2,13 +2,28 @@
   // LocalStorage is scoped per origin (host+port). Changing the preview URL resets data visibility.
   const TRANSACTIONS_KEY = "transactions";
   const MONTH_STATE_KEY = "smartsaveMonthState";
+  const ACTIONS_STORAGE_KEY = "smartsaveHubActionState";
+  const VARIABLE_BUDGET_SETTINGS_KEY = "smartsaveVariableBudgetSettings";
+  const PENDING_MON_ARGENT_ACTION_KEY = "smartsavePendingMonArgentAction";
   const ACCOUNT_LABELS = {
     current: "Compte courant",
     security: "Compte épargne",
     tax: "Provision impôts",
+    projects: "Objectif court terme",
     investments: "Investissements",
     pillar3a: "3e pilier",
     growth: "Investissements",
+  };
+  const OVERVIEW_PRIMARY_METRIC_KEY = "smartsaveOverviewPrimaryMetric";
+  const OVERVIEW_METRIC_CONFIG = {
+    available: {
+      label: "Total disponible",
+      note: "Compte courant en temps réel",
+    },
+    networth: {
+      label: "Patrimoine total",
+      note: "Somme de tous tes comptes",
+    },
   };
 
   const loadJson = (key, fallback) => {
@@ -27,6 +42,27 @@
       // ignore storage issues
     }
   };
+
+  const readOverviewPrimaryMetric = () => {
+    try {
+      const raw = String(localStorage.getItem(OVERVIEW_PRIMARY_METRIC_KEY) || "").trim();
+      if (raw === "networth") return "networth";
+      return "available";
+    } catch (_error) {
+      return "available";
+    }
+  };
+
+  const saveOverviewPrimaryMetric = (metric) => {
+    const safeMetric = metric === "networth" ? "networth" : "available";
+    try {
+      localStorage.setItem(OVERVIEW_PRIMARY_METRIC_KEY, safeMetric);
+    } catch (_error) {
+      // ignore storage issues
+    }
+  };
+
+  let overviewPrimaryMetric = readOverviewPrimaryMetric();
 
   const toNumber = (value) => {
     if (typeof window.toNumber === "function") return window.toNumber(value);
@@ -58,6 +94,21 @@
     const amount = Number.isFinite(value) ? value : toNumber(value);
     const formatted = formatCurrency(Math.abs(amount));
     return amount < 0 ? `-${formatted}` : `+${formatted}`;
+  };
+
+  const formatChfSuffix = (value) => {
+    const amount = Number.isFinite(value) ? value : toNumber(value);
+    const rounded = Math.round(amount || 0);
+    return `${new Intl.NumberFormat("fr-CH", {
+      maximumFractionDigits: 0,
+    }).format(rounded)} CHF`;
+  };
+
+  const formatNumberCompact = (value) => {
+    const amount = Number.isFinite(value) ? value : toNumber(value);
+    return new Intl.NumberFormat("fr-CH", {
+      maximumFractionDigits: 0,
+    }).format(Math.round(amount || 0));
   };
 
   const ensureArray = (value) => (Array.isArray(value) ? value : value ? [value] : []);
@@ -114,7 +165,76 @@
     return new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric" }).format(date);
   };
 
+  const loadVariableBudgetSettings = () => {
+    const settings = loadJson(VARIABLE_BUDGET_SETTINGS_KEY, {});
+    return settings && typeof settings === "object" ? settings : {};
+  };
+
+  const getUserVariableBudgetSetting = (userId) => {
+    const key = String(userId || "").trim();
+    if (!key) return { customAmount: null };
+    const settings = loadVariableBudgetSettings();
+    const value = settings[key];
+    if (!value || typeof value !== "object") {
+      return { customAmount: null };
+    }
+    return {
+      customAmount:
+        value.customAmount == null ? null : Math.max(0, toNumber(value.customAmount)),
+    };
+  };
+
+  const saveUserVariableBudgetSetting = (userId, nextValue = {}) => {
+    const key = String(userId || "").trim();
+    if (!key) return;
+    const settings = loadVariableBudgetSettings();
+    settings[key] = {
+      customAmount:
+        nextValue.customAmount == null ? null : Math.max(0, toNumber(nextValue.customAmount)),
+    };
+    saveJson(VARIABLE_BUDGET_SETTINGS_KEY, settings);
+  };
+
+  const resolveVariableBudgetChoice = (baseBudget, maxBudget, setting = {}) => {
+    const safeBase = Math.max(0, toNumber(baseBudget));
+    const safeMax = Math.max(0, toNumber(maxBudget));
+    const customAmount =
+      setting.customAmount == null ? null : Math.max(0, toNumber(setting.customAmount));
+    const selectedBudget = Math.max(
+      0,
+      Math.min(
+        safeMax,
+        customAmount == null ? safeBase : customAmount
+      )
+    );
+    return {
+      selectedBudget,
+      baseBudget: safeBase,
+      maxBudget: safeMax,
+    };
+  };
+
   const normalizeLabel = (value) => String(value || "").trim().toLowerCase();
+
+  const getCategoryEmoji = (label) => {
+    const value = normalizeLabel(label);
+    if (!value) return "💸";
+    if (value.includes("resto") || value.includes("restaurant") || value.includes("cafe")) return "🍔";
+    if (value.includes("transport") || value.includes("uber") || value.includes("taxi")) return "🚕";
+    if (value.includes("shopping") || value.includes("mode") || value.includes("vetement")) return "🛍️";
+    if (value.includes("supermar") || value.includes("courses") || value.includes("epicerie"))
+      return "🛒";
+    if (value.includes("sante") || value.includes("santé") || value.includes("pharma"))
+      return "💊";
+    if (value.includes("loisir") || value.includes("sortie") || value.includes("cinema"))
+      return "🎟️";
+    if (value.includes("abonnement") || value.includes("subscription")) return "📺";
+    if (value.includes("voyage") || value.includes("vacance")) return "✈️";
+    if (value.includes("sport") || value.includes("fitness")) return "🏋️";
+    if (value.includes("enfant") || value.includes("ecole") || value.includes("école"))
+      return "🎒";
+    return "💸";
+  };
 
   const loadTransactions = () => {
     const list = Array.isArray(loadJson(TRANSACTIONS_KEY, []))
@@ -127,12 +247,15 @@
   };
 
   const saveTransactions = (items) => saveJson(TRANSACTIONS_KEY, items);
+  const getMonthlyStore = () => window.SmartSaveMonthlyStore || null;
 
   const loadActiveUser = () => {
     if (typeof window.loadActiveUser === "function") return window.loadActiveUser();
     const data = loadJson("smartsaveActiveUser", null);
     return data?.id ? data : null;
   };
+
+  const PROFILE_VERSION_KEY = "smartsaveProfileVersion";
 
   const loadUserForm = (userId) => {
     if (typeof window.loadUserForm === "function") return window.loadUserForm(userId);
@@ -183,6 +306,7 @@
     ]);
 
     const pillar3a = sumKeys([
+      "pillar3a",
       "thirdPillarAmount",
       "thirdPillar",
       "pillar3",
@@ -190,13 +314,31 @@
       "thirdPillarValue",
     ]);
 
-    return { current, security, tax, investments, pillar3a };
+    const projects = sumKeys([
+      "projects",
+      "projectAccount",
+      "shortTermAccount",
+      "shortTermGoal",
+      "projetsCourtTerme",
+      "projets",
+      "compteCourtTerme",
+    ]);
+
+    return { current, security, tax, investments, pillar3a, projects };
   };
 
-  const getAccountTargets = (data = {}) => {
+  const getAccountTargets = (data = {}, formData = {}) => {
     const allocations = data?.allocation?.allocations || {};
     const debug = data?.allocation?.debug || {};
     const savingsTargets = debug.savingsTargets || {};
+    const shortTermPlan = formData?.allocationPlan?.shortTerm || {};
+    const shortTermEnabled = shortTermPlan?.enabled !== false;
+    const shortTermTarget = shortTermEnabled
+      ? Math.max(0, toNumber(shortTermPlan.amount || 0))
+      : 0;
+    const shortTermName = String(
+      shortTermPlan.name || data?.allocation?.shortTermAccount?.name || "Objectif court terme"
+    ).trim();
     return {
       currentTarget: Math.max(0, toNumber(debug.currentTarget)),
       securityTarget: Math.max(0, toNumber(savingsTargets.targetAmount)),
@@ -214,11 +356,13 @@
         0,
         toNumber(allocations.investissements) + toNumber(allocations.pilier3a)
       ),
+      shortTermTarget,
+      shortTermName,
     };
   };
 
-  const buildAccountModels = (balances = {}, data = {}) => {
-    const targets = getAccountTargets(data);
+  const buildAccountModels = (balances = {}, data = {}, formData = {}) => {
+    const targets = getAccountTargets(data, formData);
     const accounts = [];
 
     accounts.push({
@@ -227,7 +371,7 @@
       type: "Courant",
       balance: balances.current,
       target: targets.currentTarget,
-      targetLabel: "Cible SmartSave",
+      targetLabel: "Objectif SmartSave",
     });
 
     accounts.push({
@@ -236,7 +380,7 @@
       type: "Épargne",
       balance: balances.security,
       target: targets.securityTarget,
-      targetLabel: "Cible SmartSave",
+      targetLabel: "Objectif SmartSave",
     });
 
     accounts.push({
@@ -245,8 +389,20 @@
       type: "Impôts",
       balance: balances.tax,
       target: targets.taxTarget,
-      targetLabel: "Cible SmartSave",
+      targetLabel: "Objectif SmartSave",
     });
+
+    const hasProjects = toNumber(balances.projects) > 0 || targets.shortTermTarget > 0;
+    if (hasProjects) {
+      accounts.push({
+        key: "projects",
+        label: targets.shortTermName || "Objectif court terme",
+        type: "Objectif",
+        balance: balances.projects,
+        target: targets.shortTermTarget,
+        targetLabel: "Objectif court terme",
+      });
+    }
 
     const hasInvestments = toNumber(balances.investments) > 0 || targets.monthlyInvest > 0;
     const hasPillar = toNumber(balances.pillar3a) > 0 || targets.monthlyPillar > 0;
@@ -258,7 +414,7 @@
         type: "Investissement",
         balance: balances.investments,
         target: targets.monthlyInvest,
-        targetLabel: "Cible mensuelle",
+        targetLabel: "Objectif SmartSave",
       });
     }
 
@@ -269,7 +425,7 @@
         type: "3e pilier",
         balance: balances.pillar3a,
         target: targets.monthlyPillar,
-        targetLabel: "Cible mensuelle",
+        targetLabel: "Objectif SmartSave",
       });
     }
 
@@ -280,71 +436,262 @@
         type: "Investissement",
         balance: toNumber(balances.investments) + toNumber(balances.pillar3a),
         target: targets.monthlyGrowth,
-        targetLabel: "Cible mensuelle",
+        targetLabel: "Objectif SmartSave",
       });
     }
 
     return accounts;
   };
 
-  const renderAccountsOverview = (balances = {}, data = {}) => {
-    const container = document.querySelector("[data-home-accounts]");
-    if (!container) return;
-    const accounts = buildAccountModels(balances, data);
-    if (!accounts.length) {
-      container.innerHTML = '<div class="mini-card">Aucun compte disponible.</div>';
+  const renderOverviewMetrics = (availableTotal, netWorthTotal) => {
+    const primaryLabelNode = document.querySelector("[data-home-overview-primary-label]");
+    const primaryValueNode = document.querySelector("[data-home-overview-primary-value]");
+    const primaryNoteNode = document.querySelector("[data-home-overview-primary-note]");
+    const secondaryLabelNode = document.querySelector("[data-home-overview-secondary-label]");
+    const secondaryValueNode = document.querySelector("[data-home-overview-secondary-value]");
+    const toggleButton = document.querySelector("[data-home-overview-toggle]");
+
+    if (
+      !primaryLabelNode ||
+      !primaryValueNode ||
+      !primaryNoteNode ||
+      !secondaryLabelNode ||
+      !secondaryValueNode
+    ) {
       return;
     }
 
-    container.innerHTML = accounts
+    const primaryKey = overviewPrimaryMetric === "networth" ? "networth" : "available";
+    const secondaryKey = primaryKey === "available" ? "networth" : "available";
+    const primaryConfig = OVERVIEW_METRIC_CONFIG[primaryKey];
+    const secondaryConfig = OVERVIEW_METRIC_CONFIG[secondaryKey];
+    const primaryValue = primaryKey === "available" ? availableTotal : netWorthTotal;
+    const secondaryValue = secondaryKey === "available" ? availableTotal : netWorthTotal;
+
+    primaryLabelNode.textContent = primaryConfig.label;
+    primaryValueNode.textContent = formatCurrency(primaryValue);
+    primaryNoteNode.textContent = primaryConfig.note;
+    secondaryLabelNode.textContent = secondaryConfig.label;
+    secondaryValueNode.textContent = formatCurrency(secondaryValue);
+
+    if (toggleButton) {
+      toggleButton.setAttribute(
+        "aria-label",
+        primaryKey === "available"
+          ? "Afficher patrimoine total en principal"
+          : "Afficher total disponible en principal"
+      );
+    }
+  };
+
+  const renderAccountsOverview = (balances = {}, data = {}, _extraBalances = {}, formData = {}) => {
+    const rowsNode = document.querySelector("[data-accounts-ledger-rows]");
+    const emptyNode = document.querySelector("[data-accounts-ledger-empty]");
+    if (!rowsNode || !emptyNode) return;
+
+    const accounts = buildAccountModels(balances, data, formData);
+    if (!accounts.length) {
+      rowsNode.innerHTML = "";
+      emptyNode.hidden = false;
+      return;
+    }
+
+    emptyNode.hidden = true;
+    rowsNode.innerHTML = accounts
       .map((account) => {
         const target = Math.max(0, toNumber(account.target));
         const balance = Math.max(0, toNumber(account.balance));
-        const delta = target ? balance - target : null;
-        const ratio = target ? Math.min(1.5, Math.max(0, balance / target)) : 0;
-        let status = "—";
-        let statusState = "";
-        if (target) {
-          if (delta >= 0 && delta / target <= 0.1) {
-            status = "OK";
-            statusState = "ok";
-          } else if (delta > 0) {
-            status = "Trop élevé";
-            statusState = "warn";
+        const ratio = target > 0 ? balance / target : 0;
+        const progress = target > 0 ? Math.round(Math.max(0, ratio * 100)) : null;
+        const delta = target > 0 ? balance - target : null;
+
+        const deltaClass =
+          delta == null
+            ? "is-neutral"
+            : delta >= 0
+              ? "is-positive"
+              : "is-negative";
+        const deltaText =
+          delta == null
+            ? "—"
+            : `${delta >= 0 ? "+" : "-"}${formatCurrency(Math.abs(delta))}`;
+
+        let statusClass = "is-neutral";
+        let statusText = "Objectif non défini";
+        if (target > 0) {
+          if (balance >= target) {
+            statusClass = "is-good";
+            statusText = `Atteint (${progress}%)`;
+          } else if (balance >= target * 0.8) {
+            statusClass = "is-warn";
+            statusText = `En bonne voie (${progress}%)`;
+          } else if (balance > 0) {
+            statusClass = "is-risk";
+            statusText = `À renforcer (${progress}%)`;
           } else {
-            status = "À compléter";
-            statusState = "warn";
+            statusClass = "is-neutral";
+            statusText = "À démarrer (0%)";
           }
         }
-        const deltaLabel = delta == null ? "—" : `${delta >= 0 ? "+" : ""}${formatCurrency(delta)}`;
-        const deltaClass = delta == null ? "" : delta >= 0 ? "delta-positive" : "delta-negative";
+
         return `
-          <div class="account-card" data-account-key="${account.key}">
-            <div class="account-card__head">
-              <div>
-                <h4>${account.label}</h4>
-                <span class="account-badge">${account.type}</span>
-              </div>
-              <div class="account-delta ${deltaClass}">${deltaLabel}</div>
-            </div>
-            <div class="account-values">
-              <div>
-                <span>Actuel</span>
-                <strong>${formatCurrency(balance)}</strong>
-              </div>
-              <div>
-                <span>${account.targetLabel}</span>
-                <strong>${target ? formatCurrency(target) : "—"}</strong>
-              </div>
-            </div>
-            <div class="progress-inline">
-              <span class="progress-inline__fill" style="width:${target ? Math.min(100, ratio * 100) : 0}%"></span>
-            </div>
-            <span class="account-status" data-state="${statusState}">${status}</span>
-          </div>
+          <tr data-account-key="${account.key}">
+            <td>${account.label}</td>
+            <td class="accounts-ledger-amount">${formatCurrency(balance)}</td>
+            <td class="accounts-ledger-amount">${target > 0 ? formatCurrency(target) : "—"}</td>
+            <td class="accounts-ledger-amount accounts-ledger-delta ${deltaClass}">${deltaText}</td>
+            <td><span class="accounts-ledger-status ${statusClass}">${statusText}</span></td>
+          </tr>
         `;
       })
       .join("");
+  };
+
+  const setupOverviewMetricToggle = () => {
+    const button = document.querySelector("[data-home-overview-toggle]");
+    if (!button || button.dataset.bound === "true") return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => {
+      overviewPrimaryMetric = overviewPrimaryMetric === "available" ? "networth" : "available";
+      saveOverviewPrimaryMetric(overviewPrimaryMetric);
+      renderAll();
+    });
+  };
+
+  const getAccountLabel = (key, fallbackLabel) => {
+    const raw = String(key || "").trim();
+    if (fallbackLabel) return String(fallbackLabel).trim();
+    if (!raw) return "Compte";
+    if (ACCOUNT_LABELS[raw]) return ACCOUNT_LABELS[raw];
+    if (raw.startsWith("custom-")) return raw.slice("custom-".length) || "Compte personnalisé";
+    return raw;
+  };
+
+  const renderTransferHistory = (transactions = [], activeUser = null, activeMonthKey = "") => {
+    const listNode = document.querySelector("[data-home-transfer-history]");
+    const emptyNode = document.querySelector("[data-home-transfer-history-empty]");
+    if (!listNode || !emptyNode) return;
+
+    const userId = String(activeUser?.id || "").trim();
+    const items = ensureArray(transactions)
+      .filter((entry) => entry?.type === "transfer")
+      .filter((entry) => !userId || String(entry?.userId || "").trim() === userId)
+      .filter((entry) => {
+        if (!activeMonthKey) return true;
+        const entryMonthKey = getMonthKey(entry?.date || entry?.createdAt);
+        return entryMonthKey === activeMonthKey;
+      })
+      .sort((a, b) => {
+        const aDate = new Date(a?.date || a?.createdAt || 0).getTime();
+        const bDate = new Date(b?.date || b?.createdAt || 0).getTime();
+        return bDate - aDate;
+      })
+      .slice(0, 20);
+
+    if (!items.length) {
+      listNode.innerHTML = "";
+      emptyNode.hidden = false;
+      return;
+    }
+
+    emptyNode.hidden = true;
+    listNode.innerHTML = items
+      .map((entry) => {
+        const amount = Math.max(0, toNumber(entry.amount));
+        const fromLabel = getAccountLabel(entry.from, entry.fromLabel);
+        const toLabel = getAccountLabel(entry.to, entry.toLabel);
+        const date = new Date(entry.date || entry.createdAt || Date.now());
+        const dateLabel = Number.isNaN(date.getTime())
+          ? "Date inconnue"
+          : new Intl.DateTimeFormat("fr-CH", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            }).format(date);
+        return `
+          <li class="transfer-history-item">
+            <div class="transfer-history-item__head">
+              <strong>${formatCurrency(amount)}</strong>
+              <span>${dateLabel}</span>
+            </div>
+            <p>${fromLabel} → ${toLabel}</p>
+            <button
+              class="transfer-history-item__cancel"
+              type="button"
+              data-transfer-cancel="${String(entry.id || "")}"
+            >
+              Annuler
+            </button>
+          </li>
+        `;
+      })
+      .join("");
+  };
+
+  const setupTransferHistoryActions = () => {
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-transfer-cancel]");
+      if (!button) return;
+
+      const transferId = String(button.dataset.transferCancel || "").trim();
+      if (!transferId) return;
+      const activeUser = loadActiveUser();
+      if (!activeUser?.id) return;
+
+      const transactions = loadTransactions();
+      const index = transactions.findIndex(
+        (entry) =>
+          String(entry?.id || "").trim() === transferId &&
+          entry?.type === "transfer" &&
+          String(entry?.userId || "").trim() === String(activeUser.id)
+      );
+      if (index < 0) return;
+
+      const transfer = transactions[index];
+      const confirmed = window.confirm(
+        "Annuler ce transfert ? Les soldes seront mis à jour partout dans l’app."
+      );
+      if (!confirmed) return;
+
+      transactions.splice(index, 1);
+      saveTransactions(transactions);
+
+      if (typeof window.syncTransactionToProfile === "function") {
+        const reverseEntry = {
+          type: "transfer",
+          amount: Math.max(0, toNumber(transfer.amount)),
+          from: transfer.to || "",
+          to: transfer.from || "",
+        };
+        window.syncTransactionToProfile(reverseEntry, activeUser.id);
+      }
+
+      renderAll();
+    });
+  };
+
+  const setupSpendingExpenseDeletes = () => {
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-spending-delete-expense]");
+      if (!button) return;
+
+      const expenseId = String(button.dataset.spendingDeleteExpense || "").trim();
+      if (!expenseId) return;
+      const activeUser = loadActiveUser();
+      if (!activeUser?.id) return;
+
+      const transactions = loadTransactions();
+      const nextTransactions = transactions.filter((entry) => {
+        const sameId = String(entry?.id || "").trim() === expenseId;
+        const sameUser = String(entry?.userId || "").trim() === String(activeUser.id);
+        const isDeletableExpense = entry?.type === "expense" && !entry?.isFixed;
+        return !(sameId && sameUser && isDeletableExpense);
+      });
+
+      if (nextTransactions.length === transactions.length) return;
+      saveTransactions(nextTransactions);
+      renderAll();
+    });
   };
 
   const normalizeBalances = (balances = {}) => ({
@@ -353,6 +700,7 @@
     tax: toNumber(balances.tax),
     investments: toNumber(balances.investments),
     pillar3a: toNumber(balances.pillar3a),
+    projects: toNumber(balances.projects),
   });
 
   const applyTransactionsToBalances = (baseBalances, transactions) => {
@@ -382,8 +730,11 @@
       } else if (entry.type === "expense") {
         applyDelta(entry.account || "current", entry.accountLabel, -amount);
       } else if (entry.type === "transfer") {
-        applyDelta(entry.from, entry.fromLabel, -amount);
-        applyDelta(entry.to, entry.toLabel, amount);
+        const from = entry.from || "";
+        const to = entry.to || "";
+        if (!from || !to || from === to) return;
+        applyDelta(from, entry.fromLabel, -amount);
+        applyDelta(to, entry.toLabel, amount);
       }
     });
 
@@ -393,6 +744,28 @@
   const loadMonthState = () => loadJson(MONTH_STATE_KEY, {});
 
   const saveMonthState = (state) => saveJson(MONTH_STATE_KEY, state);
+
+  const isInMonthTransitionWindow = (date = new Date()) => {
+    const target = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(target.getTime())) return false;
+    const day = target.getDate();
+    return day >= 25 || day <= 5;
+  };
+
+  const loadMonthActionState = (userId, monthKey) => {
+    const raw = loadJson(ACTIONS_STORAGE_KEY, {});
+    const userMap = raw?.[userId];
+    if (
+      userMap &&
+      typeof userMap === "object" &&
+      !Array.isArray(userMap) &&
+      userMap[monthKey] &&
+      typeof userMap[monthKey] === "object"
+    ) {
+      return { ...userMap[monthKey] };
+    }
+    return {};
+  };
 
   const migrateMonthState = (state) => {
     let changed = false;
@@ -433,53 +806,48 @@
     return { transactions: next, changed };
   };
 
-  const ensureMonthState = (activeUser, formData) => {
+  const ensureMonthState = (activeUser, formData, mvpData, transactions = []) => {
     if (!activeUser?.id || !formData) return null;
-    const storedState = loadMonthState();
-    const migrated = migrateMonthState(storedState);
-    const state = migrated.state;
-    if (migrated.changed) {
-      saveMonthState(state);
-    }
-    const userState = state[activeUser.id];
-    if (userState?.activeMonthKey && userState?.months?.[userState.activeMonthKey]) {
-      return userState;
-    }
-
-    const now = new Date();
-    const currentMonthKey = getMonthKey(now);
-    const startingBalances = normalizeBalances(resolveBalancesFromAssets(formData));
-    const monthEntry = {
-      status: "open",
-      openedAt: now.toISOString(),
-      closedAt: null,
-      startingBalances,
-      closingBalances: null,
-    };
-
-    state[activeUser.id] = {
-      activeMonthKey: currentMonthKey,
-      initialMonthKey: currentMonthKey,
+    const store = getMonthlyStore();
+    if (!store || typeof store.ensureUserMonthContext !== "function") return null;
+    const context = store.ensureUserMonthContext({
+      userId: activeUser.id,
+      formData,
+      mvpData: mvpData || {},
+      allTransactions: transactions,
+      now: new Date(),
+    });
+    if (!context) return null;
+    const flags = context.monthlyPlan?.flags || {};
+    return {
+      activeMonthKey: context.monthId,
       months: {
-        [currentMonthKey]: monthEntry,
+        [context.monthId]: {
+          status: String(flags.monthStatus || "active"),
+          isFirstMonth: Boolean(flags.isFirstMonth),
+          planAppliedAt: flags.planAppliedAt || null,
+          startingBalances: normalizeBalances(resolveBalancesFromAssets(formData)),
+        },
       },
+      monthlyContext: context,
     };
-
-    saveMonthState(state);
-    return state[activeUser.id];
   };
 
-  const getActiveMonthInfo = (activeUser, formData) => {
-    const userState = ensureMonthState(activeUser, formData);
+  const getActiveMonthInfo = (activeUser, formData, mvpData, transactions = []) => {
+    const userState = ensureMonthState(activeUser, formData, mvpData, transactions);
     if (!userState) return null;
     const activeKey = userState.activeMonthKey;
     const month = userState.months?.[activeKey];
-    return { userState, activeKey, month };
+    return { userState, activeKey, month, monthlyContext: userState.monthlyContext || null };
   };
 
   const getMonthTransactions = (transactions, monthKey, userId) =>
     transactions.filter((entry) => {
-      if (userId && entry?.userId && entry.userId !== userId) return false;
+      if (userId && entry?.userId) {
+        const entryUserId = String(entry.userId || "").trim();
+        const targetUserId = String(userId || "").trim();
+        if (entryUserId && targetUserId && entryUserId !== targetUserId) return false;
+      }
       if (!entry?.date) return false;
       return getMonthKey(entry.date) === monthKey;
     });
@@ -624,7 +992,8 @@
     if (!userState) return null;
     const activeKey = userState.activeMonthKey;
     const activeMonth = userState.months?.[activeKey];
-    if (!activeMonth || activeMonth.status === "closed") return null;
+    if (!activeMonth || activeMonth.status !== "active") return null;
+    if (!isInMonthTransitionWindow(new Date())) return null;
 
     const monthTransactions = getMonthTransactions(transactions, activeKey, activeUser.id);
     const applied = applyTransactionsToBalances(
@@ -636,29 +1005,70 @@
     activeMonth.status = "closed";
     activeMonth.closedAt = new Date().toISOString();
     activeMonth.closingBalances = closingBalances;
+    activeMonth.archive = {
+      archivedAt: new Date().toISOString(),
+      transactions: monthTransactions.map((entry) => ({ ...entry })),
+      actions: loadMonthActionState(activeUser.id, activeKey),
+      balances: closingBalances,
+    };
 
     const nextStart = addMonths(parseMonthKey(activeKey), 1);
     if (!nextStart) return null;
     const nextKey = getMonthKey(nextStart);
     userState.activeMonthKey = nextKey;
+    const existingNext = userState.months[nextKey] || {};
     userState.months[nextKey] = {
-      status: "open",
-      openedAt: new Date().toISOString(),
+      ...existingNext,
+      status: "ready_to_start",
+      openedAt: existingNext.openedAt || new Date().toISOString(),
+      startedAt: existingNext.startedAt || null,
       closedAt: null,
-      startingBalances: closingBalances,
+      fixedApplied: Boolean(existingNext.fixedApplied),
+      isFirstMonth: false,
+      startingBalances: normalizeBalances(existingNext.startingBalances || closingBalances),
       closingBalances: null,
+      archive: existingNext.archive || null,
     };
 
     state[activeUser.id] = userState;
     saveMonthState(state);
-    addFixedTransactionsForMonth(activeUser, formData, nextKey);
     return { activeKey, nextKey };
   };
 
+  const startActiveMonth = (activeUser, formData) => {
+    const state = loadMonthState();
+    const userState = state?.[activeUser?.id];
+    if (!userState) return null;
+    const activeKey = userState.activeMonthKey;
+    const activeMonth = userState.months?.[activeKey];
+    if (!activeMonth || activeMonth.status !== "ready_to_start") return null;
+    if (!isInMonthTransitionWindow(new Date())) return null;
+
+    if (!activeMonth.fixedApplied) {
+      addFixedTransactionsForMonth(activeUser, formData, activeKey);
+      activeMonth.fixedApplied = true;
+    }
+    activeMonth.status = "active";
+    activeMonth.startedAt = new Date().toISOString();
+    activeMonth.closedAt = null;
+    activeMonth.isFirstMonth = false;
+    userState.months[activeKey] = activeMonth;
+    state[activeUser.id] = userState;
+    saveMonthState(state);
+    return { activeKey };
+  };
+
   const updateMonthHeader = (monthKey) => {
+    const monthLabel = formatMonthLabel(monthKey);
+    const titleNode = document.querySelector("#home-month-title");
+    if (titleNode) {
+      const normalized = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+      titleNode.textContent = `Suivi mois ${normalized}`;
+    }
     const label = document.querySelector("[data-month-label]");
-    if (!label) return;
-    label.textContent = formatMonthLabel(monthKey);
+    if (label && label !== titleNode) {
+      label.textContent = monthLabel;
+    }
   };
 
   const updateMonthBanner = (activeMonthKey) => {
@@ -674,17 +1084,29 @@
     }
   };
 
+  const renderMonthControls = (monthInfo) => {
+    const wrapper = document.querySelector("[data-month-controls]");
+    const closeButton = document.querySelector("[data-close-month]");
+    const startButton = document.querySelector("[data-start-month]");
+    if (!wrapper || !closeButton || !startButton) return;
+    const _month = monthInfo?.month || {};
+    wrapper.hidden = true;
+    closeButton.hidden = true;
+    startButton.hidden = true;
+  };
+
   const renderRealSection = (monthInfo, formData, transactions, activeUser) => {
-    const startingBalances = normalizeBalances(
-      monthInfo?.month?.startingBalances || resolveBalancesFromAssets(formData)
-    );
+    const profileBalances = normalizeBalances(resolveBalancesFromAssets(formData));
     const monthTransactions = getMonthTransactions(
       transactions,
       monthInfo.activeKey,
       activeUser?.id
     );
-    const applied = applyTransactionsToBalances(startingBalances, monthTransactions);
-    const balances = applied.balances;
+    const balances = profileBalances;
+    const extraBalances = applyTransactionsToBalances(
+      normalizeBalances({ current: 0, security: 0, tax: 0, investments: 0, pillar3a: 0, projects: 0 }),
+      monthTransactions
+    ).extras;
 
     let monthlyIncome = 0;
     let monthlyExpenses = 0;
@@ -714,7 +1136,7 @@
 
     renderRecentHistory(monthTransactions);
     renderChart(transactions);
-    return { monthlyIncome, monthlyExpenses, transfersToTax, balances };
+    return { monthlyIncome, monthlyExpenses, transfersToTax, balances, extraBalances };
   };
 
   const renderChart = (transactions) => {
@@ -854,15 +1276,25 @@
     setText("[data-plan-gap]", formatSignedCurrency(gap));
   };
 
-  const computeRemainingToSpend = ({ incomeNet, totalFixes, allocations, variableExpenses }) => {
+  const computeRemainingToSpend = ({
+    incomeNet,
+    totalFixes,
+    allocations,
+    variableExpenses,
+    budgetOverride,
+  }) => {
     const safeAllocations = allocations || {};
-    const budgetVariablePrevu =
+    const smartSaveBudget =
       toNumber(incomeNet) -
       toNumber(totalFixes) -
       Math.max(0, toNumber(safeAllocations.impots)) -
       Math.max(0, toNumber(safeAllocations.securite)) -
       Math.max(0, toNumber(safeAllocations.pilier3a)) -
       Math.max(0, toNumber(safeAllocations.dettes));
+    const budgetVariablePrevu =
+      budgetOverride == null
+        ? smartSaveBudget
+        : Math.max(0, toNumber(budgetOverride));
 
     const depensesVariables = Math.max(0, toNumber(variableExpenses));
     const resteADepenser = budgetVariablePrevu - depensesVariables;
@@ -877,50 +1309,101 @@
       state = "warning";
     }
 
-    return { budgetVariablePrevu, depensesVariables, resteADepenser, state };
+    return { budgetVariablePrevu, smartSaveBudget, depensesVariables, resteADepenser, state };
   };
 
-  const renderRemainingBudget = (formData, data, monthTransactions) => {
+  const renderRemainingBudget = (formData, data, monthTransactions, monthContext) => {
+    const variableTitle = document.querySelector("[data-home-variable-title]");
     const remainingNode = document.querySelector("[data-home-remaining]");
     const progressFill = document.querySelector("[data-home-progress-fill]");
     const progressBar = document.querySelector("[data-home-progress-bar]");
     const caption = document.querySelector("[data-home-progress-caption]");
-    const detailNode = document.querySelector("[data-home-remaining-detail]");
-    const investmentNote = document.querySelector("[data-home-investments-note]");
+    const budgetMaxNode = document.querySelector("[data-variable-budget-max]");
+    const budgetMaxInlineNode = document.querySelector("[data-variable-budget-max-inline]");
+    const budgetSelectedNode = document.querySelector("[data-variable-budget-selected]");
+    const budgetSlider = document.querySelector("[data-variable-budget-slider]");
     if (!remainingNode || !progressFill || !progressBar || !caption) return;
 
     const incomeNet =
       toNumber(data?.metrics?.monthlyNetIncome) || getMonthlyIncomeEstimate(formData);
     const fixedCharges =
       toNumber(data?.spendingTotals?.fixed) || getMonthlyExpenseTotal(formData.expenses?.fixed);
-    const allocations = data?.allocation?.allocations || {};
+    const allocations =
+      monthContext?.monthlyPlan?.allocationResultSnapshot?.allocations ||
+      data?.allocation?.allocations ||
+      {};
+    const monthlyAvailableBeforePlan = Math.max(
+      0,
+      toNumber(
+        data?.allocation?.debug?.monthlyAvailableBeforePlan ||
+        (incomeNet - fixedCharges - Math.max(0, toNumber(data?.debtMonthly)))
+      )
+    );
+    const trackedBudget = Math.max(
+      0,
+      toNumber(monthContext?.monthlyTracking?.variableBudget || 0)
+    );
+    const trackedSpent = Math.max(
+      0,
+      toNumber(monthContext?.monthlyTracking?.variableSpent || 0)
+    );
+    const formBudgetChoice = Math.max(0, toNumber(formData?.allocationPlan?.leisureMonthly));
+    const depensesVariables = trackedSpent > 0
+      ? trackedSpent
+      : ensureArray(monthTransactions)
+          .filter((entry) => entry?.type === "expense" && !entry?.isFixed)
+          .reduce((sum, entry) => sum + Math.max(0, toNumber(entry.amount)), 0);
 
-    const variableLabels = ensureArray(formData?.expenses?.variable)
-      .map((entry) => normalizeLabel(entry?.label || entry?.name))
-      .filter(Boolean);
-    const hasVariableLabels = variableLabels.length > 0;
-    const depensesVariables = ensureArray(monthTransactions)
-      .filter((entry) => entry?.type === "expense" && !entry?.isFixed)
-      .filter((entry) => {
-        if (!hasVariableLabels) return true;
-        const label = normalizeLabel(entry?.category || entry?.label);
-        if (!label) return true;
-        return variableLabels.includes(label);
-      })
-      .reduce((sum, entry) => sum + Math.max(0, toNumber(entry.amount)), 0);
-
+    const budgetChoice = resolveVariableBudgetChoice(
+      trackedBudget || formBudgetChoice,
+      monthlyAvailableBeforePlan,
+      { customAmount: trackedBudget || formBudgetChoice }
+    );
     const result = computeRemainingToSpend({
       incomeNet,
       totalFixes: fixedCharges,
       allocations,
       variableExpenses: depensesVariables,
+      budgetOverride: budgetChoice.selectedBudget,
     });
 
+    if (variableTitle) {
+      const month = new Intl.DateTimeFormat("fr-FR", { month: "long" }).format(new Date());
+      const monthLabel = month.charAt(0).toUpperCase() + month.slice(1);
+      variableTitle.textContent = `Budget variable - ${monthLabel}`;
+    }
+
+    const stateClass =
+      result.state === "ok" ? "is-ok" : result.state === "warning" ? "is-warn" : "is-bad";
+    remainingNode.innerHTML = `
+      <span class="remaining-amount__spent ${stateClass}">${formatNumberCompact(
+      result.depensesVariables
+    )}</span><span class="remaining-amount__total"> / ${formatNumberCompact(
+      result.budgetVariablePrevu
+    )} CHF</span>
+    `;
     const remainingLabel =
       result.resteADepenser >= 0
         ? formatCurrency(result.resteADepenser)
         : `-${formatCurrency(Math.abs(result.resteADepenser))}`;
-    remainingNode.textContent = remainingLabel;
+
+    if (budgetMaxNode) budgetMaxNode.textContent = formatCurrency(budgetChoice.maxBudget);
+    if (budgetMaxInlineNode) budgetMaxInlineNode.textContent = formatCurrency(budgetChoice.maxBudget);
+    if (budgetSelectedNode) budgetSelectedNode.textContent = formatCurrency(budgetChoice.selectedBudget);
+    if (budgetSlider) {
+      budgetSlider.min = "0";
+      budgetSlider.max = String(Math.max(0, Math.round(budgetChoice.maxBudget)));
+      budgetSlider.step = "10";
+      budgetSlider.value = String(Math.max(0, Math.round(budgetChoice.selectedBudget)));
+      budgetSlider.disabled = trackedBudget > 0;
+      budgetSlider.title = trackedBudget > 0
+        ? "Budget variable figé pour ce mois."
+        : "Ajuste le budget variable.";
+      const sliderMax = Math.max(1, toNumber(budgetSlider.max));
+      const sliderValue = Math.max(0, toNumber(budgetSlider.value));
+      const sliderPct = Math.max(0, Math.min(100, (sliderValue / sliderMax) * 100));
+      budgetSlider.style.setProperty("--slider-progress", `${sliderPct}%`);
+    }
 
     const spendRatio =
       result.budgetVariablePrevu > 0
@@ -930,59 +1413,20 @@
         : 0;
     const progressPercent = Math.max(0, Math.min(100, Math.round(spendRatio * 100)));
     progressFill.style.width = `${progressPercent}%`;
-    caption.textContent = `${formatCurrency(result.depensesVariables)} / ${formatCurrency(result.budgetVariablePrevu)}`;
+    if (result.resteADepenser >= 0) {
+      caption.textContent = `Il te reste ${formatChfSuffix(
+        result.resteADepenser
+      )} à dépenser ce mois-ci.`;
+    } else {
+      caption.textContent = `Tu dépasses de ${formatChfSuffix(
+        Math.abs(result.resteADepenser)
+      )} ce mois-ci.`;
+    }
 
-    const stateClass =
-      result.state === "ok" ? "is-ok" : result.state === "warning" ? "is-warn" : "is-bad";
-    remainingNode.classList.remove("is-ok", "is-warn", "is-bad", "is-neutral");
-    remainingNode.classList.add(stateClass);
     progressBar.classList.remove("is-ok", "is-warn", "is-bad", "is-neutral");
     progressBar.classList.add(stateClass);
 
-    if (detailNode) {
-      const taxes = Math.max(0, toNumber(allocations.impots));
-      const security = Math.max(0, toNumber(allocations.securite));
-      const pillar3 = Math.max(0, toNumber(allocations.pilier3a));
-      const debts = Math.max(0, toNumber(allocations.dettes));
-      const prioritySavings = taxes + security + pillar3 + debts;
-      detailNode.innerHTML = `
-        <table class="remaining-table">
-          <tbody>
-            <tr>
-              <td>Revenu net</td>
-              <td class="is-positive">+ ${formatCurrency(incomeNet)}</td>
-            </tr>
-            <tr>
-              <td>Charges fixes</td>
-              <td class="is-negative">- ${formatCurrency(fixedCharges)}</td>
-            </tr>
-            <tr>
-              <td>Épargne prioritaire</td>
-              <td class="is-negative">- ${formatCurrency(prioritySavings)}</td>
-            </tr>
-            <tr class="is-total">
-              <td>Budget variable prévu</td>
-              <td>${formatCurrency(result.budgetVariablePrevu)}</td>
-            </tr>
-            <tr>
-              <td>Dépenses variables</td>
-              <td class="is-negative">- ${formatCurrency(result.depensesVariables)}</td>
-            </tr>
-            <tr class="is-total">
-              <td>Reste</td>
-              <td>${remainingLabel}</td>
-            </tr>
-          </tbody>
-        </table>
-      `;
-    }
-    if (investmentNote) {
-      const investTarget = Math.max(0, toNumber(allocations.investissements));
-      investmentNote.textContent = investTarget
-        ? `Investissements (objectif SmartSave): ${formatCurrency(investTarget)}`
-        : "Investissements (objectif SmartSave): —";
-    }
-
+    caption.textContent += ` Reste: ${remainingLabel}.`;
     renderVariableProjection(result, depensesVariables);
   };
 
@@ -993,6 +1437,12 @@
     const actualNode = card.querySelector("[data-home-projection-actual]");
     const forecastNode = card.querySelector("[data-home-projection-forecast]");
     const budgetNode = card.querySelector("[data-home-projection-budget]");
+    const subtitleNode = card.querySelector("[data-home-projection-subtitle]");
+    const paceNode = card.querySelector("[data-home-projection-pace]");
+    const deltaNode = card.querySelector("[data-home-projection-delta]");
+    const barNode = card.querySelector("[data-home-projection-bar]");
+    const barFillNode = card.querySelector("[data-home-projection-bar-fill]");
+    const captionNode = card.querySelector("[data-home-projection-caption]");
     const statusNode = card.querySelector("[data-home-projection-status]");
     const labelNode = card.querySelector("[data-home-projection-label]");
     const messageNode = card.querySelector("[data-home-projection-message]");
@@ -1005,17 +1455,21 @@
     const dailyPace = dayOfMonth > 0 ? depensesVariables / dayOfMonth : 0;
     const projectionFinMois = dailyPace * daysInMonth;
     const budgetVariablePrevu = result.budgetVariablePrevu;
+    const daysLeft = Math.max(0, daysInMonth - dayOfMonth);
 
     let status = "is-neutral";
     let label = "Budget non défini";
     let message = "Projection indisponible sans budget variable.";
     let hint = "Ajoute un budget pour activer la projection.";
+    let caption = "Budget non défini";
+    let deltaLabel = "—";
 
     if (budgetVariablePrevu > 0) {
       const ratio = projectionFinMois / budgetVariablePrevu;
-      message = `Si tu continues à ce rythme, tu dépenseras environ ${formatCurrency(
-        projectionFinMois
-      )} ce mois-ci.`;
+      const delta = projectionFinMois - budgetVariablePrevu;
+      deltaLabel = formatSignedCurrency(delta);
+      message = `Projection fin de mois : ${formatCurrency(projectionFinMois)} (${deltaLabel} vs budget).`;
+      caption = `Projection = ${Math.round(ratio * 100)}% du budget`;
 
       if (ratio < 0.9) {
         status = "is-ok";
@@ -1030,17 +1484,54 @@
         label = "Dépassement probable";
         hint = "Ralentir maintenant évite un mois serré.";
       }
+
+      if (daysLeft > 0) {
+        const remaining = budgetVariablePrevu - depensesVariables;
+        if (remaining >= 0) {
+          const perDay = remaining / daysLeft;
+          hint = `Il reste ${formatCurrency(remaining)} pour ${daysLeft} jour${
+            daysLeft > 1 ? "s" : ""
+          } (≈${formatCurrency(perDay)} / jour).`;
+        } else {
+          hint = `Tu dépasses déjà le budget de ${formatCurrency(Math.abs(remaining))}.`;
+        }
+      } else {
+        hint = "Dernier jour du mois : ajuste si besoin.";
+      }
+
+      if (barFillNode) {
+        const capped = Math.min(150, Math.max(0, ratio * 100));
+        barFillNode.style.width = `${capped}%`;
+      }
+    } else if (barFillNode) {
+      barFillNode.style.width = "0%";
     }
 
     if (actualNode) actualNode.textContent = formatCurrency(depensesVariables);
     if (forecastNode) forecastNode.textContent = formatCurrency(projectionFinMois);
     if (budgetNode) budgetNode.textContent = formatCurrency(budgetVariablePrevu);
+    if (subtitleNode) {
+      subtitleNode.textContent = `Basé sur ${dayOfMonth} jour${
+        dayOfMonth > 1 ? "s" : ""
+      } · ${daysLeft} jour${daysLeft > 1 ? "s" : ""} restant${daysLeft > 1 ? "s" : ""}`;
+    }
+    if (paceNode) paceNode.textContent = formatCurrency(dailyPace);
+    if (deltaNode) {
+      deltaNode.textContent = deltaLabel;
+      deltaNode.classList.remove("is-ok", "is-warn", "is-bad", "is-neutral");
+      deltaNode.classList.add(status);
+    }
+    if (captionNode) captionNode.textContent = caption;
     if (labelNode) labelNode.textContent = label;
     if (messageNode) messageNode.textContent = message;
     if (hintNode) hintNode.textContent = hint;
     if (statusNode) {
       statusNode.classList.remove("is-ok", "is-warn", "is-bad", "is-neutral");
       statusNode.classList.add(status);
+    }
+    if (barNode) {
+      barNode.classList.remove("is-ok", "is-warn", "is-bad", "is-neutral");
+      barNode.classList.add(status);
     }
   };
 
@@ -1096,6 +1587,238 @@
       .join("");
   };
 
+  const renderTopVariableCategories = (monthTransactions) => {
+    const card = document.querySelector("[data-top-categories-card]");
+    if (!card) return;
+    const listNode = card.querySelector("[data-top-categories-list]");
+    const emptyNode = card.querySelector("[data-top-categories-empty]");
+    if (!listNode || !emptyNode) return;
+
+    const grouped = monthTransactions
+      .filter((entry) => entry?.type === "expense" && entry?.category)
+      .reduce((acc, entry) => {
+        const label = String(entry.category || "").trim();
+        if (!label) return acc;
+        const key = normalizeLabel(label);
+        const amount = Math.max(0, toNumber(entry.amount));
+        if (!acc[key]) acc[key] = { label, total: 0 };
+        acc[key].total += amount;
+        return acc;
+      }, {});
+
+    const entries = Object.values(grouped)
+      .filter((entry) => entry.total > 0)
+      .sort((a, b) => b.total - a.total);
+
+    if (!entries.length) {
+      listNode.innerHTML = "";
+      emptyNode.hidden = false;
+      return;
+    }
+
+    const renderItems = (items) =>
+      items
+        .map(
+          (entry) => `
+        <li class="top-category-item">
+          <span class="top-category-item__label">
+            <span class="top-category-item__emoji">${getCategoryEmoji(entry.label)}</span>
+            ${entry.label}
+          </span>
+          <span class="top-category-item__amount">${formatCurrency(entry.total)}</span>
+        </li>
+      `
+        )
+        .join("");
+
+    const topFour = entries.slice(0, 4);
+    listNode.innerHTML = renderItems(topFour);
+    emptyNode.hidden = true;
+  };
+
+  const renderSpendingDonut = (donutNode, legendNode, entries = []) => {
+    if (!donutNode || !legendNode) return;
+    const palette = ["#1f3a8a", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#0f766e"];
+    const normalized = ensureArray(entries)
+      .map((entry) => ({
+        label: String(entry?.label || "Autre").trim() || "Autre",
+        amount: Math.max(0, toNumber(entry?.amount)),
+      }))
+      .filter((entry) => entry.amount > 0)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+    const total = normalized.reduce((sum, entry) => sum + entry.amount, 0);
+
+    if (!total) {
+      donutNode.style.background = "conic-gradient(#e2e8f0 0 100%)";
+      legendNode.innerHTML = "<li><span class=\"spending-donut-label\">Aucune donnée</span><span class=\"spending-donut-value\">—</span></li>";
+      return;
+    }
+
+    let cursor = 0;
+    const segments = normalized.map((entry, index) => {
+      const share = (entry.amount / total) * 100;
+      const from = cursor;
+      const to = cursor + share;
+      cursor = to;
+      const color = palette[index % palette.length];
+      entry.color = color;
+      return `${color} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
+    });
+    donutNode.style.background = `conic-gradient(${segments.join(", ")})`;
+
+    legendNode.innerHTML = normalized
+      .map(
+        (entry) => `
+          <li>
+            <span class="spending-donut-label"><i class="spending-donut-dot" style="background:${entry.color}"></i>${entry.label}</span>
+            <span class="spending-donut-value">${formatCurrency(entry.amount)}</span>
+          </li>
+        `
+      )
+      .join("");
+  };
+
+  const renderSpendingInsights = (formData, monthTransactions) => {
+    const card = document.querySelector("[data-spending-insights-card]");
+    if (!card) return;
+
+    const fixedPlannedEntries = ensureArray(formData?.expenses?.fixed).map((entry, index) => ({
+      date: "—",
+      label: entry?.label || entry?.name || `Dépense fixe ${index + 1}`,
+      type: "fixed",
+      amount: resolveMonthlyAmount(entry),
+      planned: true,
+    }));
+
+    const obligatoryPlannedEntries = ensureArray(formData?.expenses?.variable).map((entry, index) => ({
+      date: "—",
+      label: entry?.label || entry?.name || `Dépense obligatoire ${index + 1}`,
+      type: "obligatory",
+      amount: resolveMonthlyAmount(entry),
+      planned: true,
+    }));
+
+    const variableActualEntries = ensureArray(monthTransactions)
+      .filter((entry) => entry?.type === "expense" && !entry?.isFixed)
+      .map((entry) => ({
+        id: String(entry?.id || "").trim(),
+        date: entry?.date || "",
+        label: entry?.category || entry?.note || "Dépense variable",
+        type: "variable",
+        amount: Math.max(0, toNumber(entry?.amount)),
+        planned: false,
+      }));
+
+    const fixedTotal = fixedPlannedEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    const obligatoryTotal = obligatoryPlannedEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    const variableTotal = variableActualEntries.reduce((sum, entry) => sum + entry.amount, 0);
+
+    const setText = (selector, value) => {
+      const node = card.querySelector(selector);
+      if (node) node.textContent = value;
+    };
+    setText("[data-spending-summary-variable]", formatCurrency(variableTotal));
+    setText("[data-spending-summary-fixed]", formatCurrency(fixedTotal));
+    setText("[data-spending-summary-obligatory]", formatCurrency(obligatoryTotal));
+
+    const ledgerRowsNode = card.querySelector("[data-spending-ledger-rows]");
+    const ledgerEmptyNode = card.querySelector("[data-spending-ledger-empty]");
+    if (ledgerRowsNode && ledgerEmptyNode) {
+      const ledgerRows = []
+        .concat(variableActualEntries, fixedPlannedEntries, obligatoryPlannedEntries)
+        .filter((entry) => entry.amount > 0)
+        .sort((a, b) => {
+          if (a.planned && !b.planned) return 1;
+          if (!a.planned && b.planned) return -1;
+          const aDate = new Date(a.date || 0).getTime();
+          const bDate = new Date(b.date || 0).getTime();
+          return bDate - aDate;
+        });
+      if (!ledgerRows.length) {
+        ledgerRowsNode.innerHTML = "";
+        ledgerEmptyNode.hidden = false;
+      } else {
+        ledgerEmptyNode.hidden = true;
+        ledgerRowsNode.innerHTML = ledgerRows
+          .map((entry) => {
+            const badgeLabel =
+              entry.type === "fixed"
+                ? "Fixe"
+                : entry.type === "obligatory"
+                ? "Obligatoire"
+                : "Variable";
+            const badgeClass =
+              entry.type === "fixed"
+                ? "is-fixed"
+                : entry.type === "obligatory"
+                ? "is-obligatory"
+                : "is-variable";
+            const dateLabel =
+              entry.planned || !entry.date
+                ? "—"
+                : new Intl.DateTimeFormat("fr-CH", { day: "2-digit", month: "2-digit" }).format(
+                    new Date(entry.date)
+                  );
+            const label = entry.planned ? `${entry.label} (prévu)` : entry.label;
+            const canDelete = !entry.planned && entry.type === "variable" && entry.id;
+            const deleteControl = canDelete
+              ? `
+                <button
+                  type="button"
+                  class="spending-ledger-delete"
+                  data-spending-delete-expense="${entry.id}"
+                  aria-label="Supprimer cette dépense"
+                >
+                  ×
+                </button>
+              `
+              : `<span class="spending-ledger-delete spending-ledger-delete--placeholder" aria-hidden="true">×</span>`;
+            const amountCell = `
+              <span class="spending-ledger-amount">${formatCurrency(entry.amount)}</span>
+              ${deleteControl}
+            `;
+            return `
+              <tr>
+                <td>${dateLabel}</td>
+                <td>${label}</td>
+                <td><span class="spending-ledger-badge ${badgeClass}">${badgeLabel}</span></td>
+                <td class="is-amount">${amountCell}</td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+    }
+
+    const toGroupedEntries = (entries = []) => {
+      const grouped = ensureArray(entries).reduce((acc, entry) => {
+        const key = normalizeLabel(entry?.label);
+        if (!key) return acc;
+        if (!acc[key]) acc[key] = { label: entry.label, amount: 0 };
+        acc[key].amount += Math.max(0, toNumber(entry.amount));
+        return acc;
+      }, {});
+      return Object.values(grouped);
+    };
+
+    renderSpendingDonut(
+      card.querySelector("[data-spending-donut-fixed]"),
+      card.querySelector("[data-spending-donut-fixed-legend]"),
+      toGroupedEntries(fixedPlannedEntries)
+    );
+    renderSpendingDonut(
+      card.querySelector("[data-spending-donut-obligatory]"),
+      card.querySelector("[data-spending-donut-obligatory-legend]"),
+      toGroupedEntries(obligatoryPlannedEntries)
+    );
+    renderSpendingDonut(
+      card.querySelector("[data-spending-donut-variable]"),
+      card.querySelector("[data-spending-donut-variable-legend]"),
+      toGroupedEntries(variableActualEntries)
+    );
+  };
+
   const updateBudgetCategories = (formData, select, type) => {
     if (!select) return;
     if (type === "income") {
@@ -1125,6 +1848,7 @@
       { value: "current", label: ACCOUNT_LABELS.current },
       { value: "security", label: ACCOUNT_LABELS.security },
       { value: "tax", label: ACCOUNT_LABELS.tax },
+      { value: "projects", label: ACCOUNT_LABELS.projects },
       { value: "investments", label: ACCOUNT_LABELS.investments },
       { value: "pillar3a", label: ACCOUNT_LABELS.pillar3a },
     ];
@@ -1156,6 +1880,9 @@
     const accountOtherInput = modal.querySelector('[data-quick-other="account"]');
     const categorySelect = modal.querySelector("#quick-category");
     const categoryOtherInput = modal.querySelector('[data-quick-other="category"]');
+    const fromSelect = form.querySelector("[name='from']");
+    const toSelect = form.querySelector("[name='to']");
+    let preventModalCloseUntil = 0;
 
     const syncOtherField = (select, input, triggerValue) => {
       if (!select || !input) return;
@@ -1164,21 +1891,49 @@
       if (!isOther) input.value = "";
     };
 
+    const keepTransferAccountsDistinct = (changedField) => {
+      if (!fromSelect || !toSelect) return;
+      const fromValue = String(fromSelect.value || "");
+      const toValue = String(toSelect.value || "");
+      if (!fromValue || !toValue || fromValue !== toValue) return;
+
+      const pickAlternative = (select, blockedValue) =>
+        Array.from(select.options).find((option) => option.value && option.value !== blockedValue)?.value ||
+        "";
+
+      if (changedField === "from") {
+        const replacement = pickAlternative(toSelect, fromValue);
+        if (replacement) toSelect.value = replacement;
+        return;
+      }
+      const replacement = pickAlternative(fromSelect, toValue);
+      if (replacement) fromSelect.value = replacement;
+    };
+
     const getActiveMonthBounds = () => {
       const activeUser = loadActiveUser();
       const formData = activeUser ? loadUserForm(activeUser.id) : null;
       if (!activeUser || !formData) return null;
-      const info = getActiveMonthInfo(activeUser, formData);
+      const data = typeof window.buildMvpData === "function" ? window.buildMvpData(formData) : {};
+      const info = getActiveMonthInfo(activeUser, formData, data, loadTransactions());
       const monthDate = parseMonthKey(info?.activeKey);
       if (!monthDate) return null;
       const start = monthDate;
       const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-      return { start, end, formData };
+      return { start, end, formData, monthStatus: info?.month?.status || "active" };
     };
 
-    const openModal = (type) => {
+    const openModal = (type, options = {}) => {
       modal.classList.add("is-open");
       modal.dataset.type = type;
+      const closeLockMs = Math.max(0, toNumber(options?.closeLockMs || 0));
+      preventModalCloseUntil = closeLockMs ? Date.now() + closeLockMs : 0;
+      const bounds = getActiveMonthBounds();
+      if (bounds?.monthStatus === "closed") {
+        modal.classList.remove("is-open");
+        window.alert("Ce mois est clôturé. Passe au mois actif pour ajouter des opérations.");
+        return;
+      }
       if (title) {
         title.textContent =
           type === "transfer"
@@ -1194,7 +1949,6 @@
       syncOtherField(categorySelect, categoryOtherInput, "Autre");
       syncOtherField(accountSelect, accountOtherInput, "__other__");
 
-      const bounds = getActiveMonthBounds();
       if (dateInput && bounds) {
         dateInput.value = toISODate(bounds.start);
         dateInput.min = toISODate(bounds.start);
@@ -1207,15 +1961,80 @@
       if (bounds?.formData) {
         updateAccountOptions(bounds.formData, {
           accountSelect,
-          fromSelect: form.querySelector("[name='from']"),
-          toSelect: form.querySelector("[name='to']"),
+          fromSelect,
+          toSelect,
         });
+        keepTransferAccountsDistinct("from");
       }
     };
 
+    const consumePendingMonArgentAction = () => {
+      const url = new URL(window.location.href);
+      const params = url.searchParams;
+      const hasUrlTransfer = params.get("openTransfer") === "1";
+      const urlTransfer = hasUrlTransfer
+        ? {
+            type: "transfer",
+            openTransferModal: true,
+            transfer: {
+              from: String(params.get("transferFrom") || "").trim(),
+              to: String(params.get("transferTo") || "").trim(),
+              amount: Math.max(0, toNumber(params.get("transferAmount"))),
+            },
+          }
+        : null;
+
+      const pending = urlTransfer || loadJson(PENDING_MON_ARGENT_ACTION_KEY, null);
+      if (!pending || typeof pending !== "object") return;
+      if (pending.type !== "transfer" || !pending.openTransferModal) return;
+
+      if (hasUrlTransfer) {
+        params.delete("openTransfer");
+        params.delete("transferFrom");
+        params.delete("transferTo");
+        params.delete("transferAmount");
+        const nextQuery = params.toString();
+        const nextUrl = `${url.pathname}${nextQuery ? `?${nextQuery}` : ""}${url.hash || ""}`;
+        window.history.replaceState({}, "", nextUrl);
+      } else {
+        try {
+          localStorage.removeItem(PENDING_MON_ARGENT_ACTION_KEY);
+        } catch (_error) {
+          // ignore storage issues
+        }
+      }
+
+      const transfer = pending.transfer || {};
+      const from = String(transfer.from || "").trim();
+      const to = String(transfer.to || "").trim();
+      const amount = Math.max(0, toNumber(transfer.amount));
+
+      const comptesTab = document.querySelector('.tab-nav [data-tab-target="comptes"]');
+      if (comptesTab) comptesTab.click();
+
+      // Delay to avoid mobile ghost-click immediately closing the modal overlay.
+      window.setTimeout(() => {
+        openModal("transfer", { closeLockMs: 1400 });
+        if (fromSelect && from && Array.from(fromSelect.options).some((opt) => opt.value === from)) {
+          fromSelect.value = from;
+        }
+        if (toSelect && to && Array.from(toSelect.options).some((opt) => opt.value === to)) {
+          toSelect.value = to;
+        }
+        keepTransferAccountsDistinct("from");
+
+        const amountInput = form.querySelector("#quick-amount");
+        if (amountInput && amount > 0) {
+          amountInput.value = String(Math.round(amount));
+        }
+      }, 360);
+    };
+
     const closeModal = () => {
+      if (Date.now() < preventModalCloseUntil) return;
       modal.classList.remove("is-open");
       delete modal.dataset.type;
+      preventModalCloseUntil = 0;
     };
 
     document.querySelectorAll("[data-quick-action]").forEach((button) => {
@@ -1223,7 +2042,7 @@
     });
 
     modal.querySelectorAll("[data-quick-close]").forEach((button) => {
-      button.addEventListener("click", closeModal);
+      button.addEventListener("click", () => closeModal());
     });
 
     if (categorySelect) {
@@ -1235,6 +2054,12 @@
       accountSelect.addEventListener("change", () =>
         syncOtherField(accountSelect, accountOtherInput, "__other__")
       );
+    }
+    if (fromSelect) {
+      fromSelect.addEventListener("change", () => keepTransferAccountsDistinct("from"));
+    }
+    if (toSelect) {
+      toSelect.addEventListener("change", () => keepTransferAccountsDistinct("to"));
     }
 
     form.addEventListener("submit", (event) => {
@@ -1262,15 +2087,8 @@
         entry.to = formData.get("to") || "security";
         if (entry.from === entry.to) return;
       } else {
-        const accountValue = formData.get("account") || "current";
-        if (accountValue === "__other__") {
-          const accountName = String(formData.get("accountOther") || "").trim();
-          if (!accountName) return;
-          entry.account = "custom-" + accountName;
-          entry.accountLabel = accountName;
-        } else {
-          entry.account = accountValue;
-        }
+        entry.account = "current";
+        entry.accountLabel = ACCOUNT_LABELS.current;
 
         const categoryValue = String(formData.get("category") || "").trim();
         if (categoryValue === "Autre") {
@@ -1285,9 +2103,14 @@
       const stored = loadTransactions();
       stored.push(entry);
       saveTransactions(stored);
+      if (typeof window.syncTransactionToProfile === "function" && activeUser?.id) {
+        window.syncTransactionToProfile(entry, activeUser.id);
+      }
       closeModal();
       renderAll();
     });
+
+    consumePendingMonArgentAction();
   };
 
   const setupHamburgerMenu = () => {
@@ -1328,25 +2151,100 @@
   const setupMonthClose = () => {
     document.addEventListener("click", (event) => {
       const button = event.target.closest("[data-close-month]");
-      if (!button) return;
+      const startButton = event.target.closest("[data-start-month]");
+      if (!button && !startButton) return;
+
       const activeUser = loadActiveUser();
-      if (!activeUser) return;
+      if (!activeUser?.id) return;
       const formData = loadUserForm(activeUser.id);
       if (!formData) return;
-      closeActiveMonth(activeUser, formData, loadTransactions());
+
+      if (button) {
+        const confirmed = window.confirm(
+          "Clôturer ce mois ? Les soldes et actions du mois seront archivés sans mouvement automatique."
+        );
+        if (!confirmed) return;
+        closeActiveMonth(activeUser, formData, loadTransactions());
+        renderAll();
+        return;
+      }
+
+      const confirmed = window.confirm(
+        "Démarrer le nouveau mois ? Le revenu et les charges fixes seront appliqués une seule fois."
+      );
+      if (!confirmed) return;
+      startActiveMonth(activeUser, formData);
       renderAll();
     });
   };
 
-  const setupRemainingDetailsToggle = () => {
+  const setupVariableBudgetEditor = () => {
     document.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-remaining-toggle]");
-      if (!button) return;
-      const panel = button.closest(".remaining-details")?.querySelector("[data-remaining-panel]");
+      const toggleButton = event.target.closest("[data-variable-budget-toggle]");
+      if (!toggleButton) return;
+      const panel = document.querySelector("[data-variable-budget-panel]");
       if (!panel) return;
       const nextState = panel.hasAttribute("hidden");
       panel.toggleAttribute("hidden", !nextState);
-      button.setAttribute("aria-expanded", String(nextState));
+      toggleButton.setAttribute("aria-expanded", String(nextState));
+    });
+
+    const applyBudgetFromSlider = (slider) => {
+      if (!slider) return;
+      const activeUser = loadActiveUser();
+      if (!activeUser?.id) return;
+      const safeMax = Math.max(0, toNumber(slider.max));
+      const nextBudget = Math.max(0, Math.min(safeMax, toNumber(slider.value)));
+
+      if (typeof window.updateProfileData === "function") {
+        window.updateProfileData(activeUser.id, (profile) => {
+          if (!profile || typeof profile !== "object") return;
+          profile.allocationPlan =
+            profile.allocationPlan && typeof profile.allocationPlan === "object"
+              ? profile.allocationPlan
+              : {};
+          profile.allocationPlan.leisureMonthly = nextBudget;
+        });
+      } else {
+        const formData = loadUserForm(activeUser.id);
+        if (formData) {
+          formData.allocationPlan =
+            formData.allocationPlan && typeof formData.allocationPlan === "object"
+              ? formData.allocationPlan
+              : {};
+          formData.allocationPlan.leisureMonthly = nextBudget;
+          try {
+            const raw = JSON.parse(localStorage.getItem("smartsaveFormData") || "{}");
+            raw[activeUser.id] = formData;
+            localStorage.setItem("smartsaveFormData", JSON.stringify(raw));
+            localStorage.setItem("smartsaveProfileUpdated", String(Date.now()));
+          } catch (_error) {
+            // ignore storage issues
+          }
+        }
+      }
+
+      saveUserVariableBudgetSetting(activeUser.id, { customAmount: nextBudget });
+      renderAll();
+    };
+
+    document.addEventListener("input", (event) => {
+      const slider = event.target.closest("[data-variable-budget-slider]");
+      if (!slider) return;
+      const valueNode = document.querySelector("[data-variable-budget-selected]");
+      if (valueNode) {
+        valueNode.textContent = formatCurrency(Math.max(0, toNumber(slider.value)));
+      }
+      const sliderMax = Math.max(1, toNumber(slider.max));
+      const sliderValue = Math.max(0, toNumber(slider.value));
+      const sliderPct = Math.max(0, Math.min(100, (sliderValue / sliderMax) * 100));
+      slider.style.setProperty("--slider-progress", `${sliderPct}%`);
+    });
+
+    document.addEventListener("change", (event) => {
+      const slider = event.target.closest("[data-variable-budget-slider]");
+      if (!slider) return;
+      applyBudgetFromSlider(slider);
     });
   };
 
@@ -1360,7 +2258,7 @@
     if (!monthInfo?.month || !activeUser?.id || !formData) {
       return { transactions: allTransactions, monthTransactions };
     }
-    if (monthInfo.month.status !== "open") {
+    if (monthInfo.month.status !== "active") {
       return { transactions: allTransactions, monthTransactions };
     }
 
@@ -1381,22 +2279,7 @@
     state[activeUser.id] = userState;
     saveMonthState(state);
 
-    const shouldInjectFixed = userState.initialMonthKey !== monthInfo.activeKey;
-    let nextTransactions = allTransactions;
-    if (shouldInjectFixed) {
-      nextTransactions = allTransactions.filter(
-        (entry) =>
-          !(
-            entry?.userId === activeUser.id &&
-            entry?.isFixed &&
-            getMonthKey(entry.date) === monthInfo.activeKey
-          )
-      );
-      saveTransactions(nextTransactions);
-      addFixedTransactionsForMonth(activeUser, formData, monthInfo.activeKey);
-      nextTransactions = loadTransactions();
-    }
-
+    const nextTransactions = allTransactions;
     const nextMonthTransactions = getMonthTransactions(
       nextTransactions,
       monthInfo.activeKey,
@@ -1411,40 +2294,139 @@
     if (!activeUser) return;
     const formData = loadUserForm(activeUser.id);
     if (!formData) return;
+    let transactions = loadTransactions();
+    const data = typeof window.buildMvpData === "function" ? window.buildMvpData(formData) : {};
 
-    const monthInfo = getActiveMonthInfo(activeUser, formData);
+    const monthInfo = getActiveMonthInfo(activeUser, formData, data, transactions);
     if (!monthInfo) return;
 
     updateMonthHeader(monthInfo.activeKey);
     updateMonthBanner(monthInfo.activeKey);
+    renderMonthControls(monthInfo);
 
-    let transactions = loadTransactions();
     const migratedTransactions = migrateFixedMonthKeys(transactions);
     if (migratedTransactions.changed) {
       transactions = migratedTransactions.transactions;
       saveTransactions(transactions);
     }
-    let monthTransactions = getMonthTransactions(
+    const monthTransactions = getMonthTransactions(
       transactions,
       monthInfo.activeKey,
       activeUser.id
     );
-    const reconciled = reconcileMonthWithProfile(
-      activeUser,
-      formData,
-      monthInfo,
-      monthTransactions,
-      transactions
-    );
-    transactions = reconciled.transactions;
-    monthTransactions = reconciled.monthTransactions;
-
-    const data = typeof window.buildMvpData === "function" ? window.buildMvpData(formData) : {};
     const realMetrics = renderRealSection(monthInfo, formData, transactions, activeUser);
     renderPlanSection(formData, data, realMetrics);
-    renderRemainingBudget(formData, data, monthTransactions);
+    renderRemainingBudget(formData, data, monthTransactions, monthInfo.monthlyContext);
     renderVariableBudgets(formData, monthTransactions);
-    renderAccountsOverview(realMetrics.balances, data);
+    renderTopVariableCategories(monthTransactions);
+    renderSpendingInsights(formData, monthTransactions);
+    renderAccountsOverview(realMetrics.balances, data, realMetrics.extraBalances, formData);
+    renderTransferHistory(transactions, activeUser, monthInfo.activeKey);
+  };
+
+  let lastProfileVersion = null;
+
+  const readProfileVersion = () => {
+    try {
+      const raw = localStorage.getItem(PROFILE_VERSION_KEY);
+      if (!raw) return null;
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    } catch (_error) {
+      return null;
+    }
+  };
+
+  const ensureProfileVersion = () => {
+    const next = readProfileVersion();
+    if (next && next !== lastProfileVersion) {
+      lastProfileVersion = next;
+      renderAll();
+    }
+  };
+
+  const setupUserMenuInteractions = () => {
+    const pill = document.querySelector(".user-pill--account");
+    const menu = document.querySelector(".user-menu");
+    if (!pill || !menu) return;
+
+    let isOpen = false;
+    const outsideClick = (event) => {
+      if (menu.contains(event.target) || pill.contains(event.target)) return;
+      closeMenu();
+    };
+    const updateMenuState = (open) => {
+      isOpen = open;
+      menu.classList.toggle("active", open);
+      pill.setAttribute("aria-expanded", String(open));
+      if (open) {
+        document.addEventListener("click", outsideClick);
+      } else {
+        document.removeEventListener("click", outsideClick);
+      }
+    };
+
+    const closeMenu = () => {
+      if (isOpen) updateMenuState(false);
+    };
+
+    const toggleMenu = () => updateMenuState(!isOpen);
+
+    const handleAction = (action) => {
+      if (!action) return;
+      if (action === "edit") window.location.href = "profil.html";
+      if (action === "logout") {
+        try {
+          localStorage.setItem("smartsaveActiveUser", "{}");
+        } catch (_error) {
+          // ignore
+        }
+        window.location.href = "index.html";
+      }
+      if (action === "close") closeMenu();
+    };
+
+    const actionTarget = (target) => {
+      const action = target.dataset.userAction;
+      if (action) {
+        handleAction(action);
+      }
+    };
+
+    pill.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleMenu();
+    });
+
+    menu.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-user-action]");
+      if (target) {
+        actionTarget(target);
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    });
+  };
+
+  const setupProfileSync = () => {
+    lastProfileVersion = readProfileVersion();
+    const refreshOnVisible = () => {
+      if (document.visibilityState === "visible") {
+        ensureProfileVersion();
+        renderAll();
+      }
+    };
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    window.addEventListener("focus", () => {
+      ensureProfileVersion();
+      renderAll();
+    });
   };
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -1452,17 +2434,32 @@
     setupHamburgerMenu();
     setupQuickActions();
     setupMonthClose();
-    setupRemainingDetailsToggle();
+    setupVariableBudgetEditor();
+    setupTransferHistoryActions();
+    setupSpendingExpenseDeletes();
+    setupProfileSync();
+    setupUserMenuInteractions();
   });
 
   window.addEventListener("storage", (event) => {
     if (!event) return;
+    if (event.key === PROFILE_VERSION_KEY) {
+      ensureProfileVersion();
+      return;
+    }
     if (event.key === "smartsaveFormData" || event.key === "smartsaveProfileUpdated") {
       renderAll();
     }
   });
 
   window.addEventListener("pageshow", () => {
+    ensureProfileVersion();
     renderAll();
   });
+
+  window.addEventListener("smartsaveProfileUpdated", () => {
+    lastProfileVersion = readProfileVersion();
+    renderAll();
+  });
+
 })();

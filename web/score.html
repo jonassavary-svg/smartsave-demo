@@ -3,12 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-
-    <title>SmartSave – Score</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta name="theme-color" content="#eef2ff" />
+    <script src="seed-data.js"></script>
+    <title>SmartSave – Objectifs</title>
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
   </head>
   <body class="dashboard app-page" data-page="score" data-mvp>
@@ -20,6 +18,11 @@
             <span class="logo-text">SmartSave</span>
           </a>
           <span class="logo-subtitle">Personal Finance</span>
+        </div>
+
+        <div class="header-search">
+          <span class="header-search__icon" aria-hidden="true">🔍</span>
+          <input class="header-search__input" type="search" placeholder="Rechercher" aria-label="Rechercher">
         </div>
         <div class="header-actions">
           <div class="user-menu-wrapper">
@@ -47,7 +50,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                 </svg>
-                <span>Mes dépenses</span>
+                <span>Mois précédents</span>
               </a>
 
               <button type="button" data-user-action="edit">
@@ -71,82 +74,139 @@
               </svg>
             </button>
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
-              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Home</a>
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Actions</a>
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
+              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
-              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Score</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
             </div>
           </div>
         </div>
       </header>
 
-      <main class="app-main">
+      <main class="app-main objectifs-page" data-goals-root>
         <section class="page-title">
-          <h1>Financial Score</h1>
-          <p>Your financial health snapshot</p>
+          <h1>Objectifs</h1>
+          <p>Choisis ton budget de vie, ton CT et ton LT.</p>
         </section>
 
-        <section class="score-layout">
-          <div class="card score-hero">
-            <div class="score-hero__content">
-              <p class="card-label">Your Score</p>
-              <div class="score-total">
-                <span data-score-total>0</span>
-                <span>/100</span>
-              </div>
-              <div class="score-bar">
-                <span class="score-bar__fill" data-score-gauge="score"></span>
-              </div>
-              <p class="score-hero__trend">
-                <span class="trend-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 14l5-5 4 4 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M16 6h4v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </span>
-                <span data-score-trend>+0 points from last month</span>
-              </p>
-            </div>
-            <div class="score-hero__gauge" aria-hidden="true">
-              <div class="score-gauge" aria-hidden="true">
-                <svg viewBox="0 0 160 160" class="score-gauge__svg">
-                  <circle class="score-track" cx="80" cy="80" r="70"></circle>
-                  <circle class="score-ticks" cx="80" cy="80" r="62"></circle>
-                  <circle class="score-progress" cx="80" cy="80" r="70" data-score-circle></circle>
-                  <text class="score-value" x="80" y="92" text-anchor="middle" dominant-baseline="middle">
-                    <tspan class="score-value__score" data-mvp-score-total>0</tspan>
-                    <tspan class="score-value__max">/100</tspan>
-                  </text>
-                </svg>
-              </div>
-            </div>
+        <section class="card objectifs-card">
+          <div class="card-header">
+            <h3>Mon budget mensuel de vie</h3>
+          </div>
+          <p class="objectifs-hint">Loisirs, sorties, restaurants, achats plaisir.</p>
+          <div class="objectifs-slider-row">
+            <input
+              type="range"
+              min="0"
+              max="0"
+              step="10"
+              value="0"
+              data-goals-field="leisure-slider"
+            />
+            <label class="objectifs-amount-input">
+              <span>CHF</span>
+              <input type="number" min="0" step="10" value="0" data-goals-field="leisure-input" />
+            </label>
+          </div>
+          <p class="objectifs-feedback" data-goals-variable-feedback>
+            Avec ce choix, il te restera CHF 0 à répartir.
+          </p>
+          <small class="objectifs-saving-state" data-goals-saving-state>Auto-save activé</small>
+        </section>
+
+        <section class="card objectifs-card">
+          <div class="card-header">
+            <h3>Objectif Court Terme (CT)</h3>
+          </div>
+          <label class="objectifs-toggle">
+            <input type="checkbox" data-goals-field="ct-enabled" />
+            <span>J’ai un objectif court terme</span>
+          </label>
+
+          <div class="objectifs-grid" data-goals-ct-fields hidden>
+            <label>
+              <span>Type</span>
+              <select data-goals-field="ct-type">
+                <option value="vacances">Vacances</option>
+                <option value="cadeaux">Cadeaux</option>
+                <option value="voiture">Voiture</option>
+                <option value="mariage">Mariage</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+            <label>
+              <span>Montant cible (CHF)</span>
+              <input type="number" min="0" step="100" value="0" data-goals-field="ct-amount" />
+            </label>
+            <label>
+              <span>Horizon (années)</span>
+              <input type="number" min="1" max="5" step="1" value="1" data-goals-field="ct-horizon" />
+            </label>
           </div>
 
-          <aside class="score-aside">
-            <div class="card how-card">
-              <h3>How to Improve</h3>
-              <ul class="improve-list" data-score-recommendations></ul>
-              <button class="ghost-btn" type="button" data-ai-coach>Demander au coach</button>
-              <div class="improve-list" data-ai-coach-output></div>
-            </div>
-          </aside>
+          <p class="objectifs-feedback" data-goals-ct-monthly>
+            Cela représente CHF 0/mois mis de côté avant la répartition.
+          </p>
         </section>
 
-        <section class="score-breakdown">
-          <h3>Score Breakdown</h3>
-          <div class="breakdown-grid" data-score-breakdown></div>
+        <section class="card objectifs-card">
+          <div class="card-header">
+            <h3>Objectif Long Terme (LT)</h3>
+          </div>
+
+          <div class="objectifs-radio-list">
+            <label><input type="radio" name="lt-type" value="security" data-goals-field="lt-type" />Sécurité financière</label>
+            <label><input type="radio" name="lt-type" value="home" data-goals-field="lt-type" />Achat immobilier</label>
+            <label><input type="radio" name="lt-type" value="invest" data-goals-field="lt-type" />Patrimoine-investissement</label>
+            <label><input type="radio" name="lt-type" value="retirement" data-goals-field="lt-type" />Retraite</label>
+          </div>
+
+          <div class="objectifs-grid objectifs-grid--two">
+            <label>
+              <span>Objectif cible (CHF)</span>
+              <input type="number" min="0" step="1000" value="0" data-goals-field="lt-target" />
+            </label>
+            <label>
+              <span>Horizon (années)</span>
+              <input type="number" min="3" max="40" step="1" value="10" data-goals-field="lt-horizon" />
+            </label>
+          </div>
+
+          <div class="objectifs-diagnostic" data-goals-lt-diagnostic>
+            <p>Besoin mensuel: CHF 0</p>
+            <p>Financement actuel: CHF 0/mois</p>
+            <p class="objectifs-status is-neutral" data-goals-lt-status>Renseigne une cible et un horizon pour le diagnostic.</p>
+          </div>
+        </section>
+
+        <section class="card objectifs-card objectifs-impact">
+          <div class="card-header">
+            <h3>Impact</h3>
+          </div>
+          <div class="objectifs-impact-summary">
+            <article class="objectifs-impact-item">
+              <p>Budget de vie</p>
+              <strong data-goals-impact-summary-life>CHF 0 utilisés · CHF 0 à répartir</strong>
+            </article>
+            <article class="objectifs-impact-item">
+              <p>Objectif court terme</p>
+              <strong data-goals-impact-summary-ct>Non actif</strong>
+            </article>
+            <article class="objectifs-impact-item">
+              <p>Objectif long terme</p>
+              <strong data-goals-impact-summary-lt>—</strong>
+            </article>
+          </div>
+          <div class="objectifs-cta-row">
+            <a class="objectifs-cta objectifs-cta--primary" href="smartsave.html">Voir mon plan SmartSave</a>
+            <a class="objectifs-cta objectifs-cta--secondary" href="future.html">Voir la projection</a>
+          </div>
         </section>
       </main>
     </div>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-        </svg>
-        <span>Home</span>
-      </a>
       <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
@@ -154,11 +214,17 @@
         </svg>
         <span>SmartSave</span>
       </a>
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Suivi</span>
+      </a>
       <a class="bottom-nav__link" href="actions.html" data-nav="actions">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Actions</span>
+        <span>Home</span>
       </a>
       <a class="bottom-nav__link" href="future.html" data-nav="future">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -170,18 +236,23 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Score</span>
+        <span>Objectifs</span>
       </a>
     </nav>
 
-    <script src="financialScoreEngine.js" defer></script>
-    <script src="allocationEngine.js" defer></script>
-    <script src="projectionEngine.js" defer></script>
-    <script src="taxEngine.js" defer></script>
-    <script src="spendingAnalysisEngine.js" defer></script>
-    <script src="smartsaveSnapshot.js" defer></script>
-    <script src="runtimeConfig.js" defer></script>
-    <script src="mvp-v2.js" defer></script>
-    <script src="app-pages.js" defer></script>
-  </body>
+    <script src="financialScoreEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="projectionEngine.js?v=20260212-01" defer></script>
+    <script src="taxEngine.js?v=20260212-01" defer></script>
+    <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
+    <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
+    <script src="runtimeConfig.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260212-01" defer></script>
+    <script src="monthlyStore.js?v=20260212-01" defer></script>
+    <script src="app-pages.js?v=20260212-01" defer></script>
+    <script src="/dev-reload.js" defer></script>
+    <script>
+      localStorage.setItem("profileLastMain", "score.html");
+    </script>
+</body>
 </html>

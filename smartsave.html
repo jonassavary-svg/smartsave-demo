@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
     <title>SmartSave – Allocation</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
   </head>
   <body class="dashboard app-page" data-page="smartsave" data-mvp>
@@ -50,7 +50,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                 </svg>
-                <span>Mes dépenses</span>
+                <span>Mois précédents</span>
               </a>
 
               <button type="button" data-user-action="edit">
@@ -74,11 +74,11 @@
               </svg>
             </button>
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
-              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Home</a>
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Actions</a>
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
+              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
-              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Score</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
             </div>
           </div>
         </div>
@@ -86,60 +86,111 @@
 
       <main class="app-main">
         <section class="page-title">
-          <h1>SmartSave Allocation</h1>
-          <p>Your money organized for security, goals, and growth</p>
+          <h1>Répartition SmartSave</h1>
+          <p>Répartition de ton argent pour favoriser ta sécurité financière, tes objectifs et la croissance de ton patrimoine</p>
         </section>
 
         <section class="allocation-layout">
           <div class="allocation-main">
             <div class="card allocation-total">
-              <p class="card-label">Total Allocated</p>
+              <p class="card-label">Montant total réparti</p>
               <div class="allocation-total__value" data-allocation-total>CHF 0</div>
               <p class="allocation-total__note">
                 <span class="allocation-total__info">i</span>
-                Optimized allocation across 3 pillars
+                Optimisation selon les 3 piliers
               </p>
             </div>
 
-            <h3 class="section-title">Current Allocation</h3>
+            <div class="allocation-section-heading">
+              <h3 class="section-title">Répartition actuelle</h3>
+            </div>
             <div class="allocation-list" data-allocation-list></div>
           </div>
 
           <aside class="allocation-aside">
             <div class="card how-card">
-              <h3>How SmartSave Works</h3>
+              <h3>Comment fonctionne SmartSave</h3>
               <ol class="how-list">
                 <li>
                   <span class="how-step how-step--blue">1</span>
-                  Security first: Build your emergency fund (3-6 months of expenses)
+                  La sécurité d'abord: construis ton fonds d'urgence (3 a 6 mois de dépenses)
                 </li>
                 <li>
                   <span class="how-step how-step--purple">2</span>
-                  Plan ahead: Save for upcoming goals and planned expenses
+                  Anticipe: épargne pour tes objectifs et dépenses prévues
                 </li>
                 <li>
                   <span class="how-step how-step--green">3</span>
-                  Grow wealth: Invest remaining funds for long-term growth
+                  Fais grandir ton patrimoine: investis le reste pour le long terme
                 </li>
               </ol>
-            </div>
-            <div class="card next-card">
-              <h3>What to do next?</h3>
-              <p data-allocation-next>Focus on building your emergency fund.</p>
-              <button class="cta" type="button" data-allocation-next-action>Set Up Auto-Transfer</button>
             </div>
           </aside>
         </section>
       </main>
     </div>
 
+    <div class="allocation-details-modal" data-allocation-details-modal hidden aria-hidden="true">
+      <div class="allocation-details-modal__overlay" data-allocation-details-close></div>
+      <div
+        class="allocation-details-modal__content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="allocation-details-title"
+      >
+        <header class="allocation-details-modal__header">
+          <h2 id="allocation-details-title" data-allocation-details-title>Sécurité — CHF 0/mois</h2>
+          <button
+            class="allocation-details-modal__close"
+            type="button"
+            data-allocation-details-close
+            aria-label="Fermer"
+          >
+            ×
+          </button>
+        </header>
+
+        <div class="allocation-details-modal__body">
+          <section class="allocation-details-block">
+            <h3>Objectif</h3>
+            <p data-allocation-details-objective>Te protéger en cas d'imprévu (santé, perte de revenu, grosse facture).</p>
+          </section>
+
+          <section class="allocation-details-block">
+            <h3>Où placer cet argent</h3>
+            <ul data-allocation-details-placement></ul>
+          </section>
+
+          <section class="allocation-details-block">
+            <h3>Règles SmartSave</h3>
+            <ul data-allocation-details-rules></ul>
+          </section>
+
+          <section class="allocation-details-block">
+            <h3>Prochaine action</h3>
+            <div class="allocation-details-actions">
+              <button class="cta" type="button" data-allocation-details-primary>Créer un virement auto</button>
+              <button class="ghost-btn small" type="button" data-allocation-details-secondary>Cocher la checklist</button>
+            </div>
+            <ul class="allocation-details-checklist" data-allocation-details-next></ul>
+          </section>
+
+          <section class="allocation-details-block">
+            <button
+              class="allocation-details-more-btn"
+              type="button"
+              data-allocation-details-more-toggle
+              aria-expanded="false"
+            >
+              À savoir
+            </button>
+            <p class="allocation-details-more-text" data-allocation-details-more hidden></p>
+          </section>
+        </div>
+      </div>
+    </div>
+
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-        </svg>
-        <span>Suivi</span>
-      </a>
       <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
@@ -147,11 +198,17 @@
         </svg>
         <span>SmartSave</span>
       </a>
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Suivi</span>
+      </a>
       <a class="bottom-nav__link" href="actions.html" data-nav="actions">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Actions</span>
+        <span>Home</span>
       </a>
       <a class="bottom-nav__link" href="future.html" data-nav="future">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -163,19 +220,20 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Score</span>
+        <span>Objectifs</span>
       </a>
     </nav>
 
-    <script src="financialScoreEngine.js" defer></script>
-    <script src="allocationEngine.js" defer></script>
-    <script src="projectionEngine.js" defer></script>
-    <script src="taxEngine.js" defer></script>
-    <script src="spendingAnalysisEngine.js" defer></script>
-    <script src="smartsaveSnapshot.js" defer></script>
-    <script src="runtimeConfig.js" defer></script>
-    <script src="mvp-v2.js" defer></script>
-    <script src="app-pages.js" defer></script>
+    <script src="financialScoreEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="projectionEngine.js?v=20260212-01" defer></script>
+    <script src="taxEngine.js?v=20260212-01" defer></script>
+    <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
+    <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
+    <script src="runtimeConfig.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260212-01" defer></script>
+    <script src="monthlyStore.js?v=20260212-01" defer></script>
+    <script src="app-pages.js?v=20260212-01" defer></script>
     <script src="/dev-reload.js" defer></script>
     <script>
       localStorage.setItem("profileLastMain", "smartsave.html");

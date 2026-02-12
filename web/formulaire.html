@@ -303,6 +303,301 @@
       gap: 0.85rem;
     }
 
+    .expense-sheet {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .expense-sheet__header {
+      display: grid;
+      grid-template-columns: minmax(140px, 1.6fr) minmax(110px, 0.9fr) minmax(110px, 0.8fr) 36px;
+      gap: 0.45rem;
+      align-items: center;
+      padding: 0.45rem 0.75rem;
+      background: rgba(15, 23, 42, 0.04);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .expense-sheet .collection-body {
+      gap: 0;
+    }
+
+    .expense-row {
+      display: block;
+      border: 0;
+      border-radius: 0;
+      border-bottom: 1px solid rgba(31, 36, 41, 0.08);
+      background: #fff;
+      padding: 0.35rem 0.75rem;
+      box-shadow: none;
+    }
+
+    .expense-row:last-child {
+      border-bottom: 0;
+    }
+
+    .expense-row__grid {
+      display: grid;
+      grid-template-columns: minmax(140px, 1.6fr) minmax(110px, 0.9fr) minmax(110px, 0.8fr) 36px;
+      gap: 0.45rem;
+      align-items: center;
+    }
+
+    .expense-row input,
+    .expense-row select {
+      width: 100%;
+      min-height: 34px;
+      border-radius: 9px;
+      border: 1px solid rgba(31, 36, 41, 0.16);
+      padding: 0.38rem 0.6rem;
+      font-size: 0.84rem;
+      background: #fff;
+    }
+
+    .expense-row input:focus,
+    .expense-row select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(47, 90, 166, 0.15);
+    }
+
+    .expense-row .remove-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      box-shadow: none;
+      border: 1px solid rgba(31, 36, 41, 0.12);
+    }
+
+    .expense-subtotal {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.5rem;
+      padding: 0.55rem 0.15rem 0.1rem;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .expense-subtotal strong {
+      color: #334155;
+      font-weight: 600;
+    }
+
+    .expense-grand-total {
+      margin-top: 0.9rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 12px;
+      border: 1px solid rgba(15, 23, 42, 0.14);
+      background: rgba(15, 23, 42, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.96rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .wizard-step[data-step="3"] .collection-header {
+      font-size: 0.78rem;
+    }
+
+    .wizard-step[data-step="3"] .collection-header .ghost-btn {
+      font-size: 0.84rem;
+      padding: 0.45rem 0.9rem;
+    }
+
+    .allocation-context {
+      background: linear-gradient(135deg, #eff6ff, #f8fafc);
+      border-color: rgba(37, 99, 235, 0.22);
+    }
+
+    .section-eyebrow {
+      margin: 0;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #475569;
+      font-weight: 700;
+    }
+
+    .allocation-context__amount {
+      font-size: clamp(1.7rem, 4vw, 2.3rem);
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0.1rem 0;
+    }
+
+    .allocation-leisure__controls {
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .allocation-leisure__controls input[type="range"] {
+      width: 100%;
+      accent-color: #2563eb;
+    }
+
+    .allocation-leisure__input span {
+      font-size: 0.74rem;
+    }
+
+    .allocation-projects-live {
+      margin-top: 0.4rem;
+      padding: 0.7rem 0.85rem;
+      border-radius: 12px;
+      background: #ecfdf5;
+      color: #065f46;
+      font-weight: 700;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: baseline;
+    }
+
+    .allocation-projects-live strong {
+      font-size: 1.08rem;
+      color: #047857;
+    }
+
+    .allocation-projects-live.is-highlight {
+      animation: budgetPulse 260ms ease;
+    }
+
+    @keyframes budgetPulse {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.015); }
+      100% { transform: scale(1); }
+    }
+
+    .allocation-goal-grid {
+      display: grid;
+      gap: 0.55rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .allocation-goal {
+      border: 1px solid rgba(31, 36, 41, 0.14);
+      background: #fff;
+      border-radius: 12px;
+      padding: 0.65rem 0.7rem;
+      text-align: left;
+      font-size: 0.87rem;
+      font-weight: 600;
+      color: #0f172a;
+      cursor: pointer;
+    }
+
+    .allocation-goal.is-active {
+      border-color: rgba(37, 99, 235, 0.4);
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .allocation-goal-config {
+      margin-top: 0.8rem;
+      border-top: 1px solid rgba(31, 36, 41, 0.1);
+      padding-top: 0.75rem;
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .allocation-goal-row {
+      display: grid;
+      gap: 0.65rem;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      align-items: end;
+    }
+
+    .allocation-horizon-picker__controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.3rem;
+    }
+
+    .allocation-horizon-picker__controls span {
+      min-width: 56px;
+      text-align: center;
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+
+    .allocation-goals--compact {
+      gap: 0.75rem;
+    }
+
+    .allocation-goals--compact .fieldset {
+      margin: 0;
+      padding: 0.65rem 0.75rem;
+    }
+
+    .allocation-goals--compact .fieldset legend {
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+      text-transform: none;
+    }
+
+    .allocation-goal-config[hidden] {
+      display: none !important;
+    }
+
+    .allocation-goal-config__years span {
+      font-size: 0.74rem;
+    }
+
+    .allocation-goal-result p {
+      margin: 0;
+      color: #475569;
+      font-size: 0.82rem;
+    }
+
+    .allocation-goal-result strong {
+      font-size: 0.98rem;
+      color: #0f172a;
+    }
+
+    .allocation-goal-feedback {
+      margin: 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #166534;
+    }
+
+    .allocation-goal-feedback.is-warning {
+      color: #b45309;
+    }
+
+    .allocation-goal-proposals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .allocation-summary__row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.35rem 0;
+      border-top: 1px dashed rgba(31, 36, 41, 0.1);
+    }
+
+    .allocation-summary__row:first-of-type {
+      border-top: 0;
+    }
+
     .collection-row {
       display: grid;
       gap: 0.75rem;
@@ -356,6 +651,22 @@
     .ghost-btn:focus-visible {
       filter: brightness(0.95);
       outline: none;
+    }
+
+    .add-income-btn {
+      border: 1px solid #1d4ed8;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28);
+    }
+
+    .add-income-btn:hover,
+    .add-income-btn:focus-visible {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 24px rgba(29, 78, 216, 0.34);
     }
 
     .remove-btn {
@@ -494,6 +805,66 @@
       .fixed-nav .cta {
         order: 2;
       }
+
+      .add-income-btn {
+        width: 100%;
+      }
+
+      .expense-sheet__header {
+        grid-template-columns: minmax(120px, 1.4fr) minmax(88px, 0.8fr) minmax(88px, 0.8fr) 30px;
+        gap: 0.35rem;
+        padding: 0.42rem 0.5rem;
+        font-size: 0.62rem;
+      }
+
+      .expense-row {
+        padding: 0.28rem 0.5rem;
+      }
+
+      .expense-row__grid {
+        grid-template-columns: minmax(120px, 1.4fr) minmax(88px, 0.8fr) minmax(88px, 0.8fr) 30px;
+        gap: 0.35rem;
+      }
+
+      .expense-row input,
+      .expense-row select {
+        min-height: 32px;
+        font-size: 0.8rem;
+        padding: 0.32rem 0.48rem;
+      }
+
+      .allocation-goal-row--short,
+      .allocation-goal-row--long {
+        grid-template-columns: 1.3fr 1fr 1fr;
+        gap: 0.4rem;
+      }
+
+      .allocation-goal-row--short .input-block,
+      .allocation-goal-row--long .input-block {
+        gap: 0.25rem;
+      }
+
+      .allocation-goal-row--short .input-block span,
+      .allocation-goal-row--long .input-block span {
+        font-size: 0.64rem;
+        letter-spacing: 0.02em;
+      }
+
+      .allocation-goal-row--short select,
+      .allocation-goal-row--short input,
+      .allocation-goal-row--long select,
+      .allocation-goal-row--long input {
+        min-height: 30px;
+        padding: 0.28rem 0.4rem;
+        font-size: 0.78rem;
+      }
+
+      .allocation-goal-row--short .ghost-btn.small,
+      .allocation-goal-row--long .ghost-btn.small {
+        min-width: 28px;
+        padding: 0.2rem 0.35rem;
+        font-size: 0.8rem;
+      }
     }
 
     @media (min-width: 720px) {
@@ -549,8 +920,8 @@
   </header>
 
   <section class="form-progress" aria-live="polite">
-    <div class="progress-label" id="progress-label">Étape 1 / 9</div>
-    <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1">
+    <div class="progress-label" id="progress-label">Étape 1 / 10</div>
+    <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="10" aria-valuenow="1">
       <div class="progress-fill" id="progress-fill" style="width: 11%;"></div>
     </div>
   </section>
@@ -669,7 +1040,7 @@
       <p class="section-hint">Déclarez vos différentes sources de revenus réguliers.</p>
       <div class="collection">
         <div class="collection-header">
-          <button type="button" class="ghost-btn" data-action="add-income">+ Ajouter un revenu</button>
+          <button type="button" class="ghost-btn add-income-btn" data-action="add-income">+ Ajouter un revenu</button>
         </div>
         <div class="collection-body" id="income-list"></div>
       </div>
@@ -689,42 +1060,197 @@
           <span>Dépenses fixes</span>
           <button type="button" class="ghost-btn" data-action="add-fixed-expense">+ Ajouter une dépense</button>
         </div>
-        <div class="collection-body" id="fixed-expense-list"></div>
+        <div class="expense-sheet">
+          <div class="expense-sheet__header">
+            <span>Dépense</span>
+            <span>Fréquence</span>
+            <span>Montant</span>
+            <span></span>
+          </div>
+          <div class="collection-body" id="fixed-expense-list"></div>
+        </div>
+        <div class="expense-subtotal">
+          <span>Sous-total (mensuel)</span>
+          <strong id="fixed-expense-subtotal">CHF 0</strong>
+        </div>
       </div>
       <div class="collection">
         <div class="collection-header">
-          <span>Dépenses variables</span>
+          <span>Dépenses obligatoires</span>
           <button type="button" class="ghost-btn" data-action="add-variable-expense">+ Ajouter une dépense</button>
         </div>
-        <div class="collection-body" id="variable-expense-list"></div>
+        <div class="expense-sheet">
+          <div class="expense-sheet__header">
+            <span>Dépense</span>
+            <span>Fréquence</span>
+            <span>Montant</span>
+            <span></span>
+          </div>
+          <div class="collection-body" id="variable-expense-list"></div>
+        </div>
+        <div class="expense-subtotal">
+          <span>Sous-total (mensuel)</span>
+          <strong id="variable-expense-subtotal">CHF 0</strong>
+        </div>
+      </div>
+      <div class="expense-grand-total">
+        <span>Total des dépenses (mensuel)</span>
+        <strong id="expense-grand-total">CHF 0</strong>
       </div>
     </section>
 
     <section class="wizard-step" data-step="4">
-      <h2>Dépenses exceptionnelles</h2>
-      <label class="input-block">
-        <span>Type de dépense</span>
-        <select name="exceptionalType" required>
-          <option value="">Sélectionner</option>
-          <option value="aucune">Aucune</option>
-          <option value="vacances">Vacances</option>
-          <option value="cadeaux">Cadeaux</option>
-          <option value="sante">Santé / Dentaire</option>
-          <option value="reparation">Frais de réparation</option>
-          <option value="autre">Autre</option>
-        </select>
-      </label>
-      <label class="input-block">
-        <span>Montant estimé annuel (CHF)</span>
-        <input type="number" name="exceptionalAmount" min="0" step="0.05" placeholder="ex. 3000">
-      </label>
-      <label class="input-block">
-        <span>Commentaires</span>
-        <textarea name="exceptionalNotes" rows="3" placeholder="Détails supplémentaires (optionnel)"></textarea>
-      </label>
+      <h2>Reste à vivre</h2>
+
+      <div class="card allocation-context">
+        <p class="section-eyebrow">Ce qu’il te reste chaque mois</p>
+        <div class="allocation-context__amount" data-budget-remaining>CHF 0</div>
+        <p class="section-hint">
+          (calculé après ton revenu net et tes dépenses essentielles, sans inclure le 13ᵉ salaire)
+        </p>
+      </div>
+
+      <div class="card allocation-leisure">
+        <h3>Profiter maintenant</h3>
+        <p class="section-hint">
+          Sur ce montant, combien veux-tu utiliser pour tes loisirs, sorties et petits extras ce mois-ci ?
+        </p>
+        <div class="allocation-leisure__controls">
+          <input type="range" min="0" max="0" step="10" value="0" data-leisure-slider />
+          <label class="input-block allocation-leisure__input">
+            <span>Loisirs (CHF / mois)</span>
+            <input type="number" min="0" step="10" value="0" data-leisure-input />
+          </label>
+        </div>
+        <p class="section-hint">Tu pourras modifier ce montant chaque mois.</p>
+        <div class="allocation-projects-live" data-projects-live>
+          Montant disponible pour tes projets :
+          <strong data-projects-available>CHF 0</strong>
+          <span>/ mois</span>
+        </div>
+      </div>
+
     </section>
 
     <section class="wizard-step" data-step="5">
+      <h2>Tes objectifs</h2>
+
+      <div class="card allocation-context">
+        <p class="section-eyebrow">Montant restant à répartir</p>
+        <div class="allocation-context__amount" data-projects-budget>CHF 0</div>
+        <p class="section-hint">Tu peux utiliser ce montant pour tes objectifs et construire ton avenir.</p>
+      </div>
+
+      <div class="card allocation-goals allocation-goals--compact">
+        <fieldset class="fieldset">
+          <legend>Objectifs court terme (facultatif) - As-tu une dépense importante à prévoir prochainement ?</legend>
+          <label class="choice">
+            <input type="radio" name="shortTermEnabled" value="non" checked>
+            <span>Non</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="shortTermEnabled" value="oui">
+            <span>Oui</span>
+          </label>
+        </fieldset>
+
+        <div class="allocation-goal-config" data-short-term-config hidden>
+          <div class="allocation-goal-row allocation-goal-row--short">
+            <label class="input-block">
+              <span>Type de projet</span>
+              <select data-short-type>
+                <option value="vacances">Vacances</option>
+                <option value="cadeaux">Cadeaux</option>
+                <option value="voiture">Voiture</option>
+                <option value="mariage">Mariage</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+            <div class="input-block allocation-horizon-picker">
+              <span>Horizon (1 à 3 ans)</span>
+              <div class="allocation-horizon-picker__controls">
+                <button type="button" class="ghost-btn small" data-short-horizon-dec aria-label="Réduire l'horizon">−</button>
+                <span data-short-horizon-value>1 an</span>
+                <button type="button" class="ghost-btn small" data-short-horizon-inc aria-label="Augmenter l'horizon">+</button>
+              </div>
+            </div>
+            <label class="input-block">
+              <span>Montant (CHF)</span>
+              <input type="number" min="0" step="100" value="0" data-short-amount>
+            </label>
+          </div>
+          <p class="allocation-goal-feedback" data-short-feedback>
+            Tu dois mettre CHF 0/mois de côté pour atteindre cet objectif.
+          </p>
+        </div>
+      </div>
+
+      <div class="card allocation-goals allocation-goals--compact">
+        <fieldset class="fieldset">
+          <legend>Objectifs long terme (facultatif) - As-tu une priorité pour l'avenir ?</legend>
+          <label class="choice">
+            <input type="radio" name="longTermEnabled" value="non" checked>
+            <span>Non</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="longTermEnabled" value="oui">
+            <span>Oui</span>
+          </label>
+        </fieldset>
+
+        <div class="allocation-goal-config" data-long-term-config hidden>
+          <div class="allocation-goal-row allocation-goal-row--long">
+            <label class="input-block">
+              <span>Priorité</span>
+              <select data-long-type>
+                <option value="security">Sécurité financière</option>
+                <option value="home">Achat immobilier</option>
+                <option value="invest">Investissement long terme</option>
+                <option value="children">Épargne pour enfants</option>
+                <option value="retirement">Retraite</option>
+              </select>
+            </label>
+            <div class="input-block allocation-horizon-picker">
+              <span>Horizon (3 à 30 ans)</span>
+              <div class="allocation-horizon-picker__controls">
+                <button type="button" class="ghost-btn small" data-long-horizon-dec aria-label="Réduire l'horizon long terme">−</button>
+                <span data-long-horizon-value>10 ans</span>
+                <button type="button" class="ghost-btn small" data-long-horizon-inc aria-label="Augmenter l'horizon long terme">+</button>
+              </div>
+            </div>
+            <label class="input-block">
+              <span>Montant (CHF)</span>
+              <input type="number" min="0" step="100" value="0" data-long-amount>
+            </label>
+          </div>
+          <p class="allocation-goal-feedback" data-long-feedback>
+            Tu dois mettre CHF 0/mois de côté pour atteindre cet objectif.
+          </p>
+        </div>
+      </div>
+
+      <div class="card allocation-summary">
+        <h3>Résumé mensuel</h3>
+        <div class="allocation-summary__row">
+          <span>Loisirs</span>
+          <strong data-summary-leisure>CHF 0</strong>
+        </div>
+        <div class="allocation-summary__row">
+          <span>Court terme</span>
+          <strong data-summary-short>CHF 0</strong>
+        </div>
+        <div class="allocation-summary__row">
+          <span>Long terme</span>
+          <strong data-summary-long>CHF 0</strong>
+        </div>
+        <div class="allocation-summary__row">
+          <span>Reste projets</span>
+          <strong data-summary-projects>CHF 0</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="6">
       <h2>Informations fiscales</h2>
       <fieldset class="fieldset">
         <legend>Payez-vous des impôts ?</legend>
@@ -779,7 +1305,7 @@
       </div>
     </section>
 
-    <section class="wizard-step" data-step="6">
+    <section class="wizard-step" data-step="7">
       <h2>Comptes et avoirs</h2>
       <p class="section-hint">Cette étape nous permet de savoir quelles réserves vous avez déjà.</p>
       <div class="card">
@@ -868,7 +1394,7 @@
       </div>
     </section>
 
-    <section class="wizard-step" data-step="7">
+    <section class="wizard-step" data-step="8">
       <h2>Investissements</h2>
       <fieldset class="fieldset">
         <legend>Avez-vous déjà des investissements ?</legend>
@@ -901,7 +1427,7 @@
       </p>
     </section>
 
-    <section class="wizard-step" data-step="8">
+    <section class="wizard-step" data-step="9">
       <h2>Crédits et patrimoine</h2>
       <h3>Vos crédits et dettes</h3>
       <div class="collection">
@@ -969,7 +1495,7 @@
       </div>
     </section>
 
-    <section class="wizard-step" data-step="9">
+    <section class="wizard-step" data-step="10">
       <h2>Votre vision face à l’avenir</h2>
       <p class="section-hint">
         Décrivez brièvement votre priorité financière et votre appétence au risque pour que SmartSave adapte sa proposition.
@@ -1000,10 +1526,11 @@
     </div>
   </form>
 
-  <script src="runtimeConfig.js"></script>
+  <script src="runtimeConfig.js?v=20260212-01"></script>
   <script>
     const STORAGE_KEY_FORM = "smartsaveFormData";
     const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
+    const RECAP_PENDING_KEY = "smartsaveRecapPendingByUser";
     const NAME_INDEX_KEY = "smartsaveNameIndex";
     const PENDING_NAME_KEY = "smartsavePendingName";
     const SYNC_ENABLED = true;
@@ -1098,6 +1625,58 @@
         credits: document.getElementById("credit-list"),
       };
 
+      const SHORT_TERM_LABELS = {
+        vacances: "Vacances",
+        cadeaux: "Cadeaux",
+        voiture: "Voiture",
+        mariage: "Mariage",
+        autre: "Autre",
+      };
+
+      const LONG_TERM_LABELS = {
+        security: "Sécurité financière",
+        home: "Achat immobilier",
+        invest: "Investissement long terme",
+        children: "Épargne pour enfants",
+        retirement: "Retraite",
+      };
+
+      const LONG_TERM_DEFAULT_TARGETS = {
+        security: 12000,
+        home: 80000,
+        invest: 30000,
+        children: 20000,
+        retirement: 150000,
+      };
+
+      const allocationNodes = {
+        remainingAmount: document.querySelector("[data-budget-remaining]"),
+        leisureSlider: document.querySelector("[data-leisure-slider]"),
+        leisureInput: document.querySelector("[data-leisure-input]"),
+        projectsLive: document.querySelector("[data-projects-live]"),
+        projectsAvailable: document.querySelector("[data-projects-available]"),
+        projectsBudget: document.querySelector("[data-projects-budget]"),
+        summaryLeisure: document.querySelector("[data-summary-leisure]"),
+        summaryShort: document.querySelector("[data-summary-short]"),
+        summaryLong: document.querySelector("[data-summary-long]"),
+        summaryProjects: document.querySelector("[data-summary-projects]"),
+        shortTermConfig: document.querySelector("[data-short-term-config]"),
+        shortType: document.querySelector("[data-short-type]"),
+        shortHorizonDec: document.querySelector("[data-short-horizon-dec]"),
+        shortHorizonInc: document.querySelector("[data-short-horizon-inc]"),
+        shortHorizonValue: document.querySelector("[data-short-horizon-value]"),
+        shortAmount: document.querySelector("[data-short-amount]"),
+        shortRequired: document.querySelector("[data-short-required]"),
+        shortFeedback: document.querySelector("[data-short-feedback]"),
+        longTermConfig: document.querySelector("[data-long-term-config]"),
+        longType: document.querySelector("[data-long-type]"),
+        longHorizonDec: document.querySelector("[data-long-horizon-dec]"),
+        longHorizonInc: document.querySelector("[data-long-horizon-inc]"),
+        longHorizonValue: document.querySelector("[data-long-horizon-value]"),
+        longAmount: document.querySelector("[data-long-amount]"),
+        longFeedback: document.querySelector("[data-long-feedback]"),
+      };
+
       const isPartnered = (status) => ["marie", "partenariat"].includes(status);
 
       let currentStepIndex = 0;
@@ -1107,9 +1686,13 @@
       injectPendingName(formState, pendingName, activeUserId);
       injectActiveUserIdentity(formState, activeUserId);
       ensureProfileIdentity(formState, activeUserId);
+      setupAllocationInteractions();
 
       initialiseCollections();
       restoreForm();
+      updateFixedExpenseSubtotal();
+      updateVariableExpenseSubtotal();
+      refreshAllocationStep();
       updateUI();
 
       if (backDashboardBtn) {
@@ -1129,11 +1712,15 @@
         if (!persistCurrentStep(currentStepIndex === totalSteps - 1)) return;
 
         if (currentStepIndex === totalSteps - 1) {
-          injectPendingName(formState, pendingName, activeUserId);
-          saveFormState(activeUserId, formState);
-          await syncCompletedProfile(activeUserId, formState);
-          registerPendingName(activeUserId, pendingName);
-          window.location.href = "mon-argent.html";
+          const resolvedUserId = resolveSessionUserId(activeUserId, formState);
+          ensureActiveUserSession(resolvedUserId, formState);
+          injectPendingName(formState, pendingName, resolvedUserId);
+          saveFormState(resolvedUserId, formState);
+          // Do not block navigation on network sync.
+          syncCompletedProfile(resolvedUserId, formState).catch(() => {});
+          registerPendingName(resolvedUserId, pendingName);
+          markRecapPendingOnFirstCompletion(resolvedUserId);
+          window.location.href = resolvePostOnboardingTarget(resolvedUserId);
           return;
         }
 
@@ -1155,6 +1742,13 @@
 
         if (["propertyValue", "mortgageBalance", "vehicleValue"].includes(name) || target.closest("#credit-list")) {
           updateDebtAssetTotals();
+        }
+
+        if (target.closest("#fixed-expense-list")) {
+          updateFixedExpenseSubtotal();
+        }
+        if (target.closest("#variable-expense-list")) {
+          updateVariableExpenseSubtotal();
         }
       });
 
@@ -1190,6 +1784,13 @@
 
         if (target.closest("#other-assets-list")) {
           updateLiquidAssetsTotal();
+        }
+
+        if (target.closest("#fixed-expense-list")) {
+          updateFixedExpenseSubtotal();
+        }
+        if (target.closest("#variable-expense-list")) {
+          updateVariableExpenseSubtotal();
         }
 
         if (name === "isOwner") {
@@ -1230,6 +1831,9 @@
         progressLabel.textContent = `Étape ${currentStepIndex + 1} / ${totalSteps}`;
 
         toggleSpouseIncome(isPartnered(getInputValue("maritalStatus")));
+        if (currentStepIndex === 3 || currentStepIndex === 4) {
+          refreshAllocationStep();
+        }
       }
 
       function persistCurrentStep(force = false) {
@@ -1246,9 +1850,14 @@
       }
 
       function initialiseCollections() {
-        if (!formState.incomes.entries.length) formState.incomes.entries.push(defaultIncomeEntry());
-        if (!formState.expenses.fixed.length) formState.expenses.fixed.push(defaultExpenseEntry("fixe"));
-        if (!formState.expenses.variable.length) formState.expenses.variable.push(defaultExpenseEntry("variable"));
+        if (!Array.isArray(formState.expenses.fixed)) {
+          formState.expenses.fixed = defaultFixedExpenseEntries();
+        }
+        if (!Array.isArray(formState.expenses.variable)) {
+          formState.expenses.variable = defaultVariableExpenseEntries();
+        } else if (!formState.expenses.variable.length) {
+          formState.expenses.variable = defaultVariableExpenseEntries();
+        }
         if (!formState.assets.otherAssets || !formState.assets.otherAssets.length) formState.assets.otherAssets = [defaultOtherAssetEntry()];
         if (!formState.investments.items.length) formState.investments.items.push(defaultInvestmentEntry());
 
@@ -1269,13 +1878,18 @@
           const entry = defaultExpenseEntry("fixe");
           formState.expenses.fixed.push(entry);
           collections.fixedExpenses.appendChild(createExpenseRow("fixe", entry));
+          updateFixedExpenseSubtotal();
         });
 
-        form.querySelector('[data-action="add-variable-expense"]').addEventListener("click", () => {
-          const entry = defaultExpenseEntry("variable");
-          formState.expenses.variable.push(entry);
-          collections.variableExpenses.appendChild(createExpenseRow("variable", entry));
-        });
+        const addVariableExpenseBtn = form.querySelector('[data-action="add-variable-expense"]');
+        if (addVariableExpenseBtn) {
+          addVariableExpenseBtn.addEventListener("click", () => {
+            const entry = defaultExpenseEntry("variable");
+            formState.expenses.variable.push(entry);
+            collections.variableExpenses.appendChild(createExpenseRow("variable", entry));
+            updateVariableExpenseSubtotal();
+          });
+        }
 
         const addOtherAssetBtn = form.querySelector('[data-action="add-other-asset"]');
         if (addOtherAssetBtn) {
@@ -1301,6 +1915,330 @@
           collections.credits.appendChild(createCreditRow(entry));
           updateDebtAssetTotals();
         });
+      }
+
+      function setupAllocationInteractions() {
+        const slider = allocationNodes.leisureSlider;
+        const input = allocationNodes.leisureInput;
+        const shortType = allocationNodes.shortType;
+        const shortHorizonDec = allocationNodes.shortHorizonDec;
+        const shortHorizonInc = allocationNodes.shortHorizonInc;
+        const shortAmount = allocationNodes.shortAmount;
+        const longType = allocationNodes.longType;
+        const longHorizonDec = allocationNodes.longHorizonDec;
+        const longHorizonInc = allocationNodes.longHorizonInc;
+        const longAmount = allocationNodes.longAmount;
+        if (slider) {
+          slider.addEventListener("input", () => {
+            setAllocationLeisure(toNumber(slider.value));
+          });
+        }
+        if (input) {
+          input.addEventListener("input", () => {
+            setAllocationLeisure(toNumber(input.value));
+          });
+        }
+        form.querySelectorAll('input[name="shortTermEnabled"]').forEach((radio) => {
+          radio.addEventListener("change", () => {
+            const plan = getAllocationPlan();
+            plan.shortTerm.enabled = getRadioValue("shortTermEnabled") === "oui";
+            syncAllocationControls();
+            updateAllocationOutputs();
+          });
+        });
+        form.querySelectorAll('input[name="longTermEnabled"]').forEach((radio) => {
+          radio.addEventListener("change", () => {
+            const plan = getAllocationPlan();
+            plan.longTerm.enabled = getRadioValue("longTermEnabled") === "oui";
+            syncAllocationControls();
+            updateAllocationOutputs();
+          });
+        });
+        if (shortType) {
+          shortType.addEventListener("change", () => {
+            const plan = getAllocationPlan();
+            plan.shortTerm.type = shortType.value || "vacances";
+            syncAllocationControls();
+            updateAllocationOutputs();
+          });
+        }
+        if (shortHorizonDec) {
+          shortHorizonDec.addEventListener("click", () => {
+            setShortTermHorizon(getAllocationPlan().shortTerm.horizonYears - 1);
+          });
+        }
+        if (shortHorizonInc) {
+          shortHorizonInc.addEventListener("click", () => {
+            setShortTermHorizon(getAllocationPlan().shortTerm.horizonYears + 1);
+          });
+        }
+        if (shortAmount) {
+          shortAmount.addEventListener("input", () => {
+            getAllocationPlan().shortTerm.amount = Math.max(0, toNumber(shortAmount.value));
+            updateAllocationOutputs();
+          });
+        }
+        if (longType) {
+          longType.addEventListener("change", () => {
+            const plan = getAllocationPlan();
+            plan.longTerm.type = longType.value || "security";
+            plan.longTerm.amount = toNumber(LONG_TERM_DEFAULT_TARGETS[plan.longTerm.type] || 0);
+            syncAllocationControls();
+            updateAllocationOutputs();
+          });
+        }
+        if (longHorizonDec) {
+          longHorizonDec.addEventListener("click", () => {
+            setLongTermHorizon(getAllocationPlan().longTerm.horizonYears - 1);
+          });
+        }
+        if (longHorizonInc) {
+          longHorizonInc.addEventListener("click", () => {
+            setLongTermHorizon(getAllocationPlan().longTerm.horizonYears + 1);
+          });
+        }
+        if (longAmount) {
+          longAmount.addEventListener("input", () => {
+            getAllocationPlan().longTerm.amount = Math.max(0, toNumber(longAmount.value));
+            updateAllocationOutputs();
+          });
+        }
+      }
+
+      function getAllocationPlan() {
+        const current = formState?.allocationPlan;
+        if (!current || typeof current !== "object") {
+          formState.allocationPlan = {
+            leisureMonthly: 0,
+            shortTerm: {
+              enabled: false,
+              type: "vacances",
+              horizonYears: 1,
+              amount: 0,
+            },
+            longTerm: {
+              enabled: false,
+              type: "security",
+              horizonYears: 10,
+              amount: 12000,
+            },
+            goalMode: "horizon",
+          };
+        }
+        const plan = formState.allocationPlan;
+        plan.leisureMonthly = Math.max(0, toNumber(plan.leisureMonthly));
+        if (!plan.shortTerm || typeof plan.shortTerm !== "object") {
+          plan.shortTerm = { enabled: false, type: "vacances", horizonYears: 1, amount: 0 };
+        }
+        if (!plan.longTerm || typeof plan.longTerm !== "object") {
+          plan.longTerm = { enabled: false, type: "security", horizonYears: 10, amount: 12000 };
+        }
+        plan.shortTerm.enabled = Boolean(plan.shortTerm.enabled);
+        plan.shortTerm.type = plan.shortTerm.type || "vacances";
+        plan.shortTerm.horizonYears = Math.min(3, Math.max(1, toInteger(plan.shortTerm.horizonYears || 1)));
+        plan.shortTerm.amount = Math.max(0, toNumber(plan.shortTerm.amount || 0));
+        plan.longTerm.enabled = Boolean(plan.longTerm.enabled);
+        plan.longTerm.type = plan.longTerm.type || "security";
+        plan.longTerm.horizonYears = Math.min(30, Math.max(3, toInteger(plan.longTerm.horizonYears || 10)));
+        plan.longTerm.amount = Math.max(
+          0,
+          toNumber(plan.longTerm.amount || LONG_TERM_DEFAULT_TARGETS[plan.longTerm.type] || 0)
+        );
+        plan.goalMode = "horizon";
+        return plan;
+      }
+
+      function computeMonthlyIncomeNetWithoutThirteenth() {
+        const entries = Array.isArray(formState?.incomes?.entries) ? formState.incomes.entries : [];
+        return entries.reduce((sum, entry) => {
+          const type = String(entry?.amountType || "").toLowerCase();
+          if (type !== "net") return sum;
+          return sum + toNumber(entry?.amount);
+        }, 0);
+      }
+
+      function computeEssentialExpensesMonthly() {
+        const fixed = Array.isArray(formState?.expenses?.fixed) ? formState.expenses.fixed : [];
+        const variable = Array.isArray(formState?.expenses?.variable) ? formState.expenses.variable : [];
+        const fixedTotal = fixed.reduce((sum, entry) => sum + resolveMonthlyExpenseAmount(entry), 0);
+        const variableTotal = variable.reduce((sum, entry) => sum + resolveMonthlyExpenseAmount(entry), 0);
+        return fixedTotal + variableTotal;
+      }
+
+      function computeRemainingMonthlyBudget() {
+        return Math.max(0, computeMonthlyIncomeNetWithoutThirteenth() - computeEssentialExpensesMonthly());
+      }
+
+      function getProjectsBudget() {
+        const plan = getAllocationPlan();
+        const remaining = computeRemainingMonthlyBudget();
+        return Math.max(0, remaining - plan.leisureMonthly);
+      }
+
+      function setAllocationLeisure(value) {
+        const plan = getAllocationPlan();
+        const remaining = computeRemainingMonthlyBudget();
+        const next = Math.max(0, Math.min(remaining, Math.round(toNumber(value))));
+        plan.leisureMonthly = next;
+        syncAllocationControls();
+        updateAllocationOutputs(true);
+      }
+
+      function setShortTermHorizon(years) {
+        const plan = getAllocationPlan();
+        plan.shortTerm.horizonYears = Math.min(3, Math.max(1, toInteger(years)));
+        syncAllocationControls();
+        updateAllocationOutputs();
+      }
+
+      function setLongTermHorizon(years) {
+        const plan = getAllocationPlan();
+        plan.longTerm.horizonYears = Math.min(30, Math.max(3, toInteger(years)));
+        syncAllocationControls();
+        updateAllocationOutputs();
+      }
+
+      function syncAllocationControls() {
+        const plan = getAllocationPlan();
+        const remaining = computeRemainingMonthlyBudget();
+        const slider = allocationNodes.leisureSlider;
+        const input = allocationNodes.leisureInput;
+        const shortHorizonValue = allocationNodes.shortHorizonValue;
+        const shortAmount = allocationNodes.shortAmount;
+        const shortType = allocationNodes.shortType;
+        const longHorizonValue = allocationNodes.longHorizonValue;
+        const longAmount = allocationNodes.longAmount;
+        const longType = allocationNodes.longType;
+        if (slider) {
+          slider.max = String(Math.round(remaining));
+          slider.value = String(Math.min(Math.round(remaining), Math.round(plan.leisureMonthly)));
+        }
+        if (input) {
+          input.max = String(Math.round(remaining));
+          input.value = String(Math.min(Math.round(remaining), Math.round(plan.leisureMonthly)));
+        }
+        const shortEnabled = plan.shortTerm.enabled;
+        const longEnabled = plan.longTerm.enabled;
+        if (allocationNodes.shortTermConfig) allocationNodes.shortTermConfig.hidden = !shortEnabled;
+        if (allocationNodes.longTermConfig) allocationNodes.longTermConfig.hidden = !longEnabled;
+        const shortYes = form.querySelector('input[name="shortTermEnabled"][value="oui"]');
+        const shortNo = form.querySelector('input[name="shortTermEnabled"][value="non"]');
+        const longYes = form.querySelector('input[name="longTermEnabled"][value="oui"]');
+        const longNo = form.querySelector('input[name="longTermEnabled"][value="non"]');
+        if (shortYes) shortYes.checked = shortEnabled;
+        if (shortNo) shortNo.checked = !shortEnabled;
+        if (longYes) longYes.checked = longEnabled;
+        if (longNo) longNo.checked = !longEnabled;
+        if (shortType) shortType.value = plan.shortTerm.type;
+        if (shortHorizonValue) {
+          shortHorizonValue.textContent = `${plan.shortTerm.horizonYears} ${plan.shortTerm.horizonYears > 1 ? "ans" : "an"}`;
+        }
+        if (shortAmount) shortAmount.value = String(Math.round(plan.shortTerm.amount));
+        if (longType) longType.value = plan.longTerm.type;
+        if (longHorizonValue) {
+          longHorizonValue.textContent = `${plan.longTerm.horizonYears} ${plan.longTerm.horizonYears > 1 ? "ans" : "an"}`;
+        }
+        if (longAmount) longAmount.value = String(Math.round(plan.longTerm.amount));
+      }
+
+      function computeShortTermMonthly() {
+        const plan = getAllocationPlan();
+        if (!plan.shortTerm.enabled) return 0;
+        const years = Math.max(1, plan.shortTerm.horizonYears);
+        return plan.shortTerm.amount / (years * 12);
+      }
+
+      function computeLongTermMonthly() {
+        const plan = getAllocationPlan();
+        if (!plan.longTerm.enabled) return 0;
+        const years = Math.max(3, plan.longTerm.horizonYears);
+        return plan.longTerm.amount / (years * 12);
+      }
+
+      function updateGoalComputation(projectsBudgetBeforeShortTerm) {
+        const plan = getAllocationPlan();
+        const shortMonthly = computeShortTermMonthly();
+        const availableAfterShortTerm = Math.max(0, projectsBudgetBeforeShortTerm - shortMonthly);
+        if (allocationNodes.shortRequired) {
+          allocationNodes.shortRequired.textContent = `${formatCurrency(shortMonthly)} / mois`;
+        }
+        if (allocationNodes.shortFeedback) {
+          const label =
+            SHORT_TERM_LABELS[plan.shortTerm.type] || "ce projet";
+          allocationNodes.shortFeedback.textContent = `Tu dois mettre ${formatCurrency(
+            shortMonthly
+          )}/mois de côté pour atteindre ${label}.`;
+        }
+        const longMonthly = computeLongTermMonthly();
+        if (allocationNodes.longFeedback) {
+          const label = LONG_TERM_LABELS[plan.longTerm.type] || "ton objectif long terme";
+          if (!plan.longTerm.enabled) {
+            allocationNodes.longFeedback.textContent = "Aucun objectif long terme sélectionné.";
+            allocationNodes.longFeedback.classList.remove("is-warning");
+          } else if (availableAfterShortTerm >= longMonthly) {
+            allocationNodes.longFeedback.textContent = `Tu dois mettre ${formatCurrency(
+              longMonthly
+            )}/mois de côté pour atteindre ${label}.`;
+            allocationNodes.longFeedback.classList.remove("is-warning");
+          } else if (availableAfterShortTerm > 0) {
+            allocationNodes.longFeedback.textContent = `Tu dois mettre ${formatCurrency(
+              longMonthly
+            )}/mois de côté pour atteindre ${label}.`;
+            allocationNodes.longFeedback.classList.add("is-warning");
+          } else {
+            allocationNodes.longFeedback.textContent = `Tu dois mettre ${formatCurrency(
+              longMonthly
+            )}/mois de côté pour atteindre ${label}.`;
+            allocationNodes.longFeedback.classList.add("is-warning");
+          }
+        }
+      }
+
+      function updateAllocationOutputs(animate = false) {
+        const plan = getAllocationPlan();
+        const remaining = computeRemainingMonthlyBudget();
+        const projectsBudgetBeforeShortTerm = Math.max(0, remaining - plan.leisureMonthly);
+        const shortMonthly = computeShortTermMonthly();
+        const longMonthly = computeLongTermMonthly();
+        const projectsBudgetAfterShort = Math.max(0, projectsBudgetBeforeShortTerm - shortMonthly);
+        const projectsBudget = Math.max(0, projectsBudgetAfterShort - longMonthly);
+        if (allocationNodes.remainingAmount) {
+          allocationNodes.remainingAmount.textContent = formatCurrency(remaining);
+        }
+        if (allocationNodes.projectsAvailable) {
+          allocationNodes.projectsAvailable.textContent = formatCurrency(projectsBudgetBeforeShortTerm);
+        }
+        if (allocationNodes.projectsBudget) {
+          allocationNodes.projectsBudget.textContent = formatCurrency(projectsBudgetBeforeShortTerm);
+        }
+        if (allocationNodes.summaryLeisure) {
+          allocationNodes.summaryLeisure.textContent = formatCurrency(plan.leisureMonthly);
+        }
+        if (allocationNodes.summaryShort) {
+          allocationNodes.summaryShort.textContent = formatCurrency(shortMonthly);
+        }
+        if (allocationNodes.summaryLong) {
+          allocationNodes.summaryLong.textContent = formatCurrency(longMonthly);
+        }
+        if (allocationNodes.summaryProjects) {
+          allocationNodes.summaryProjects.textContent = formatCurrency(projectsBudget);
+        }
+        if (allocationNodes.projectsLive && animate) {
+          allocationNodes.projectsLive.classList.remove("is-highlight");
+          void allocationNodes.projectsLive.offsetWidth;
+          allocationNodes.projectsLive.classList.add("is-highlight");
+        }
+        updateGoalComputation(projectsBudgetBeforeShortTerm);
+      }
+
+      function refreshAllocationStep() {
+        const plan = getAllocationPlan();
+        const remaining = computeRemainingMonthlyBudget();
+        if (plan.leisureMonthly > remaining) {
+          plan.leisureMonthly = remaining;
+        }
+        syncAllocationControls();
+        updateAllocationOutputs();
       }
 
       function saveStepData(stepId) {
@@ -1337,13 +2275,31 @@
             };
             break;
           case 4:
+          case 5:
+            const plan = getAllocationPlan();
+            formState.allocationPlan = {
+              leisureMonthly: toNumber(plan.leisureMonthly),
+              shortTerm: {
+                enabled: Boolean(plan.shortTerm?.enabled),
+                type: plan.shortTerm?.type || "vacances",
+                horizonYears: Math.min(3, Math.max(1, toInteger(plan.shortTerm?.horizonYears || 1))),
+                amount: Math.max(0, toNumber(plan.shortTerm?.amount || 0)),
+              },
+              longTerm: {
+                enabled: Boolean(plan.longTerm?.enabled),
+                type: plan.longTerm?.type || "security",
+                horizonYears: Math.min(30, Math.max(3, toInteger(plan.longTerm?.horizonYears || 10))),
+                amount: Math.max(0, toNumber(plan.longTerm?.amount || 0)),
+              },
+              goalMode: "horizon",
+            };
             formState.exceptional = {
-              type: getInputValue("exceptionalType"),
-              amount: toNumber(getInputValue("exceptionalAmount")),
-              notes: getInputValue("exceptionalNotes"),
+              type: "aucune",
+              amount: 0,
+              notes: "",
             };
             break;
-          case 5:
+          case 6:
             formState.taxes = {
               paysTaxes: getRadioValue("paysTaxes"),
               commuteDistance: toNumber(getInputValue("commuteDistance")),
@@ -1353,7 +2309,7 @@
               childcareCosts: toNumber(getInputValue("childcareCosts")),
             };
             break;
-          case 6:
+          case 7:
             const mappedOtherAssets = mapOtherAssetRows(collections.otherAssets);
             formState.assets = {
               currentAccount: toNumber(getInputValue("currentAccount")),
@@ -1368,7 +2324,7 @@
               liquidAssetsTotal: toNumber(getInputValue("liquidAssetsTotal")),
             };
             break;
-          case 7:
+          case 8:
             formState.investments = {
               hasInvestments: getRadioValue("hasInvestments"),
               items:
@@ -1384,7 +2340,7 @@
               notes: getInputValue("investmentNotes"),
             };
             break;
-          case 8:
+          case 9:
             formState.credits = {
               loans: Array.from(collections.credits.querySelectorAll(".collection-row")).map((row) => ({
                 creditType: getFieldValue(row, "creditType"),
@@ -1403,7 +2359,7 @@
               assetsTotal: toNumber(getInputValue("assetsTotal")),
             };
             break;
-          case 9:
+          case 10:
             formState.goals = {
               primaryPriority: getInputValue("primaryPriority"),
               riskTolerance: getInputValue("riskTolerance"),
@@ -1415,7 +2371,7 @@
       }
 
       function restoreForm() {
-        const { personal, incomes, expenses, exceptional, taxes, assets, investments, credits, goals } = formState;
+        const { personal, incomes, expenses, taxes, assets, investments, credits, goals } = formState;
 
         setInputValue("birthDate", personal.birthDate);
         setInputValue("canton", personal.canton);
@@ -1425,19 +2381,19 @@
         setInputValue("incomeStability", personal.incomeStability);
         setInputValue("religion", personal.religion);
 
-        renderCollection(collections.incomes, incomes.entries.length ? incomes.entries : [defaultIncomeEntry()], createIncomeRow);
+        renderCollection(collections.incomes, incomes.entries, createIncomeRow);
         setInputValue("spouseNetIncome", toValueString(incomes.spouseNetIncome));
 
-        renderCollection(collections.fixedExpenses, expenses.fixed.length ? expenses.fixed : [defaultExpenseEntry("fixe")], (entry) =>
+        renderCollection(collections.fixedExpenses, expenses.fixed, (entry) =>
           createExpenseRow("fixe", entry)
         );
-        renderCollection(collections.variableExpenses, expenses.variable.length ? expenses.variable : [defaultExpenseEntry("variable")], (entry) =>
+        renderCollection(collections.variableExpenses, expenses.variable, (entry) =>
           createExpenseRow("variable", entry)
         );
+        updateFixedExpenseSubtotal();
+        updateVariableExpenseSubtotal();
 
-        setInputValue("exceptionalType", exceptional.type);
-        setInputValue("exceptionalAmount", toValueString(exceptional.amount));
-        setInputValue("exceptionalNotes", exceptional.notes);
+        refreshAllocationStep();
 
         setRadioValue("paysTaxes", taxes.paysTaxes);
         setInputValue("commuteDistance", toValueString(taxes.commuteDistance));
@@ -1741,30 +2697,19 @@
 
       function createExpenseRow(kind, data = defaultExpenseEntry(kind)) {
         const row = document.createElement("div");
-        row.className = "collection-row";
+        row.className = "collection-row expense-row";
         row.innerHTML = `
-          <div class="row-grid">
-            <label class="input-block">
-              <span>Type de dépense</span>
-              <input type="text" data-field="label" placeholder="ex. ${kind === "fixe" ? "Loyer" : "Alimentation"}" required>
-            </label>
-            <label class="input-block">
-              <span>Montant (CHF)</span>
-              <input type="number" min="0" step="0.05" data-field="amount" required>
-            </label>
-            <label class="input-block">
-              <span>Fréquence</span>
-              <select data-field="frequency" required>
-                <option value="mensuel">Mensuel</option>
-                <option value="annuel">Annuel</option>
-              </select>
-            </label>
+          <div class="expense-row__grid">
+            <input type="text" data-field="label" placeholder="Nom de la dépense" aria-label="Nom de la dépense" required>
+            <select data-field="frequency" aria-label="Fréquence" required>
+              <option value="mensuel">Mensuel</option>
+              <option value="annuel">Annuel</option>
+            </select>
+            <input type="number" min="0" step="0.05" data-field="amount" placeholder="Montant (CHF)" aria-label="Montant en CHF" required>
+            <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer cette dépense">
+              <span aria-hidden="true">×</span>
+            </button>
           </div>
-      <div class="row-actions">
-        <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer cette dépense">
-          <span aria-hidden="true">×</span>
-        </button>
-      </div>
         `;
         setFieldValue(row, "label", data.label || "");
         setFieldValue(row, "amount", toValueString(data.amount));
@@ -1772,14 +2717,18 @@
 
         row.querySelector('[data-action="remove-row"]').addEventListener("click", () => {
           const list = kind === "fixe" ? collections.fixedExpenses : collections.variableExpenses;
-          if (list.children.length > 1) {
-            const index = Array.from(list.children).indexOf(row);
-            if (kind === "fixe") {
-              formState.expenses.fixed.splice(index, 1);
-            } else {
-              formState.expenses.variable.splice(index, 1);
-            }
-            row.remove();
+          if (!list) return;
+          const index = Array.from(list.children).indexOf(row);
+          if (kind === "fixe") {
+            formState.expenses.fixed.splice(index, 1);
+          } else {
+            formState.expenses.variable.splice(index, 1);
+          }
+          row.remove();
+          if (kind === "fixe") {
+            updateFixedExpenseSubtotal();
+          } else {
+            updateVariableExpenseSubtotal();
           }
         });
 
@@ -1928,11 +2877,56 @@
       }
 
       function mapExpenseRows(container) {
+        if (!container) return [];
         return Array.from(container.querySelectorAll(".collection-row")).map((row) => ({
           label: getFieldValue(row, "label"),
           amount: toNumber(getFieldValue(row, "amount")),
           frequency: getFieldValue(row, "frequency"),
         }));
+      }
+
+      function resolveMonthlyExpenseAmount(entry = {}) {
+        const amount = toNumber(entry.amount);
+        const frequency = String(entry.frequency || "mensuel").toLowerCase();
+        if (!amount) return 0;
+        if (frequency.includes("ann")) return amount / 12;
+        return amount;
+      }
+
+      function updateFixedExpenseSubtotal() {
+        const target = document.getElementById("fixed-expense-subtotal");
+        if (!target) return;
+        const total = mapExpenseRows(collections.fixedExpenses).reduce(
+          (sum, entry) => sum + resolveMonthlyExpenseAmount(entry),
+          0
+        );
+        target.textContent = formatCurrency(total);
+        updateExpenseGrandTotal();
+      }
+
+      function updateVariableExpenseSubtotal() {
+        const target = document.getElementById("variable-expense-subtotal");
+        if (!target) return;
+        const total = mapExpenseRows(collections.variableExpenses).reduce(
+          (sum, entry) => sum + resolveMonthlyExpenseAmount(entry),
+          0
+        );
+        target.textContent = formatCurrency(total);
+        updateExpenseGrandTotal();
+      }
+
+      function updateExpenseGrandTotal() {
+        const target = document.getElementById("expense-grand-total");
+        if (!target) return;
+        const fixedTotal = mapExpenseRows(collections.fixedExpenses).reduce(
+          (sum, entry) => sum + resolveMonthlyExpenseAmount(entry),
+          0
+        );
+        const variableTotal = mapExpenseRows(collections.variableExpenses).reduce(
+          (sum, entry) => sum + resolveMonthlyExpenseAmount(entry),
+          0
+        );
+        target.textContent = formatCurrency(fixedTotal + variableTotal);
       }
 
       function mapOtherAssetRows(container) {
@@ -2008,17 +3002,33 @@
           religion: "",
         },
         incomes: {
-          entries: [defaultIncomeEntry()],
+          entries: [],
           spouseNetIncome: 0,
         },
         expenses: {
-          fixed: [defaultExpenseEntry("fixe")],
-          variable: [defaultExpenseEntry("variable")],
+          fixed: defaultFixedExpenseEntries(),
+          variable: defaultVariableExpenseEntries(),
         },
         exceptional: {
           type: "",
           amount: 0,
           notes: "",
+        },
+        allocationPlan: {
+          leisureMonthly: 0,
+          shortTerm: {
+            enabled: false,
+            type: "vacances",
+            horizonYears: 1,
+            amount: 0,
+          },
+          longTerm: {
+            enabled: false,
+            type: "security",
+            horizonYears: 10,
+            amount: 12000,
+          },
+          goalMode: "horizon",
         },
         taxes: {
           paysTaxes: "",
@@ -2074,9 +3084,26 @@
       };
     }
 
+    function defaultFixedExpenseEntries() {
+      return [
+        { label: "Loyer", amount: 0, frequency: "mensuel" },
+        { label: "LAMal", amount: 0, frequency: "mensuel" },
+        { label: "Assurances", amount: 0, frequency: "mensuel" },
+        { label: "Impôts", amount: 0, frequency: "annuel" },
+        { label: "Abonnements", amount: 0, frequency: "mensuel" },
+      ];
+    }
+
+    function defaultVariableExpenseEntries() {
+      return [
+        { label: "Nourriture", amount: 0, frequency: "mensuel" },
+        { label: "Essence", amount: 0, frequency: "mensuel" },
+      ];
+    }
+
     function defaultExpenseEntry(kind) {
       return {
-        label: kind === "fixe" ? "Loyer" : "Alimentation",
+        label: "",
         amount: 0,
         frequency: "mensuel",
       };
@@ -2136,6 +3163,50 @@
         localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(payload));
       }
 
+      function resolvePostOnboardingTarget(userId) {
+        return isRecapPending(userId) ? "resultats.html" : "mon-argent.html";
+      }
+
+      function resolveSessionUserId(activeId, state) {
+        const candidate = String(activeId || state?.profileId || state?.id || "").trim();
+        return candidate;
+      }
+
+      function ensureActiveUserSession(userId, state) {
+        if (!userId) return;
+        const personal = state?.personal || {};
+        const firstName = String(personal.firstName || personal.prenom || "").trim();
+        const lastName = String(personal.lastName || personal.nom || "").trim();
+        const displayName = String(
+          personal.displayName || personal.fullName || [firstName, lastName].filter(Boolean).join(" ")
+        ).trim();
+        const payload = {
+          id: userId,
+          displayName: displayName || "Profil",
+        };
+        if (firstName) payload.firstName = firstName;
+        if (lastName) payload.lastName = lastName;
+        try {
+          localStorage.setItem(STORAGE_KEY_ACTIVE_USER, JSON.stringify(payload));
+        } catch (_error) {
+          // ignore storage issues
+        }
+      }
+
+      function markRecapPendingOnFirstCompletion(userId) {
+        if (!userId) return;
+        const map = safelyParse(localStorage.getItem(RECAP_PENDING_KEY)) || {};
+        if (Object.prototype.hasOwnProperty.call(map, userId)) return;
+        map[userId] = true;
+        localStorage.setItem(RECAP_PENDING_KEY, JSON.stringify(map));
+      }
+
+      function isRecapPending(userId) {
+        if (!userId) return false;
+        const map = safelyParse(localStorage.getItem(RECAP_PENDING_KEY)) || {};
+        return Boolean(map?.[userId]);
+      }
+
     function mergeWithDefaults(partial) {
       const defaults = defaultFormState();
       const merged = deepMerge(defaults, partial);
@@ -2157,6 +3228,122 @@
     }
 
     function normalizeState(state) {
+      if (state) {
+        if (!state.incomes || typeof state.incomes !== "object") {
+          state.incomes = { entries: [], spouseNetIncome: 0 };
+        }
+        const rawEntries = Array.isArray(state.incomes.entries)
+          ? state.incomes.entries
+          : state.incomes.entries
+          ? [state.incomes.entries]
+          : [];
+        state.incomes.entries = rawEntries.filter((entry) => {
+          if (!entry || typeof entry !== "object") return false;
+          const sourceType = String(entry.sourceType ?? "").trim().toLowerCase();
+          const amountType = String(entry.amountType ?? "").trim().toLowerCase();
+          const thirteenth = String(entry.thirteenth ?? "").trim().toLowerCase();
+          const amount = toNumber(entry.amount ?? 0);
+          const isLegacyDefaultIncome =
+            amount === 0 &&
+            (sourceType === "" || sourceType === "salaire") &&
+            (amountType === "" || amountType === "net") &&
+            (thirteenth === "" || thirteenth === "oui");
+          return !isLegacyDefaultIncome;
+        });
+
+        if (!state.expenses || typeof state.expenses !== "object") {
+          state.expenses = {
+            fixed: defaultFixedExpenseEntries(),
+            variable: defaultVariableExpenseEntries(),
+          };
+        }
+        const fixedEntries = Array.isArray(state.expenses.fixed)
+          ? state.expenses.fixed
+          : state.expenses.fixed
+          ? [state.expenses.fixed]
+          : defaultFixedExpenseEntries();
+        const isLegacySingleDefaultFixed =
+          fixedEntries.length === 1 &&
+          String(fixedEntries[0]?.label || "").trim().toLowerCase() === "loyer" &&
+          toNumber(fixedEntries[0]?.amount) === 0 &&
+          String(fixedEntries[0]?.frequency || "mensuel").trim().toLowerCase() === "mensuel";
+        state.expenses.fixed = fixedEntries;
+        if (isLegacySingleDefaultFixed) {
+          state.expenses.fixed = defaultFixedExpenseEntries();
+        }
+        const variableEntries = Array.isArray(state.expenses.variable)
+          ? state.expenses.variable
+          : state.expenses.variable
+          ? [state.expenses.variable]
+          : [];
+        const isLegacySingleDefaultVariable =
+          variableEntries.length === 1 &&
+          String(variableEntries[0]?.label || "").trim().toLowerCase() === "alimentation" &&
+          toNumber(variableEntries[0]?.amount) === 0 &&
+          String(variableEntries[0]?.frequency || "mensuel").trim().toLowerCase() === "mensuel";
+        state.expenses.variable = variableEntries;
+        if (!state.expenses.variable.length || isLegacySingleDefaultVariable) {
+          state.expenses.variable = defaultVariableExpenseEntries();
+        }
+
+        if (!state.allocationPlan || typeof state.allocationPlan !== "object") {
+          state.allocationPlan = {
+            leisureMonthly: 0,
+            shortTerm: {
+              enabled: false,
+              type: "vacances",
+              horizonYears: 1,
+              amount: 0,
+            },
+            longTerm: {
+              enabled: false,
+              type: "security",
+              horizonYears: 10,
+              amount: 12000,
+            },
+            goalMode: "horizon",
+          };
+        }
+        if (!state.allocationPlan.shortTerm || typeof state.allocationPlan.shortTerm !== "object") {
+          state.allocationPlan.shortTerm = {
+            enabled: false,
+            type: "vacances",
+            horizonYears: 1,
+            amount: 0,
+          };
+        }
+        if (!state.allocationPlan.longTerm || typeof state.allocationPlan.longTerm !== "object") {
+          state.allocationPlan.longTerm = {
+            enabled: false,
+            type: "security",
+            horizonYears: 10,
+            amount: 12000,
+          };
+        }
+        const allowedShort = new Set(["vacances", "cadeaux", "voiture", "mariage", "autre"]);
+        const allowedLong = new Set(["security", "home", "invest", "children", "retirement"]);
+        state.allocationPlan.shortTerm.enabled = Boolean(state.allocationPlan.shortTerm.enabled);
+        state.allocationPlan.shortTerm.type = allowedShort.has(state.allocationPlan.shortTerm.type)
+          ? state.allocationPlan.shortTerm.type
+          : "vacances";
+        state.allocationPlan.shortTerm.horizonYears = Math.min(
+          3,
+          Math.max(1, toInteger(state.allocationPlan.shortTerm.horizonYears || 1))
+        );
+        state.allocationPlan.shortTerm.amount = Math.max(0, toNumber(state.allocationPlan.shortTerm.amount || 0));
+
+        state.allocationPlan.longTerm.enabled = Boolean(state.allocationPlan.longTerm.enabled);
+        state.allocationPlan.longTerm.type = allowedLong.has(state.allocationPlan.longTerm.type)
+          ? state.allocationPlan.longTerm.type
+          : "security";
+        state.allocationPlan.longTerm.horizonYears = Math.min(
+          30,
+          Math.max(3, toInteger(state.allocationPlan.longTerm.horizonYears || 10))
+        );
+        state.allocationPlan.longTerm.amount = Math.max(0, toNumber(state.allocationPlan.longTerm.amount || 0));
+        state.allocationPlan.leisureMonthly = Math.max(0, toNumber(state.allocationPlan.leisureMonthly || 0));
+        state.allocationPlan.goalMode = "horizon";
+      }
       if (state?.assets) {
         const assets = state.assets;
         if (!Array.isArray(assets.otherAssets) || !assets.otherAssets.length) {
@@ -2379,6 +3566,14 @@
       if (typeof value === "number") return Number.isFinite(value) ? value : 0;
       const parsed = parseFloat(String(value).replace(/\s/g, "").replace(/’/g, "").replace(",", "."));
       return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat("fr-CH", {
+        style: "currency",
+        currency: "CHF",
+        maximumFractionDigits: 0,
+      }).format(toNumber(value));
     }
 
     function toInteger(value) {

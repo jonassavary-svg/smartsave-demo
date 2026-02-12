@@ -627,6 +627,25 @@ body.hub-page .dashboard-shell.hub-shell {
   margin: 0 0 0.2rem;
 }
 
+.account-card h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.account-card__line {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: rgba(26, 39, 51, 0.72);
+  font-size: 0.9rem;
+}
+
+.account-card__line strong {
+  color: var(--text);
+}
+
 .account-meta {
   margin: 0;
   color: rgba(26, 39, 51, 0.55);
@@ -674,6 +693,18 @@ body.hub-page .dashboard-shell.hub-shell {
   flex-wrap: wrap;
   gap: 0.6rem;
   margin-bottom: 1rem;
+}
+
+body[data-page="home"] .quick-actions.quick-actions--inline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+body[data-page="home"] .quick-actions.quick-actions--inline .quick-action {
+  height: 100%;
+  min-height: 66px;
 }
 
 .hub-action-btn {
@@ -905,6 +936,55 @@ body.hub-page .dashboard-shell.hub-shell {
   border: 1px solid rgba(15, 23, 42, 0.12);
   padding: 0 0.8rem;
   font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .hub-modal__content {
+    width: calc(100% - 1.3rem);
+    padding: 1.25rem;
+  }
+
+  .hub-modal__form {
+    gap: 1.25rem;
+  }
+
+  .hub-field {
+    padding: 0.9rem 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.12);
+  }
+
+  .hub-field label {
+    font-size: 0.85rem;
+    color: rgba(15, 23, 42, 0.7);
+    letter-spacing: 0.02em;
+  }
+
+  .hub-field input,
+  .hub-field select {
+    border: none;
+    background: transparent;
+    padding: 0.15rem 0;
+    height: 46px;
+    font-size: 1rem;
+  }
+
+  .hub-field--inline {
+    gap: 0.9rem;
+  }
+
+  .hub-field--inline > div {
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .hub-modal .hub-cta {
+    font-size: 1rem;
+    padding: 0.95rem 1rem;
+  }
 }
 
 .plan-modal-list {

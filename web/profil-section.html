@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
     <title>SmartSave – Profil détaillé</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
   </head>
   <body class="profile-page" data-page="profil">
@@ -66,9 +66,9 @@
       </div>
     </div>
 
-    <script src="runtimeConfig.js"></script>
-    <script src="taxEngine.js"></script>
-    <script src="allocationEngine.js"></script>
+    <script src="runtimeConfig.js?v=20260212-01"></script>
+    <script src="taxEngine.js?v=20260212-01"></script>
+    <script src="allocationEngine.js?v=20260212-01"></script>
     <script>
       const STORAGE_KEY_FORM = "smartsaveFormData";
       const PROFILE_UPDATE_KEY = "smartsaveProfileUpdated";
@@ -160,6 +160,13 @@
         priorities: { securite: "Sécurité", projet: "Projet spécial", croissance: "Croissance" },
         riskTolerance: { faible: "Faible", moyenne: "Moyenne", elevee: "Élevée" },
         amountType: { net: "Net", brut: "Brut" },
+      };
+
+      const EXPENSE_FREQUENCY_LABELS = {
+        mensuel: "Mensuel",
+        annuel: "Annuel",
+        trimestriel: "Trimestriel",
+        hebdomadaire: "Hebdomadaire",
       };
 
       const DEFAULT_ASSET_ACCOUNTS = [
@@ -257,51 +264,53 @@
         },
         expenses: {
           title: "Dépenses",
-          description: "Charges fixes, variables et exceptionnelles.",
+          description: "Charges fixes, obligatoires et variables (format tableau).",
           fields: [],
           lists: [
             {
             label: "Dépenses fixes",
-            subtitle: "Dépenses fixes",
+            subtitle: "Charges récurrentes prévisibles",
             addLabel: "Ajouter une dépense fixe",
             removeLabel: "Supprimer une dépense fixe",
           entriesPath: "expenses.fixed",
           entries: (data) => (Array.isArray(data.expenses?.fixed) ? data.expenses.fixed : []),
             fields: [
               { label: "Libellé", path: "label" },
+              { label: "Fréquence", path: "frequency", map: EXPENSE_FREQUENCY_LABELS },
               { label: "Montant", path: "amount", format: "currency" },
             ],
             empty: "Aucune dépense fixe",
             defaultEntry: { label: "", amount: 0, frequency: "mensuel" },
           },
             {
-            label: "Dépenses variables",
-            subtitle: "Dépenses variables",
-            addLabel: "Ajouter une dépense variable",
-            removeLabel: "Supprimer une dépense variable",
+            label: "Dépenses obligatoires",
+            subtitle: "Dépenses essentielles du mois",
+            addLabel: "Ajouter une dépense obligatoire",
+            removeLabel: "Supprimer une dépense obligatoire",
           entriesPath: "expenses.variable",
           entries: (data) => (Array.isArray(data.expenses?.variable) ? data.expenses.variable : []),
             fields: [
               { label: "Libellé", path: "label" },
+              { label: "Fréquence", path: "frequency", map: EXPENSE_FREQUENCY_LABELS },
               { label: "Montant", path: "amount", format: "currency" },
             ],
-            empty: "Aucune dépense variable",
+            empty: "Aucune dépense obligatoire",
             defaultEntry: { label: "", amount: 0, frequency: "mensuel" },
           },
             {
-            label: "Dépenses exceptionnelles",
-            subtitle: "Dépenses exceptionnelles",
-            addLabel: "Ajouter une dépense exceptionnelle",
-            removeLabel: "Supprimer une dépense exceptionnelle",
+            label: "Dépenses variables",
+            subtitle: "Dépenses discrétionnaires / ponctuelles",
+            addLabel: "Ajouter une dépense variable",
+            removeLabel: "Supprimer une dépense variable",
           entriesPath: "expenses.exceptional",
           entries: (data) => (Array.isArray(data.expenses?.exceptional) ? data.expenses.exceptional : []),
             fields: [
               { label: "Libellé", path: "label" },
+              { label: "Fréquence", path: "frequency", map: EXPENSE_FREQUENCY_LABELS },
               { label: "Montant", path: "amount", format: "currency" },
-              { label: "Fréquence", path: "frequency" },
             ],
-            empty: "Aucune dépense exceptionnelle",
-            defaultEntry: { label: "", amount: 0, frequency: "annuel" },
+            empty: "Aucune dépense variable",
+            defaultEntry: { label: "", amount: 0, frequency: "mensuel" },
           },
           ],
         },
@@ -888,8 +897,21 @@
         }
         section.appendChild(header);
 
+        const controls = createListControls(currentSectionKey, list);
+        controls.classList.add("profile-expense-group__controls");
+        const removeGlobal = controls.querySelector("[data-list-remove]");
+        if (removeGlobal) removeGlobal.style.display = "none";
+        section.appendChild(controls);
+
+        const sheet = document.createElement("div");
+        sheet.className = "expense-sheet";
+        const sheetHeader = document.createElement("div");
+        sheetHeader.className = "expense-sheet__header";
+        sheetHeader.innerHTML = "<span>Dépense</span><span>Fréquence</span><span>Montant</span><span></span>";
+        sheet.appendChild(sheetHeader);
+
         const entriesContainer = document.createElement("div");
-        entriesContainer.className = "profile-expense-group__entries";
+        entriesContainer.className = "collection-body";
         if (!entries.length) {
           const empty = document.createElement("div");
           empty.className = "profile-empty";
@@ -897,15 +919,49 @@
           entriesContainer.appendChild(empty);
         } else {
           entries.forEach((entry, index) => {
-            const card = createProfileEntryCard(list, entry, index);
-            entriesContainer.appendChild(card);
+            const row = document.createElement("div");
+            row.className = "collection-row expense-row";
+            const label = formatField(entry?.label || "", {});
+            const frequency = formatField(entry?.frequency || "mensuel", {
+              map: EXPENSE_FREQUENCY_LABELS,
+            });
+            const amount = formatField(entry?.amount || 0, { format: "currency" });
+            row.innerHTML = `
+              <div class="expense-row__grid">
+                <div class="profile-expense-cell">${label}</div>
+                <div class="profile-expense-cell">${frequency}</div>
+                <div class="profile-expense-cell">${amount}</div>
+                <button type="button" class="remove-btn" data-expense-remove-row="${list.entriesPath}" data-expense-remove-index="${index}" aria-label="Supprimer cette dépense">
+                  <span aria-hidden="true">×</span>
+                </button>
+              </div>
+            `;
+
+            const grid = row.querySelector(".expense-row__grid");
+            if (grid) {
+              const cells = Array.from(grid.querySelectorAll(".profile-expense-cell"));
+              const defs = list.fields || [];
+              cells.forEach((cell, cellIndex) => {
+                const fieldDef = defs[cellIndex];
+                if (!fieldDef?.path) return;
+                const editButton = createEditButton({
+                  section: currentSectionKey,
+                  field: fieldDef.label,
+                  fieldPath: fieldDef.path,
+                  list: list.label,
+                  listPath: list.entriesPath,
+                  entryIndex: index,
+                });
+                editButton.classList.add("profile-expense-cell__edit");
+                cell.appendChild(editButton);
+              });
+            }
+
+            entriesContainer.appendChild(row);
           });
         }
-        section.appendChild(entriesContainer);
-
-        const controls = createListControls(currentSectionKey, list);
-        controls.classList.add("profile-expense-group__controls");
-        section.appendChild(controls);
+        sheet.appendChild(entriesContainer);
+        section.appendChild(sheet);
 
         const totalRow = document.createElement("div");
         totalRow.className = "profile-expense-group__total";
@@ -920,7 +976,7 @@
       const renderExpensesSection = (container, lists, data) => {
         if (!container) return;
         const wrapper = document.createElement("div");
-        wrapper.className = "profile-expenses";
+        wrapper.className = "profile-expenses profile-expenses--sheet";
         lists.forEach((list) => {
           const entries = (list.entries(data) || []).filter(Boolean);
           const group = createExpenseGroupCard(list, entries);
@@ -1320,6 +1376,19 @@
             const valueElement = editTrigger.closest(".profile-field")?.querySelector(".profile-item__value");
             const currentValue = valueElement?.textContent?.trim() || "";
             openEditDialog(payload, currentValue);
+            return;
+          }
+          const expenseRemoveTrigger = event.target.closest("[data-expense-remove-row]");
+          if (expenseRemoveTrigger) {
+            event.preventDefault();
+            const path = expenseRemoveTrigger.dataset.expenseRemoveRow;
+            const index = Number(expenseRemoveTrigger.dataset.expenseRemoveIndex);
+            if (!path || !Number.isFinite(index)) return;
+            const list = ensureArrayByPath(activeFormData, path);
+            if (!Array.isArray(list) || index < 0 || index >= list.length) return;
+            list.splice(index, 1);
+            refreshSection();
+            persistFormData();
             return;
           }
           const addTrigger = event.target.closest("[data-list-add]");

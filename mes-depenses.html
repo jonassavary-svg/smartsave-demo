@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
-    <title>SmartSave – Mes dépenses</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>SmartSave – Historique mensuel</title>
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
   </head>
   <body class="dashboard app-page" data-page="expenses-history" data-mvp>
@@ -66,11 +66,11 @@
               </svg>
             </button>
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
-              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Home</a>
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Actions</a>
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
+              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
-              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Score</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
             </div>
           </div>
         </div>
@@ -78,22 +78,68 @@
 
       <main class="app-main">
         <section class="history-hero">
-          <h1>Mes dépenses</h1>
-          <p>Historique complet des dépenses et revenus.</p>
+          <h1>Historique des mois clôturés</h1>
+          <p>Consulte chaque mois en lecture seule: plan, suivi réel et transactions.</p>
         </section>
-        <section class="history-card card">
-          <ul class="activity-list" data-transaction-list data-transaction-history></ul>
+
+        <section class="history-empty card" data-history-empty hidden>
+          Aucun mois clôturé pour le moment. Clôture ton premier mois pour voir l’historique ici.
+        </section>
+
+        <section class="history-layout" data-history-layout hidden>
+          <section class="history-detail card">
+            <header class="history-detail__header">
+              <div class="history-detail__title-wrap">
+                <h2 data-history-month-title>Mois —</h2>
+                <p data-history-month-subtitle>Lecture seule</p>
+              </div>
+              <span class="history-status-badge">Clôturé</span>
+            </header>
+
+            <section class="history-month-picker">
+              <label for="history-month-select">Mois archivé</label>
+              <select id="history-month-select" data-history-month-select></select>
+            </section>
+
+            <div class="history-kpis" data-history-kpis></div>
+
+            <section class="history-block">
+              <h3>Plan du mois (snapshot)</h3>
+              <div class="history-plan-grid" data-history-plan-grid></div>
+            </section>
+
+            <section class="history-block">
+              <h3>Gains d’intérêts du mois</h3>
+              <div class="history-interest-grid" data-history-interest-grid></div>
+              <p class="history-interest-total" data-history-interest-total>—</p>
+            </section>
+
+            <section class="history-block">
+              <h3>Transactions du mois</h3>
+              <div class="history-table-wrap">
+                <table class="history-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Libellé</th>
+                      <th>Type</th>
+                      <th>Compte</th>
+                      <th class="is-amount">Montant</th>
+                    </tr>
+                  </thead>
+                  <tbody data-history-transactions></tbody>
+                </table>
+                <p class="history-table-empty" data-history-transactions-empty hidden>
+                  Aucune transaction pour ce mois.
+                </p>
+              </div>
+            </section>
+          </section>
         </section>
       </main>
     </div>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-        </svg>
-        <span>Suivi</span>
-      </a>
       <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
@@ -101,11 +147,17 @@
         </svg>
         <span>SmartSave</span>
       </a>
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Suivi</span>
+      </a>
       <a class="bottom-nav__link" href="actions.html" data-nav="actions">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Actions</span>
+        <span>Home</span>
       </a>
       <a class="bottom-nav__link" href="future.html" data-nav="future">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -117,18 +169,21 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Score</span>
+        <span>Objectifs</span>
       </a>
     </nav>
 
-    <script src="financialScoreEngine.js" defer></script>
-    <script src="allocationEngine.js" defer></script>
-    <script src="projectionEngine.js" defer></script>
-    <script src="taxEngine.js" defer></script>
-    <script src="spendingAnalysisEngine.js" defer></script>
-    <script src="smartsaveSnapshot.js" defer></script>
-    <script src="mvp-v2.js" defer></script>
-    <script src="app-pages.js" defer></script>
+    <script src="runtimeConfig.js?v=20260212-01" defer></script>
+    <script src="financialScoreEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="projectionEngine.js?v=20260212-01" defer></script>
+    <script src="taxEngine.js?v=20260212-01" defer></script>
+    <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
+    <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
+    <script src="monthlyStore.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260212-01" defer></script>
+    <script src="history-page.js?v=20260212-01" defer></script>
+    <script src="app-pages.js?v=20260212-01" defer></script>
     <script src="/dev-reload.js" defer></script>
 </body>
 </html>
