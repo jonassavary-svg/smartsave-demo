@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#eef2ff">
   <script src="seed-data.js"></script>
   <meta name="google-site-verification" content="vGl2c8cgMsCaO4XbYrZAQL3l09FBO_bk6LUj6xPNgYc">
@@ -98,8 +98,7 @@
     .form-progress {
       padding: clamp(0.7rem, 2.5vw, 1rem) clamp(1.2rem, 4vw, 2.6rem);
       display: grid;
-      gap: 0.35rem;
-      text-align: left;
+      gap: 0.5rem;
       position: sticky;
       top: calc(var(--form-header-height) - 0.2rem);
       z-index: 75;
@@ -110,34 +109,79 @@
     }
 
     .progress-label {
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
-
-    .progress-track {
-      position: relative;
-      width: 100%;
-      height: 9px;
-      border-radius: 999px;
-      background: #E5E7EB;
-      overflow: hidden;
-    }
-
-    .progress-fill {
       position: absolute;
-      inset: 0;
-      width: 11%;
-      border-radius: inherit;
-      background: #1F3A8A;
-      transition: width 0.25s ease;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .budget-stepper {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0.4rem;
+      margin: 0;
+    }
+
+    .budget-stepper__item {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      display: grid;
+      gap: 0.2rem;
+      justify-items: center;
+      color: #64748b;
+      font-size: 0.68rem;
+      position: relative;
+    }
+
+    .budget-stepper__item:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 12px;
+      left: calc(50% + 18px);
+      width: calc(100% - 36px);
+      height: 1px;
+      background: rgba(15, 23, 42, 0.22);
+    }
+
+    .budget-stepper__dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #ffffff;
+    }
+
+    .budget-stepper__item.is-active {
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .budget-stepper__item.is-active .budget-stepper__dot {
+      background: #0f172a;
+      border-color: #0f172a;
+      color: #ffffff;
+    }
+
+    .budget-stepper__item.is-done .budget-stepper__dot {
+      border-color: #334155;
+      color: #334155;
     }
 
     #wizard-form {
       margin: 0 auto;
-      padding: clamp(1rem, 4vw, 2.2rem) clamp(1rem, 4vw, 2.6rem) calc(7rem + env(safe-area-inset-bottom, 0px));
+      padding: clamp(1rem, 4vw, 2.2rem) clamp(1rem, 4vw, 2.6rem) calc(8rem + env(safe-area-inset-bottom, 0px));
       display: grid;
       gap: clamp(1.3rem, 3vw, 2rem);
       width: min(100%, 920px);
@@ -584,6 +628,159 @@
       gap: 0.4rem;
     }
 
+    .account-tone-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: -0.2rem 0 0.1rem;
+    }
+
+    .account-tone-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.62rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+    }
+
+    .account-tone-pill--security {
+      background: rgba(37, 99, 235, 0.12);
+      color: #1d4ed8;
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    .account-tone-pill--growth {
+      background: rgba(5, 150, 105, 0.14);
+      color: #047857;
+      border-color: rgba(5, 150, 105, 0.32);
+    }
+
+    .account-tone-pill--anticipation {
+      background: rgba(217, 119, 6, 0.14);
+      color: #b45309;
+      border-color: rgba(217, 119, 6, 0.32);
+    }
+
+    .account-card {
+      border-width: 1px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    .account-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+    }
+
+    .account-card__header h3 {
+      margin: 0;
+      font-size: 1.04rem;
+      color: #0f172a;
+    }
+
+    .account-card__hint {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+
+    .account-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.58rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+
+    .account-card--security {
+      border-color: rgba(37, 99, 235, 0.28);
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.7), #ffffff 52%);
+    }
+
+    .account-card--security .account-tag {
+      background: rgba(37, 99, 235, 0.14);
+      color: #1d4ed8;
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    .account-card--growth {
+      border-color: rgba(5, 150, 105, 0.28);
+      background: linear-gradient(180deg, rgba(236, 253, 245, 0.72), #ffffff 52%);
+    }
+
+    .account-card--growth .account-tag {
+      background: rgba(5, 150, 105, 0.14);
+      color: #047857;
+      border-color: rgba(5, 150, 105, 0.3);
+    }
+
+    .account-card--anticipation {
+      border-color: rgba(217, 119, 6, 0.28);
+      background: linear-gradient(180deg, rgba(255, 247, 237, 0.8), #ffffff 55%);
+    }
+
+    .account-card--anticipation .account-tag {
+      background: rgba(217, 119, 6, 0.14);
+      color: #b45309;
+      border-color: rgba(217, 119, 6, 0.32);
+    }
+
+    .account-card--neutral {
+      border-color: rgba(100, 116, 139, 0.3);
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), #ffffff 55%);
+    }
+
+    .account-card--neutral .account-tag {
+      background: rgba(100, 116, 139, 0.16);
+      color: #475569;
+      border-color: rgba(100, 116, 139, 0.36);
+    }
+
+    .other-accounts-wrap[hidden] {
+      display: none !important;
+    }
+
+    .other-account-row {
+      border: 1px solid rgba(31, 36, 41, 0.12);
+      border-left: 4px solid rgba(100, 116, 139, 0.45);
+      background: rgba(248, 250, 252, 0.85);
+      box-shadow: none;
+    }
+
+    .other-account-row .mini-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .other-account-row[data-purpose="securite"] {
+      border-left-color: rgba(37, 99, 235, 0.62);
+      background: rgba(239, 246, 255, 0.42);
+    }
+
+    .other-account-row[data-purpose="croissance"] {
+      border-left-color: rgba(5, 150, 105, 0.62);
+      background: rgba(236, 253, 245, 0.5);
+    }
+
+    .other-account-row[data-purpose="anticipation"] {
+      border-left-color: rgba(217, 119, 6, 0.62);
+      background: rgba(255, 247, 237, 0.58);
+    }
+
+    .other-account-row[data-purpose="neutre"] {
+      border-left-color: rgba(100, 116, 139, 0.45);
+      background: rgba(248, 250, 252, 0.85);
+    }
+
     .allocation-summary__row {
       display: flex;
       justify-content: space-between;
@@ -715,138 +912,283 @@
 
     .fixed-nav {
       position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      left: clamp(0.6rem, 2.5vw, 1.2rem);
+      right: clamp(0.6rem, 2.5vw, 1.2rem);
+      bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
       z-index: 40;
-      background: var(--bg);
-      backdrop-filter: none;
-      border-top: 1px solid var(--border-subtle);
-      padding: 0.75rem clamp(1rem, 4vw, 2.5rem);
-      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-bottom-color: rgba(31, 36, 41, 0.1);
+      border-radius: 16px;
+      padding: 0.8rem clamp(0.85rem, 3.8vw, 2.2rem) 0.95rem;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.6rem;
+      align-items: center;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
     }
 
-    @media (max-width: 640px) {
-      .fixed-nav {
-        bottom: 12px;
-      }
-    }
-
-    .fixed-nav button {
+    .fixed-nav .budget-nav-btn {
       width: 100%;
-      min-height: 52px;
-      border-radius: 999px;
+      min-height: 54px;
+      border-radius: 14px;
+      border: 1px solid rgba(15, 23, 42, 0.18);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.88rem 1rem;
+      transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     }
 
-    .fixed-nav .ghost-btn {
-      border: 1px solid rgba(31, 36, 41, 0.12);
-      background: rgba(255, 255, 255, 0.9);
-      color: var(--text);
+    .fixed-nav .budget-nav-btn--ghost {
+      color: #0f172a;
+      background: #ffffff;
+      border-color: rgba(15, 23, 42, 0.25);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
     }
 
-    .fixed-nav .ghost-btn:focus-visible,
-    .fixed-nav .ghost-btn:hover {
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+    .fixed-nav .budget-nav-btn--next {
+      color: #ffffff;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      border-color: rgba(15, 23, 42, 0.68);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
     }
 
-    .fixed-nav .cta {
-      min-height: 52px;
-      border-radius: 999px;
+    .fixed-nav .budget-nav-btn--next:hover,
+    .fixed-nav .budget-nav-btn--next:focus-visible {
+      background: linear-gradient(135deg, #111827, #334155);
+      border-color: rgba(15, 23, 42, 0.72);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.24);
+      outline: none;
     }
 
-    @media (min-width: 640px) {
-      .fixed-nav {
-        flex-direction: row;
-        align-items: stretch;
-        justify-content: space-between;
-        gap: 0.75rem;
-      }
+    .fixed-nav .budget-nav-btn--ghost:hover,
+    .fixed-nav .budget-nav-btn--ghost:focus-visible {
+      background: #f8fafc;
+      border-color: rgba(15, 23, 42, 0.35);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+      outline: none;
+    }
 
-      .fixed-nav button {
-        width: auto;
-        flex: 1;
-      }
-
-      .fixed-nav .ghost-btn,
-      .fixed-nav .cta {
-        min-height: 56px;
-      }
-
-      .fixed-nav .ghost-btn {
-        flex: 0.9;
-      }
-
-      .fixed-nav .cta {
-        flex: 1.1;
-      }
+    .fixed-nav .budget-nav-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     @media (max-width: 640px) {
-      .fixed-nav {
-        padding: 0.65rem clamp(0.9rem, 3vw, 1.4rem);
-        gap: 0.35rem;
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: space-between;
+      #wizard-form {
+        width: 100%;
+        gap: 1rem;
+        padding: 1.05rem 0.95rem calc(12.2rem + env(safe-area-inset-bottom, 0px));
       }
 
-      .fixed-nav button {
-        min-height: 46px;
+      .form-progress {
+        padding: 0.75rem 0.95rem;
+      }
+
+      .budget-stepper {
+        gap: 0.3rem;
+      }
+
+      .budget-stepper__item {
+        min-height: 60px;
+        gap: 0.3rem;
+        font-size: 0.72rem;
+      }
+
+      .budget-stepper__item:not(:last-child)::after {
+        top: 15px;
+        left: calc(50% + 17px);
+        width: calc(100% - 34px);
+      }
+
+      .budget-stepper__dot {
+        width: 30px;
+        height: 30px;
+        font-size: 0.78rem;
+      }
+
+      .wizard-step {
+        padding: 1.15rem 1rem 1.25rem;
+        border-radius: 16px;
+        gap: 1rem;
+      }
+
+      .wizard-step h2 {
+        font-size: 1.4rem;
+        margin-bottom: 0.2rem;
+      }
+
+      .wizard-step h3 {
+        font-size: 1.1rem;
+      }
+
+      .section-hint {
+        font-size: 0.96rem;
+        line-height: 1.45;
+      }
+
+      .grid,
+      .row-grid,
+      .mini-grid,
+      .collection,
+      .collection-body {
+        gap: 0.8rem;
+      }
+
+      .card {
+        padding: 0.95rem;
+        gap: 0.85rem;
+      }
+
+      .collection-row {
+        padding: 0.9rem;
+        gap: 0.75rem;
         border-radius: 14px;
+      }
+
+      .input-block {
+        gap: 0.4rem;
+      }
+
+      .input-block span {
+        font-size: 0.8rem;
+        letter-spacing: 0.03em;
+      }
+
+      .input-block input,
+      .input-block select,
+      .input-block textarea {
+        min-height: 52px;
+        border-radius: 12px;
+        padding: 0.75rem 0.85rem;
+        font-size: 1rem;
+      }
+
+      .input-block textarea {
+        min-height: 132px;
+      }
+
+      .fieldset {
+        padding: 0.95rem;
+        border-radius: 14px;
+        gap: 0.65rem 0.9rem;
+      }
+
+      .fieldset legend {
+        font-size: 0.84rem;
+      }
+
+      .choice {
+        gap: 0.55rem;
+        font-size: 0.98rem;
+      }
+
+      .choice input {
+        width: 1.08rem;
+        height: 1.08rem;
+      }
+
+      .ghost-btn,
+      .cta {
+        min-height: 46px;
+        font-size: 0.96rem;
+      }
+
+      .ghost-btn.small {
+        min-height: 40px;
+        padding: 0.35rem 0.7rem;
         font-size: 0.9rem;
-        width: calc(50% - 0.2rem);
       }
-      .fixed-nav .ghost-btn {
-        order: 1;
+
+      .expense-sheet--fixed {
+        border-color: rgba(37, 99, 235, 0.28);
       }
-      .fixed-nav .cta {
-        order: 2;
+
+      .expense-sheet--mandatory {
+        border-color: rgba(217, 119, 6, 0.28);
+      }
+
+      .expense-sheet--fixed .expense-sheet__header {
+        background: rgba(37, 99, 235, 0.08);
+      }
+
+      .expense-sheet--mandatory .expense-sheet__header {
+        background: rgba(217, 119, 6, 0.08);
       }
 
       .add-income-btn {
         width: 100%;
       }
 
+      .expense-sheet {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
       .expense-sheet__header {
-        grid-template-columns: minmax(120px, 1.4fr) minmax(88px, 0.8fr) minmax(88px, 0.8fr) 30px;
-        gap: 0.35rem;
-        padding: 0.42rem 0.5rem;
-        font-size: 0.62rem;
+        display: grid;
+        grid-template-columns: minmax(160px, 1.45fr) minmax(122px, 0.95fr) minmax(110px, 0.85fr) 36px;
+        gap: 0.45rem;
+        padding: 0.5rem 0.55rem;
+        font-size: 0.66rem;
+        letter-spacing: 0.03em;
+        min-width: 460px;
       }
 
       .expense-row {
-        padding: 0.28rem 0.5rem;
+        padding: 0.38rem 0.55rem;
       }
 
       .expense-row__grid {
-        grid-template-columns: minmax(120px, 1.4fr) minmax(88px, 0.8fr) minmax(88px, 0.8fr) 30px;
-        gap: 0.35rem;
+        grid-template-columns: minmax(160px, 1.45fr) minmax(122px, 0.95fr) minmax(110px, 0.85fr) 36px;
+        gap: 0.45rem;
+        width: 100%;
+        min-width: 460px;
       }
 
       .expense-row input,
       .expense-row select {
-        min-height: 32px;
-        font-size: 0.8rem;
-        padding: 0.32rem 0.48rem;
+        min-height: 42px;
+        font-size: 0.92rem;
+        padding: 0.5rem 0.58rem;
+      }
+
+      .expense-row .remove-btn {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        font-size: 1.05rem;
+      }
+
+      .expense-subtotal {
+        margin-top: 0.65rem;
+        padding: 0.7rem 0.2rem 0.15rem;
+        font-size: 0.9rem;
       }
 
       .allocation-goal-row--short,
       .allocation-goal-row--long {
-        grid-template-columns: 1.3fr 1fr 1fr;
-        gap: 0.4rem;
+        grid-template-columns: 1fr;
+        gap: 0.62rem;
       }
 
       .allocation-goal-row--short .input-block,
       .allocation-goal-row--long .input-block {
-        gap: 0.25rem;
+        gap: 0.34rem;
       }
 
       .allocation-goal-row--short .input-block span,
       .allocation-goal-row--long .input-block span {
-        font-size: 0.64rem;
+        font-size: 0.78rem;
         letter-spacing: 0.02em;
       }
 
@@ -854,16 +1196,118 @@
       .allocation-goal-row--short input,
       .allocation-goal-row--long select,
       .allocation-goal-row--long input {
-        min-height: 30px;
-        padding: 0.28rem 0.4rem;
-        font-size: 0.78rem;
+        min-height: 44px;
+        padding: 0.5rem 0.62rem;
+        font-size: 0.94rem;
       }
 
       .allocation-goal-row--short .ghost-btn.small,
       .allocation-goal-row--long .ghost-btn.small {
-        min-width: 28px;
-        padding: 0.2rem 0.35rem;
-        font-size: 0.8rem;
+        min-width: 40px;
+        min-height: 40px;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.95rem;
+      }
+
+      .allocation-horizon-picker__controls {
+        padding: 0.4rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        background: #ffffff;
+      }
+
+      .allocation-horizon-picker__controls span {
+        min-width: 94px;
+        font-size: 0.94rem;
+      }
+
+      .wizard-step[data-step="7"] .account-tone-pill {
+        font-size: 0.79rem;
+      }
+
+      .wizard-step[data-step="7"] .account-card__header {
+        align-items: flex-start;
+      }
+
+      .wizard-step[data-step="7"] .other-account-row {
+        padding: 0.85rem;
+      }
+
+      .wizard-step[data-step="7"] .other-account-row .mini-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .fixed-nav {
+        left: 0.6rem;
+        right: 0.6rem;
+        bottom: calc(0.55rem + env(safe-area-inset-bottom, 0px));
+        padding: 0.78rem 0.82rem 1rem;
+        gap: 0.55rem;
+        border-radius: 18px;
+      }
+
+      .fixed-nav .budget-nav-btn {
+        min-height: 60px;
+        border-radius: 15px;
+        font-size: 1.02rem;
+        font-weight: 800;
+        padding: 1rem 0.95rem;
+      }
+    }
+
+    @media (max-width: 430px) {
+      #wizard-form {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+      }
+
+      .form-progress {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+      }
+
+      .budget-stepper__item {
+        font-size: 0.66rem;
+      }
+
+      .wizard-step[data-step="5"] .allocation-goals--compact {
+        padding: 1rem;
+        gap: 0.95rem;
+      }
+
+      .wizard-step[data-step="5"] .allocation-goals--compact .fieldset {
+        padding: 0.88rem 0.95rem;
+      }
+
+      .wizard-step[data-step="5"] .allocation-goals--compact .fieldset legend {
+        font-size: 0.9rem;
+        line-height: 1.35;
+      }
+
+      .wizard-step[data-step="5"] .choice span {
+        font-size: 0.96rem;
+      }
+
+      .wizard-step[data-step="5"] .allocation-goal-feedback {
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      .wizard-step[data-step="7"] .account-card__header h3 {
+        font-size: 1.02rem;
+      }
+
+      .wizard-step[data-step="7"] .account-card__hint {
+        font-size: 0.9rem;
+      }
+
+      .wizard-step[data-step="7"] .other-account-row .input-block > span {
+        font-size: 0.79rem;
+      }
+
+      .fixed-nav {
+        left: 0.5rem;
+        right: 0.5rem;
       }
     }
 
@@ -920,9 +1364,32 @@
   </header>
 
   <section class="form-progress" aria-live="polite">
-    <div class="progress-label" id="progress-label">Étape 1 / 10</div>
-    <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="10" aria-valuenow="1">
-      <div class="progress-fill" id="progress-fill" style="width: 11%;"></div>
+    <div class="progress-label" id="progress-label">Étape 1 / 6</div>
+    <div class="budget-stepper" id="form-stepper" aria-hidden="true">
+      <div class="budget-stepper__item is-active" data-form-step-index="0">
+        <span class="budget-stepper__dot">1</span>
+        <span>Infos</span>
+      </div>
+      <div class="budget-stepper__item" data-form-step-index="1">
+        <span class="budget-stepper__dot">2</span>
+        <span>Objectifs</span>
+      </div>
+      <div class="budget-stepper__item" data-form-step-index="2">
+        <span class="budget-stepper__dot">3</span>
+        <span>Impôts</span>
+      </div>
+      <div class="budget-stepper__item" data-form-step-index="3">
+        <span class="budget-stepper__dot">4</span>
+        <span>Comptes</span>
+      </div>
+      <div class="budget-stepper__item" data-form-step-index="4">
+        <span class="budget-stepper__dot">5</span>
+        <span>Invest.</span>
+      </div>
+      <div class="budget-stepper__item" data-form-step-index="5">
+        <span class="budget-stepper__dot">6</span>
+        <span>Patrimoine</span>
+      </div>
     </div>
   </section>
 
@@ -1035,111 +1502,8 @@
       </div>
     </section>
 
-    <section class="wizard-step" data-step="2">
-      <h2>Revenus</h2>
-      <p class="section-hint">Déclarez vos différentes sources de revenus réguliers.</p>
-      <div class="collection">
-        <div class="collection-header">
-          <button type="button" class="ghost-btn add-income-btn" data-action="add-income">+ Ajouter un revenu</button>
-        </div>
-        <div class="collection-body" id="income-list"></div>
-      </div>
-      <div class="card" data-conditional="spouse-income" hidden>
-        <h3>Revenus du conjoint</h3>
-        <label class="input-block">
-          <span>Revenu net annuel (CHF)</span>
-          <input type="number" name="spouseNetIncome" min="0" step="0.05" placeholder="ex. 65000">
-        </label>
-      </div>
-    </section>
-
-    <section class="wizard-step" data-step="3">
-      <h2>Dépenses</h2>
-      <div class="collection">
-        <div class="collection-header">
-          <span>Dépenses fixes</span>
-          <button type="button" class="ghost-btn" data-action="add-fixed-expense">+ Ajouter une dépense</button>
-        </div>
-        <div class="expense-sheet">
-          <div class="expense-sheet__header">
-            <span>Dépense</span>
-            <span>Fréquence</span>
-            <span>Montant</span>
-            <span></span>
-          </div>
-          <div class="collection-body" id="fixed-expense-list"></div>
-        </div>
-        <div class="expense-subtotal">
-          <span>Sous-total (mensuel)</span>
-          <strong id="fixed-expense-subtotal">CHF 0</strong>
-        </div>
-      </div>
-      <div class="collection">
-        <div class="collection-header">
-          <span>Dépenses obligatoires</span>
-          <button type="button" class="ghost-btn" data-action="add-variable-expense">+ Ajouter une dépense</button>
-        </div>
-        <div class="expense-sheet">
-          <div class="expense-sheet__header">
-            <span>Dépense</span>
-            <span>Fréquence</span>
-            <span>Montant</span>
-            <span></span>
-          </div>
-          <div class="collection-body" id="variable-expense-list"></div>
-        </div>
-        <div class="expense-subtotal">
-          <span>Sous-total (mensuel)</span>
-          <strong id="variable-expense-subtotal">CHF 0</strong>
-        </div>
-      </div>
-      <div class="expense-grand-total">
-        <span>Total des dépenses (mensuel)</span>
-        <strong id="expense-grand-total">CHF 0</strong>
-      </div>
-    </section>
-
-    <section class="wizard-step" data-step="4">
-      <h2>Reste à vivre</h2>
-
-      <div class="card allocation-context">
-        <p class="section-eyebrow">Ce qu’il te reste chaque mois</p>
-        <div class="allocation-context__amount" data-budget-remaining>CHF 0</div>
-        <p class="section-hint">
-          (calculé après ton revenu net et tes dépenses essentielles, sans inclure le 13ᵉ salaire)
-        </p>
-      </div>
-
-      <div class="card allocation-leisure">
-        <h3>Profiter maintenant</h3>
-        <p class="section-hint">
-          Sur ce montant, combien veux-tu utiliser pour tes loisirs, sorties et petits extras ce mois-ci ?
-        </p>
-        <div class="allocation-leisure__controls">
-          <input type="range" min="0" max="0" step="10" value="0" data-leisure-slider />
-          <label class="input-block allocation-leisure__input">
-            <span>Loisirs (CHF / mois)</span>
-            <input type="number" min="0" step="10" value="0" data-leisure-input />
-          </label>
-        </div>
-        <p class="section-hint">Tu pourras modifier ce montant chaque mois.</p>
-        <div class="allocation-projects-live" data-projects-live>
-          Montant disponible pour tes projets :
-          <strong data-projects-available>CHF 0</strong>
-          <span>/ mois</span>
-        </div>
-      </div>
-
-    </section>
-
     <section class="wizard-step" data-step="5">
       <h2>Tes objectifs</h2>
-
-      <div class="card allocation-context">
-        <p class="section-eyebrow">Montant restant à répartir</p>
-        <div class="allocation-context__amount" data-projects-budget>CHF 0</div>
-        <p class="section-hint">Tu peux utiliser ce montant pour tes objectifs et construire ton avenir.</p>
-      </div>
 
       <div class="card allocation-goals allocation-goals--compact">
         <fieldset class="fieldset">
@@ -1229,25 +1593,6 @@
         </div>
       </div>
 
-      <div class="card allocation-summary">
-        <h3>Résumé mensuel</h3>
-        <div class="allocation-summary__row">
-          <span>Loisirs</span>
-          <strong data-summary-leisure>CHF 0</strong>
-        </div>
-        <div class="allocation-summary__row">
-          <span>Court terme</span>
-          <strong data-summary-short>CHF 0</strong>
-        </div>
-        <div class="allocation-summary__row">
-          <span>Long terme</span>
-          <strong data-summary-long>CHF 0</strong>
-        </div>
-        <div class="allocation-summary__row">
-          <span>Reste projets</span>
-          <strong data-summary-projects>CHF 0</strong>
-        </div>
-      </div>
     </section>
 
     <section class="wizard-step" data-step="6">
@@ -1307,19 +1652,30 @@
 
     <section class="wizard-step" data-step="7">
       <h2>Comptes et avoirs</h2>
-      <p class="section-hint">Cette étape nous permet de savoir quelles réserves vous avez déjà.</p>
-      <div class="card">
-        <h3>Comptes bancaires</h3>
+      <p class="section-hint">Classe tes comptes par objectif pour une lecture plus claire de ta situation.</p>
+
+      <div class="account-tone-legend" aria-label="Code couleur des comptes">
+        <span class="account-tone-pill account-tone-pill--security">Sécurité</span>
+        <span class="account-tone-pill account-tone-pill--growth">Croissance</span>
+        <span class="account-tone-pill account-tone-pill--anticipation">Anticipation</span>
+      </div>
+
+      <div class="card account-card account-card--security">
+        <div class="account-card__header">
+          <h3>Comptes de sécurité</h3>
+          <span class="account-tag">Sécurité</span>
+        </div>
+        <p class="account-card__hint">Comptes disponibles pour ton quotidien et ton matelas de précaution.</p>
         <label class="input-block">
-          <span>Solde actuel sur votre compte courant (CHF)</span>
+          <span>Compte courant - Montant sur le compte (CHF)</span>
           <input type="number" name="currentAccount" min="0" step="0.05" placeholder="ex. 3000" required>
         </label>
         <label class="input-block">
-          <span>Solde actuel sur votre compte épargne (CHF)</span>
+          <span>Compte épargne - Montant sur le compte (CHF)</span>
           <input type="number" name="savingsAccount" min="0" step="0.05" placeholder="ex. 12000">
         </label>
         <fieldset class="fieldset">
-          <legend>Versement programmé mensuel sur l’épargne ?</legend>
+          <legend>Compte épargne - Versement programmé ?</legend>
           <label class="choice">
             <input type="radio" name="savingsContribution" value="oui">
             <span>Oui</span>
@@ -1330,23 +1686,17 @@
           </label>
         </fieldset>
         <label class="input-block" data-conditional="savings-contrib">
-          <span>Montant du versement mensuel (CHF)</span>
+          <span>Montant du versement programmé (CHF)</span>
           <input type="number" name="savingsContributionAmount" min="0" step="0.05">
-        </label>
-        <label class="input-block">
-          <span>Accès à votre épargne</span>
-          <select name="savingsAccess">
-            <option value="">Sélectionner</option>
-            <option value="immediat">Immédiat</option>
-            <option value="sous_3_jours">Sous 1 à 3 jours</option>
-            <option value="bloque_partiel">Bloqué partiellement (préavis)</option>
-            <option value="bloque_long">Bloqué plusieurs mois</option>
-          </select>
         </label>
       </div>
 
-      <div class="card">
-        <h3>Épargne retraite / 3ᵉ pilier</h3>
+      <div class="card account-card account-card--growth">
+        <div class="account-card__header">
+          <h3>Comptes de croissance</h3>
+          <span class="account-tag">Croissance</span>
+        </div>
+        <p class="account-card__hint">Comptes destinés à faire évoluer ton patrimoine dans le temps.</p>
         <fieldset class="fieldset">
           <legend>Avez-vous déjà un 3ᵉ pilier ?</legend>
           <label class="choice">
@@ -1360,7 +1710,7 @@
         </fieldset>
         <div data-conditional="third-pillar">
           <label class="input-block">
-            <span>Montant total du 3ᵉ pilier (CHF)</span>
+            <span>3ᵉ pilier - Montant sur le compte (CHF)</span>
             <input type="number" name="thirdPillarAmount" min="0" step="0.05">
           </label>
           <label class="input-block">
@@ -1375,13 +1725,53 @@
         </div>
       </div>
 
-      <div class="card lean-card">
-        <div class="collection" data-collection="other-assets">
+      <div class="card account-card account-card--anticipation">
+        <div class="account-card__header">
+          <h3>Comptes d’anticipation</h3>
+          <span class="account-tag">Anticipation</span>
+        </div>
+        <p class="account-card__hint">Comptes dédiés aux impôts et charges à prévoir.</p>
+        <fieldset class="fieldset">
+          <legend>Possédez-vous un compte dédié aux impôts ?</legend>
+          <label class="choice">
+            <input type="radio" name="hasTaxAccount" value="oui">
+            <span>Oui</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="hasTaxAccount" value="non" checked>
+            <span>Non</span>
+          </label>
+        </fieldset>
+        <label class="input-block" data-conditional="tax-account">
+          <span>Compte impôts - Montant sur le compte (CHF)</span>
+          <input type="number" name="taxAccountAmount" min="0" step="0.05">
+        </label>
+      </div>
+
+      <div class="card account-card account-card--neutral">
+        <div class="account-card__header">
+          <h3>Autres comptes</h3>
+          <span class="account-tag">Neutre</span>
+        </div>
+        <p class="account-card__hint">Choisis la catégorie de chaque compte et la couleur s’adapte automatiquement.</p>
+        <fieldset class="fieldset">
+          <legend>Possédez-vous d'autres comptes ?</legend>
+          <label class="choice">
+            <input type="radio" name="hasOtherAccounts" value="oui">
+            <span>Oui</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="hasOtherAccounts" value="non" checked>
+            <span>Non</span>
+          </label>
+        </fieldset>
+
+        <div class="collection other-accounts-wrap" data-collection="other-assets" data-conditional="other-accounts" hidden>
           <div class="collection-header">
-            <span>Autres avoirs</span>
+            <span>Autres comptes</span>
             <button type="button" class="ghost-btn small" data-action="add-other-asset">+ Ajouter un compte</button>
           </div>
-          <div class="collection-body compact" id="other-assets-list"></div>
+          <div class="collection-body" id="other-assets-list"></div>
         </div>
       </div>
 
@@ -1390,7 +1780,7 @@
           <span>Total de vos avoirs disponibles (CHF)</span>
           <input type="number" name="liquidAssetsTotal" readonly>
         </label>
-        <p class="section-hint">Les montants indiqués ici seront utilisés pour calculer votre réserve de sécurité et pour savoir combien vous pouvez investir sans risque.</p>
+        <p class="section-hint">Ce total inclut sécurité, croissance, compte impôts et autres comptes saisis.</p>
       </div>
     </section>
 
@@ -1495,34 +1885,9 @@
       </div>
     </section>
 
-    <section class="wizard-step" data-step="10">
-      <h2>Votre vision face à l’avenir</h2>
-      <p class="section-hint">
-        Décrivez brièvement votre priorité financière et votre appétence au risque pour que SmartSave adapte sa proposition.
-      </p>
-      <label class="input-block">
-        <span>Priorité principale</span>
-        <select name="primaryPriority" required>
-          <option value="">Sélectionner</option>
-          <option value="securite">Sécurité</option>
-          <option value="projet">Projet spécial</option>
-          <option value="croissance">Croissance</option>
-        </select>
-      </label>
-      <label class="input-block">
-        <span>Tolérance au risque</span>
-        <select name="riskTolerance" required>
-          <option value="">Sélectionner</option>
-          <option value="faible">Faible</option>
-          <option value="moyenne">Moyenne</option>
-          <option value="elevee">Élevée</option>
-        </select>
-      </label>
-    </section>
-
     <div class="fixed-nav">
-      <button type="button" class="ghost-btn" id="prev-btn">⬅ Précédent</button>
-      <button type="button" class="cta" id="next-btn">Suivant ➡</button>
+      <button type="button" class="budget-nav-btn budget-nav-btn--ghost" id="prev-btn">Précédent</button>
+      <button type="button" class="budget-nav-btn budget-nav-btn--next" id="next-btn">Suivant</button>
     </div>
   </form>
 
@@ -1531,6 +1896,8 @@
     const STORAGE_KEY_FORM = "smartsaveFormData";
     const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
     const RECAP_PENDING_KEY = "smartsaveRecapPendingByUser";
+    const RECAP_VERSION_KEY = "smartsaveRecapVersionByUser";
+    const CURRENT_RECAP_VERSION = "20260212-v2";
     const NAME_INDEX_KEY = "smartsaveNameIndex";
     const PENDING_NAME_KEY = "smartsavePendingName";
     const SYNC_ENABLED = true;
@@ -1540,6 +1907,17 @@
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("wizard-form");
       if (!form) return;
+
+      form.addEventListener("focusin", (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement)) return;
+        if (input.type !== "number" || input.readOnly || input.disabled) return;
+        const raw = String(input.value ?? "").trim();
+        if (!raw) return;
+        const numeric = Number(raw.replace(",", "."));
+        if (!Number.isFinite(numeric) || numeric !== 0) return;
+        input.value = "";
+      });
 
       const birthDaySelect = form.querySelector("#birth-day");
       const birthMonthSelect = form.querySelector("#birth-month");
@@ -1610,8 +1988,8 @@
       updateBirthDateValueFromSelects();
       const steps = Array.from(form.querySelectorAll(".wizard-step"));
       const totalSteps = steps.length;
-      const progressFill = document.getElementById("progress-fill");
       const progressLabel = document.getElementById("progress-label");
+      const stepperItems = Array.from(document.querySelectorAll("[data-form-step-index]"));
       const prevBtn = document.getElementById("prev-btn");
       const nextBtn = document.getElementById("next-btn");
       const backDashboardBtn = document.querySelector('[data-action="back-dashboard"]');
@@ -1682,6 +2060,7 @@
       let currentStepIndex = 0;
       const activeUserId = getActiveUserId();
       let formState = loadFormState(activeUserId);
+      resetRemovedSections(formState);
       const pendingName = getPendingName();
       injectPendingName(formState, pendingName, activeUserId);
       injectActiveUserIdentity(formState, activeUserId);
@@ -1712,7 +2091,7 @@
         if (!persistCurrentStep(currentStepIndex === totalSteps - 1)) return;
 
         if (currentStepIndex === totalSteps - 1) {
-          const resolvedUserId = resolveSessionUserId(activeUserId, formState);
+          const resolvedUserId = resolveSessionUserId(activeUserId, formState, pendingName);
           ensureActiveUserSession(resolvedUserId, formState);
           injectPendingName(formState, pendingName, resolvedUserId);
           saveFormState(resolvedUserId, formState);
@@ -1732,7 +2111,10 @@
         const target = event.target;
         const { name } = target;
 
-        if (["currentAccount", "savingsAccount", "thirdPillarAmount", "thirdPillarType"].includes(name) || target.closest("#other-assets-list")) {
+        if (
+          ["currentAccount", "savingsAccount", "thirdPillarAmount", "thirdPillarType", "taxAccountAmount"].includes(name) ||
+          target.closest("#other-assets-list")
+        ) {
           updateLiquidAssetsTotal();
         }
 
@@ -1774,6 +2156,16 @@
           updateLiquidAssetsTotal();
         }
 
+        if (name === "hasTaxAccount") {
+          toggleTaxAccount(value === "oui");
+          updateLiquidAssetsTotal();
+        }
+
+        if (name === "hasOtherAccounts") {
+          toggleOtherAccounts(value === "oui");
+          updateLiquidAssetsTotal();
+        }
+
         if (name === "hasInvestments") {
           toggleInvestments(value === "oui");
         }
@@ -1807,6 +2199,8 @@
       toggleTaxDetails(getRadioValue("paysTaxes") === "oui");
       toggleSavingsContribution(getRadioValue("savingsContribution") === "oui");
       toggleThirdPillar(getRadioValue("thirdPillar") === "oui");
+      toggleTaxAccount(getRadioValue("hasTaxAccount") === "oui");
+      toggleOtherAccounts(getRadioValue("hasOtherAccounts") === "oui");
       toggleInvestments(getRadioValue("hasInvestments") === "oui");
       toggleOwnerFields(getRadioValue("isOwner") === "oui");
       toggleVehicleFields(getRadioValue("hasVehicles") === "oui");
@@ -1823,15 +2217,16 @@
         const isFinalStep = currentStepIndex === totalSteps - 1;
         prevBtn.hidden = false;
         prevBtn.disabled = currentStepIndex === 0;
-        nextBtn.textContent = isFinalStep ? "Calculer mon score" : "Suivant ➡";
-
-        const progress = ((currentStepIndex + 1) / totalSteps) * 100;
-        progressFill.style.width = `${progress}%`;
-        progressFill.parentElement?.setAttribute("aria-valuenow", String(currentStepIndex + 1));
+        nextBtn.textContent = isFinalStep ? "Calculer mon score" : "Suivant";
         progressLabel.textContent = `Étape ${currentStepIndex + 1} / ${totalSteps}`;
+        stepperItems.forEach((item, index) => {
+          item.classList.toggle("is-active", index === currentStepIndex);
+          item.classList.toggle("is-done", index < currentStepIndex);
+        });
 
         toggleSpouseIncome(isPartnered(getInputValue("maritalStatus")));
-        if (currentStepIndex === 3 || currentStepIndex === 4) {
+        const activeStepId = Number(steps[currentStepIndex]?.dataset.step || 0);
+        if (activeStepId === 5) {
           refreshAllocationStep();
         }
       }
@@ -1858,31 +2253,49 @@
         } else if (!formState.expenses.variable.length) {
           formState.expenses.variable = defaultVariableExpenseEntries();
         }
-        if (!formState.assets.otherAssets || !formState.assets.otherAssets.length) formState.assets.otherAssets = [defaultOtherAssetEntry()];
+        if (!Array.isArray(formState.assets.otherAssets)) {
+          formState.assets.otherAssets = [];
+        }
+        if (!["oui", "non"].includes(formState.assets.hasOtherAccounts)) {
+          formState.assets.hasOtherAccounts = formState.assets.otherAssets.length ? "oui" : "non";
+        }
+        if (formState.assets.hasOtherAccounts === "oui" && !formState.assets.otherAssets.length) {
+          formState.assets.otherAssets = [defaultOtherAssetEntry()];
+        }
         if (!formState.investments.items.length) formState.investments.items.push(defaultInvestmentEntry());
 
         renderCollection(collections.incomes, formState.incomes.entries, createIncomeRow);
         renderCollection(collections.fixedExpenses, formState.expenses.fixed, (entry) => createExpenseRow("fixe", entry));
         renderCollection(collections.variableExpenses, formState.expenses.variable, (entry) => createExpenseRow("variable", entry));
-        renderCollection(collections.otherAssets, formState.assets.otherAssets, createOtherAssetRow);
+        renderCollection(
+          collections.otherAssets,
+          formState.assets.hasOtherAccounts === "oui" ? formState.assets.otherAssets : [],
+          createOtherAssetRow
+        );
         renderCollection(collections.investments, formState.investments.items, createInvestmentRow);
         renderCollection(collections.credits, formState.credits.loans, createCreditRow);
 
-        form.querySelector('[data-action="add-income"]').addEventListener("click", () => {
-          const entry = defaultIncomeEntry();
-          formState.incomes.entries.push(entry);
-          collections.incomes.appendChild(createIncomeRow(entry));
-        });
+        const addIncomeBtn = form.querySelector('[data-action="add-income"]');
+        if (addIncomeBtn && collections.incomes) {
+          addIncomeBtn.addEventListener("click", () => {
+            const entry = defaultIncomeEntry();
+            formState.incomes.entries.push(entry);
+            collections.incomes.appendChild(createIncomeRow(entry));
+          });
+        }
 
-        form.querySelector('[data-action="add-fixed-expense"]').addEventListener("click", () => {
-          const entry = defaultExpenseEntry("fixe");
-          formState.expenses.fixed.push(entry);
-          collections.fixedExpenses.appendChild(createExpenseRow("fixe", entry));
-          updateFixedExpenseSubtotal();
-        });
+        const addFixedExpenseBtn = form.querySelector('[data-action="add-fixed-expense"]');
+        if (addFixedExpenseBtn && collections.fixedExpenses) {
+          addFixedExpenseBtn.addEventListener("click", () => {
+            const entry = defaultExpenseEntry("fixe");
+            formState.expenses.fixed.push(entry);
+            collections.fixedExpenses.appendChild(createExpenseRow("fixe", entry));
+            updateFixedExpenseSubtotal();
+          });
+        }
 
         const addVariableExpenseBtn = form.querySelector('[data-action="add-variable-expense"]');
-        if (addVariableExpenseBtn) {
+        if (addVariableExpenseBtn && collections.variableExpenses) {
           addVariableExpenseBtn.addEventListener("click", () => {
             const entry = defaultExpenseEntry("variable");
             formState.expenses.variable.push(entry);
@@ -1895,26 +2308,40 @@
         if (addOtherAssetBtn) {
           addOtherAssetBtn.addEventListener("click", () => {
             const entry = defaultOtherAssetEntry();
+            if (!Array.isArray(formState.assets.otherAssets)) {
+              formState.assets.otherAssets = [];
+            }
             formState.assets.otherAssets.push(entry);
             if (collections.otherAssets) {
               collections.otherAssets.appendChild(createOtherAssetRow(entry));
+            }
+            const yesRadio = form.querySelector('input[name="hasOtherAccounts"][value="oui"]');
+            if (yesRadio && !yesRadio.checked) {
+              yesRadio.checked = true;
+              toggleOtherAccounts(true);
             }
             updateLiquidAssetsTotal();
           });
         }
 
-        form.querySelector('[data-action="add-investment"]').addEventListener("click", () => {
-          const entry = defaultInvestmentEntry();
-          formState.investments.items.push(entry);
-          collections.investments.appendChild(createInvestmentRow(entry));
-        });
+        const addInvestmentBtn = form.querySelector('[data-action="add-investment"]');
+        if (addInvestmentBtn && collections.investments) {
+          addInvestmentBtn.addEventListener("click", () => {
+            const entry = defaultInvestmentEntry();
+            formState.investments.items.push(entry);
+            collections.investments.appendChild(createInvestmentRow(entry));
+          });
+        }
 
-        form.querySelector('[data-action="add-credit"]').addEventListener("click", () => {
-          const entry = defaultCreditEntry();
-          formState.credits.loans.push(entry);
-          collections.credits.appendChild(createCreditRow(entry));
-          updateDebtAssetTotals();
-        });
+        const addCreditBtn = form.querySelector('[data-action="add-credit"]');
+        if (addCreditBtn && collections.credits) {
+          addCreditBtn.addEventListener("click", () => {
+            const entry = defaultCreditEntry();
+            formState.credits.loans.push(entry);
+            collections.credits.appendChild(createCreditRow(entry));
+            updateDebtAssetTotals();
+          });
+        }
       }
 
       function setupAllocationInteractions() {
@@ -2241,6 +2668,17 @@
         updateAllocationOutputs();
       }
 
+      function resetRemovedSections(state) {
+        if (!state || typeof state !== "object") return;
+        state.incomes = { entries: [], spouseNetIncome: 0 };
+        state.expenses = {
+          fixed: defaultFixedExpenseEntries().map((entry) => ({ ...entry, amount: 0 })),
+          variable: defaultVariableExpenseEntries().map((entry) => ({ ...entry, amount: 0 })),
+        };
+        state.exceptional = { type: "aucune", amount: 0, notes: "" };
+        state.goals = { primaryPriority: "", riskTolerance: "" };
+      }
+
       function saveStepData(stepId) {
         switch (Number(stepId)) {
           case 1:
@@ -2310,17 +2748,24 @@
             };
             break;
           case 7:
-            const mappedOtherAssets = mapOtherAssetRows(collections.otherAssets);
+            const hasOtherAccounts = getRadioValue("hasOtherAccounts");
+            const mappedOtherAssets =
+              hasOtherAccounts === "oui"
+                ? mapOtherAssetRows(collections.otherAssets).filter((entry) => hasOtherAssetContent(entry))
+                : [];
             formState.assets = {
               currentAccount: toNumber(getInputValue("currentAccount")),
               savingsAccount: toNumber(getInputValue("savingsAccount")),
               savingsContribution: getRadioValue("savingsContribution"),
               savingsContributionAmount: toNumber(getInputValue("savingsContributionAmount")),
-              savingsAccess: getInputValue("savingsAccess"),
+              savingsAccess: formState.assets?.savingsAccess || "",
               thirdPillar: getRadioValue("thirdPillar"),
               thirdPillarAmount: toNumber(getInputValue("thirdPillarAmount")),
               thirdPillarType: getInputValue("thirdPillarType"),
-              otherAssets: mappedOtherAssets.length ? mappedOtherAssets : [defaultOtherAssetEntry()],
+              hasTaxAccount: getRadioValue("hasTaxAccount"),
+              taxAccountAmount: toNumber(getInputValue("taxAccountAmount")),
+              hasOtherAccounts,
+              otherAssets: mappedOtherAssets,
               liquidAssetsTotal: toNumber(getInputValue("liquidAssetsTotal")),
             };
             break;
@@ -2410,11 +2855,26 @@
         setRadioValue("thirdPillar", assets.thirdPillar);
         setInputValue("thirdPillarAmount", toValueString(assets.thirdPillarAmount));
         setInputValue("thirdPillarType", assets.thirdPillarType);
+        setRadioValue("hasTaxAccount", assets.hasTaxAccount);
+        setInputValue("taxAccountAmount", toValueString(assets.taxAccountAmount));
+        toggleTaxAccount(getRadioValue("hasTaxAccount") === "oui");
+        const hasOtherAccounts = ["oui", "non"].includes(assets.hasOtherAccounts)
+          ? assets.hasOtherAccounts
+          : assets.otherAssets?.some((entry) => hasOtherAssetContent(entry))
+          ? "oui"
+          : "non";
+        formState.assets.hasOtherAccounts = hasOtherAccounts;
+        setRadioValue("hasOtherAccounts", hasOtherAccounts);
         renderCollection(
           collections.otherAssets,
-          assets.otherAssets && assets.otherAssets.length ? assets.otherAssets : [defaultOtherAssetEntry()],
+          hasOtherAccounts === "oui"
+            ? assets.otherAssets && assets.otherAssets.length
+              ? assets.otherAssets
+              : [defaultOtherAssetEntry()]
+            : [],
           createOtherAssetRow
         );
+        toggleOtherAccounts(hasOtherAccounts === "oui");
         setInputValue("liquidAssetsTotal", toValueString(assets.liquidAssetsTotal));
 
         setRadioValue("hasInvestments", investments.hasInvestments);
@@ -2438,15 +2898,17 @@
       function updateLiquidAssetsTotal() {
         const current = toNumber(getInputValue("currentAccount"));
         const savings = toNumber(getInputValue("savingsAccount"));
-        const otherRows = collections.otherAssets
+        const includeOtherAccounts = getRadioValue("hasOtherAccounts") === "oui";
+        const otherRows = includeOtherAccounts && collections.otherAssets
           ? Array.from(collections.otherAssets.querySelectorAll(".collection-row"))
           : [];
         const other = otherRows.reduce((acc, row) => acc + toNumber(getFieldValue(row, "amount")), 0);
         const thirdType = getInputValue("thirdPillarType");
         const thirdAmount = toNumber(getInputValue("thirdPillarAmount"));
+        const taxAccountAmount = getRadioValue("hasTaxAccount") === "oui" ? toNumber(getInputValue("taxAccountAmount")) : 0;
 
         const includeThird = thirdType && thirdType !== "a";
-        const total = current + savings + other + (includeThird ? thirdAmount : 0);
+        const total = current + savings + other + (includeThird ? thirdAmount : 0) + taxAccountAmount;
         const totalField = form.querySelector('[name="liquidAssetsTotal"]');
         if (totalField) {
           totalField.value = total ? total.toFixed(2) : "";
@@ -2480,6 +2942,28 @@
       function toggleThirdPillar(visible) {
         const container = form.querySelector('[data-conditional="third-pillar"]');
         toggleContainer(container, visible, ["thirdPillarAmount", "thirdPillarType"]);
+      }
+
+      function toggleTaxAccount(visible) {
+        const container = form.querySelector('[data-conditional="tax-account"]');
+        toggleContainer(container, visible, ["taxAccountAmount"]);
+      }
+
+      function toggleOtherAccounts(visible) {
+        const container = form.querySelector('[data-conditional="other-accounts"]');
+        toggleContainer(container, visible, [], { preserveValues: true });
+        if (!container) return;
+        container.style.display = visible ? "grid" : "none";
+        container.querySelectorAll("input, select, textarea, button").forEach((field) => {
+          field.disabled = !visible;
+        });
+        if (visible && collections.otherAssets && collections.otherAssets.children.length === 0) {
+          const rows = Array.isArray(formState.assets.otherAssets) && formState.assets.otherAssets.length
+            ? formState.assets.otherAssets
+            : [defaultOtherAssetEntry()];
+          formState.assets.otherAssets = rows;
+          renderCollection(collections.otherAssets, rows, createOtherAssetRow);
+        }
       }
 
       function toggleSpouseIncome(visible) {
@@ -2618,53 +3102,45 @@
 
     function createOtherAssetRow(data = defaultOtherAssetEntry()) {
       const row = document.createElement("div");
-      row.className = "collection-row tight";
+      row.className = "collection-row tight other-account-row";
       row.innerHTML = `
         <div class="mini-grid">
           <label class="input-block">
-            <span>Montant (CHF)</span>
-            <input type="number" min="0" step="0.05" data-field="amount" placeholder="ex. 2000">
+            <span>Nom du compte</span>
+            <input type="text" data-field="name" placeholder="ex. Compte impôts" required>
           </label>
           <label class="input-block">
-            <span>Type d’avoir</span>
-            <select data-field="type">
+            <span>Montant sur le compte (CHF)</span>
+            <input type="number" min="0" step="0.05" data-field="amount" placeholder="ex. 2000" required>
+          </label>
+          <label class="input-block">
+            <span>Objectif</span>
+            <select data-field="purpose" required>
               <option value="">Sélectionner</option>
-              <option value="cash">Cash / Liquide</option>
-              <option value="compte_commun">Compte commun</option>
-              <option value="compte_enfant">Compte enfant</option>
-              <option value="compte_etranger">Compte étranger</option>
-              <option value="autre">Autre</option>
-            </select>
-          </label>
-          <label class="input-block">
-            <span>Objectif du compte</span>
-            <select data-field="purpose">
-              <option value="anticipation">Anticipation &amp; projets</option>
-              <option value="croissance">Croissance &amp; investissements</option>
-            </select>
-          </label>
-          <label class="input-block">
-            <span>Accès</span>
-            <select data-field="access">
-              <option value="">Sélectionner</option>
-              <option value="immediat">Immédiat</option>
-              <option value="quelques_jours">Sous quelques jours</option>
-              <option value="bloque">Bloqué</option>
-              <option value="interne">Total (interne)</option>
+              <option value="securite">Sécurité</option>
+              <option value="croissance">Croissance</option>
+              <option value="anticipation">Anticipation</option>
             </select>
           </label>
         </div>
         <div class="row-actions">
-          <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer cet avoir">
+          <button type="button" class="remove-btn" data-action="remove-row" aria-label="Supprimer ce compte">
             <span aria-hidden="true">×</span>
           </button>
         </div>
       `;
 
+      setFieldValue(row, "name", data.name || "");
       setFieldValue(row, "amount", toValueString(data.amount));
-      setFieldValue(row, "type", data.type || "");
-      setFieldValue(row, "purpose", data.purpose || "anticipation");
-      setFieldValue(row, "access", data.access || "");
+      setFieldValue(row, "purpose", normalizeOtherAssetPurpose(data.purpose));
+
+      const purposeSelect = row.querySelector('[data-field="purpose"]');
+      const syncRowPurposeTone = () => {
+        const purpose = normalizeOtherAssetPurpose(getFieldValue(row, "purpose"));
+        row.dataset.purpose = purpose || "neutre";
+      };
+      purposeSelect?.addEventListener("change", syncRowPurposeTone);
+      syncRowPurposeTone();
 
       row.querySelector('[data-action="remove-row"]').addEventListener("click", () => {
         if (!collections.otherAssets) return;
@@ -2675,10 +3151,9 @@
           }
           row.remove();
         } else {
-          const clearedValue = defaultOtherAssetEntry().purpose;
           row.querySelectorAll("[data-field]").forEach((input) => {
             if (input.dataset.field === "purpose") {
-              input.value = clearedValue;
+              input.value = defaultOtherAssetEntry().purpose;
             } else {
               input.value = "";
             }
@@ -2688,6 +3163,7 @@
           } else {
             formState.assets.otherAssets.push(defaultOtherAssetEntry());
           }
+          syncRowPurposeTone();
         }
         updateLiquidAssetsTotal();
       });
@@ -2871,7 +3347,9 @@
         const input = row.querySelector('[data-field="monthlyAmount"]');
         if (wrapper && input) {
           wrapper.hidden = !hasMonthly;
+          wrapper.style.display = hasMonthly ? "" : "none";
           input.required = hasMonthly;
+          input.disabled = !hasMonthly;
           if (!hasMonthly) input.value = "";
         }
       }
@@ -2932,10 +3410,9 @@
       function mapOtherAssetRows(container) {
         if (!container) return [];
         return Array.from(container.querySelectorAll(".collection-row")).map((row) => ({
+          name: getFieldValue(row, "name"),
           amount: toNumber(getFieldValue(row, "amount")),
-          type: getFieldValue(row, "type"),
-          purpose: getFieldValue(row, "purpose"),
-          access: getFieldValue(row, "access"),
+          purpose: normalizeOtherAssetPurpose(getFieldValue(row, "purpose")) || "anticipation",
         }));
       }
 
@@ -3047,9 +3524,12 @@
           thirdPillar: "",
           thirdPillarAmount: 0,
           thirdPillarType: "",
+          hasTaxAccount: "non",
+          taxAccountAmount: 0,
           thirdPillarContribution: 0,
           thirdPillarContributionSpouse: 0,
-          otherAssets: [defaultOtherAssetEntry()],
+          hasOtherAccounts: "non",
+          otherAssets: [],
           liquidAssetsTotal: 0,
         },
         investments: {
@@ -3089,7 +3569,7 @@
         { label: "Loyer", amount: 0, frequency: "mensuel" },
         { label: "LAMal", amount: 0, frequency: "mensuel" },
         { label: "Assurances", amount: 0, frequency: "mensuel" },
-        { label: "Impôts", amount: 0, frequency: "annuel" },
+        { label: "Impôts", amount: 0, frequency: "mensuel" },
         { label: "Abonnements", amount: 0, frequency: "mensuel" },
       ];
     }
@@ -3111,11 +3591,24 @@
 
     function defaultOtherAssetEntry() {
       return {
+        name: "",
         amount: "",
-        type: "",
-        access: "",
-        purpose: "anticipation",
+        purpose: "",
       };
+    }
+
+    function normalizeOtherAssetPurpose(value) {
+      const normalized = String(value || "").trim().toLowerCase();
+      if (!normalized) return "";
+      if (normalized === "securite" || normalized === "security") return "securite";
+      if (normalized === "croissance" || normalized === "growth") return "croissance";
+      if (normalized === "anticipation") return "anticipation";
+      return "";
+    }
+
+    function hasOtherAssetContent(entry) {
+      if (!entry || typeof entry !== "object") return false;
+      return Boolean(String(entry.name || "").trim()) || toNumber(entry.amount) > 0;
     }
 
     function defaultInvestmentEntry() {
@@ -3167,9 +3660,17 @@
         return isRecapPending(userId) ? "resultats.html" : "mon-argent.html";
       }
 
-      function resolveSessionUserId(activeId, state) {
-        const candidate = String(activeId || state?.profileId || state?.id || "").trim();
-        return candidate;
+      function resolveSessionUserId(activeId, state, pending) {
+        const candidate = String(
+          activeId || state?.profileId || state?.id || pending?.userId || ""
+        ).trim();
+        if (candidate) return candidate;
+        const generated = `user-${Date.now()}`;
+        if (state && typeof state === "object") {
+          state.profileId = generated;
+          state.id = generated;
+        }
+        return generated;
       }
 
       function ensureActiveUserSession(userId, state) {
@@ -3196,7 +3697,12 @@
       function markRecapPendingOnFirstCompletion(userId) {
         if (!userId) return;
         const map = safelyParse(localStorage.getItem(RECAP_PENDING_KEY)) || {};
-        if (Object.prototype.hasOwnProperty.call(map, userId)) return;
+        const versionMap = safelyParse(localStorage.getItem(RECAP_VERSION_KEY)) || {};
+        const seenVersion = String(versionMap?.[userId] || "").trim();
+        const shouldForceRecap =
+          !Object.prototype.hasOwnProperty.call(map, userId) ||
+          seenVersion !== CURRENT_RECAP_VERSION;
+        if (!shouldForceRecap) return;
         map[userId] = true;
         localStorage.setItem(RECAP_PENDING_KEY, JSON.stringify(map));
       }
@@ -3346,26 +3852,36 @@
       }
       if (state?.assets) {
         const assets = state.assets;
-        if (!Array.isArray(assets.otherAssets) || !assets.otherAssets.length) {
+        if (!Array.isArray(assets.otherAssets)) {
           const legacyAmount = toNumber(assets.otherAssetsAmount ?? 0);
           const legacyType = assets.otherAssetsType ?? "";
-          const legacyAccess = assets.otherAssetsAccess ?? "";
           const legacyEntries = [];
-          if (legacyAmount || legacyType || legacyAccess) {
+          if (legacyAmount || legacyType) {
             legacyEntries.push({
+              name: String(legacyType || "").trim(),
               amount: legacyAmount,
-              type: legacyType || "",
-              access: legacyAccess || "",
+              purpose: "anticipation",
             });
           }
-          assets.otherAssets = legacyEntries.length ? legacyEntries : [defaultOtherAssetEntry()];
+          assets.otherAssets = legacyEntries;
         }
-        assets.otherAssets.forEach((entry) => {
-          if (!entry || typeof entry !== "object") return;
-          if (!entry.purpose) {
-            entry.purpose = "anticipation";
-          }
-        });
+        assets.otherAssets = assets.otherAssets
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => ({
+            name: String(entry.name || entry.type || "").trim(),
+            amount: toNumber(entry.amount),
+            purpose: normalizeOtherAssetPurpose(entry.purpose) || "anticipation",
+          }));
+        assets.taxAccountAmount = Math.max(0, toNumber(assets.taxAccountAmount));
+        if (!["oui", "non"].includes(assets.hasTaxAccount)) {
+          assets.hasTaxAccount = assets.taxAccountAmount > 0 ? "oui" : "non";
+        }
+        if (assets.hasTaxAccount !== "oui") {
+          assets.taxAccountAmount = 0;
+        }
+        if (!["oui", "non"].includes(assets.hasOtherAccounts)) {
+          assets.hasOtherAccounts = assets.otherAssets.some((entry) => hasOtherAssetContent(entry)) ? "oui" : "non";
+        }
         delete assets.otherAssetsAmount;
         delete assets.otherAssetsType;
         delete assets.otherAssetsAccess;

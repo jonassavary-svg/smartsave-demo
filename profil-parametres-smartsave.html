@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#eef2ff" />
+    <title>SmartSave – Paramètres SmartSave</title>
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
+    <link rel="stylesheet" href="theme-polish.css" />
+    <style>
+      .settings-page {
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      .settings-intro {
+        margin: 0.25rem 0 1rem;
+        color: rgba(15, 23, 42, 0.72);
+      }
+
+      .settings-card {
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 14px;
+        background: #fff;
+        padding: 0.9rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .settings-card h2 {
+        margin: 0 0 0.25rem;
+        font-size: 1.02rem;
+      }
+
+      .settings-caption {
+        margin: 0 0 0.65rem;
+        color: rgba(15, 23, 42, 0.66);
+        font-size: 0.9rem;
+      }
+
+      .settings-options {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .settings-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.5rem 0.55rem;
+        border-radius: 10px;
+        background: #f8fafc;
+      }
+
+      .settings-option input {
+        margin-top: 0.15rem;
+      }
+
+      .settings-option__title {
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .settings-option__meta {
+        color: rgba(15, 23, 42, 0.67);
+        font-size: 0.84rem;
+      }
+
+      .settings-save-status {
+        min-height: 1.2rem;
+        margin: 0.45rem 0 0;
+        color: #1d4ed8;
+        font-size: 0.9rem;
+      }
+
+      .settings-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0.65rem;
+      }
+
+      .settings-empty {
+        margin: 0;
+        padding: 0.8rem;
+        border-radius: 12px;
+        background: #fee2e2;
+        color: #7f1d1d;
+      }
+    </style>
+  </head>
+  <body class="profile-page" data-page="profile">
+    <div class="profile-overlay profile-section-page">
+      <main class="profile-modal__content profile-details settings-page">
+        <div class="profile-section-heading">
+          <button
+            type="button"
+            class="ghost-btn profile-back"
+            onclick="window.goBackToProfile()"
+            aria-label="Retour"
+          >
+            ← Retour
+          </button>
+          <p class="section-eyebrow">Règles SmartSave</p>
+          <h1>Paramètres SmartSave</h1>
+        </div>
+
+        <p class="settings-intro">
+          Tu choisis des modes simples. Le moteur applique ensuite ces préférences automatiquement.
+        </p>
+
+        <div id="settings-root" hidden>
+          <section class="settings-card" aria-labelledby="current-target-title">
+            <h2 id="current-target-title">Compte courant – mois de sécurité</h2>
+            <p class="settings-caption">Cible = mois choisis × dépenses obligatoires mensuelles</p>
+            <div class="settings-options" role="radiogroup" aria-label="Mois de sécurité compte courant">
+              <label class="settings-option">
+                <input type="radio" name="current-months" value="1" />
+                <span>
+                  <span class="settings-option__title">1 mois (Défaut)</span>
+                  <span class="settings-option__meta">Niveau standard SmartSave</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="current-months" value="2" />
+                <span>
+                  <span class="settings-option__title">2 mois</span>
+                  <span class="settings-option__meta">Coussin plus confortable</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="current-months" value="3" />
+                <span>
+                  <span class="settings-option__title">3 mois</span>
+                  <span class="settings-option__meta">Priorité sécurité maximale</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-card" aria-labelledby="savings-strategy-title">
+            <h2 id="savings-strategy-title">Épargne – stratégie</h2>
+            <p class="settings-caption">Définit l'intensité de remplissage du compte épargne</p>
+            <div class="settings-options" role="radiogroup" aria-label="Stratégie épargne">
+              <label class="settings-option">
+                <input type="radio" name="savings-strategy" value="prudent" />
+                <span>
+                  <span class="settings-option__title">Prudent</span>
+                  <span class="settings-option__meta">75% / 45% / 30% / 20%</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="savings-strategy" value="equilibre" />
+                <span>
+                  <span class="settings-option__title">Équilibré (Défaut)</span>
+                  <span class="settings-option__meta">60% / 30% / 20% / 15%</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="savings-strategy" value="aggressif" />
+                <span>
+                  <span class="settings-option__title">Aggressif</span>
+                  <span class="settings-option__meta">50% / 25% / 15% / 10%</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-card" aria-labelledby="invest-strategy-title">
+            <h2 id="invest-strategy-title">Investissements – stratégie</h2>
+            <p class="settings-caption">Définit les conditions d'activation et les pourcentages investis</p>
+            <div class="settings-options" role="radiogroup" aria-label="Stratégie investissements">
+              <label class="settings-option">
+                <input type="radio" name="invest-strategy" value="securite" />
+                <span>
+                  <span class="settings-option__title">Sécurité</span>
+                  <span class="settings-option__meta">Activation stricte, investissement progressif</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="invest-strategy" value="equilibre" />
+                <span>
+                  <span class="settings-option__title">Équilibré (Défaut)</span>
+                  <span class="settings-option__meta">Réglage SmartSave standard</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="invest-strategy" value="aggressif" />
+                <span>
+                  <span class="settings-option__title">Aggressif</span>
+                  <span class="settings-option__meta">Activation plus tôt, pourcentages plus élevés</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-card" aria-labelledby="tax-mode-title">
+            <h2 id="tax-mode-title">Impôts – mode</h2>
+            <p class="settings-caption">Choisis la façon de gérer les impôts dans SmartSave</p>
+            <div class="settings-options" role="radiogroup" aria-label="Mode impôts">
+              <label class="settings-option">
+                <input type="radio" name="tax-mode" value="AUTO_PROVISION" />
+                <span>
+                  <span class="settings-option__title">Provision mensuelle</span>
+                  <span class="settings-option__meta">SmartSave provisionne un montant chaque mois</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="tax-mode" value="PAY_LATER" />
+                <span>
+                  <span class="settings-option__title">Payer plus tard</span>
+                  <span class="settings-option__meta">Pas de provision mensuelle automatique</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-card" aria-labelledby="tax-priority-title">
+            <h2 id="tax-priority-title">Impôts – priorité</h2>
+            <p class="settings-caption">Définit le niveau d'urgence de la provision impôts</p>
+            <div class="settings-options" role="radiogroup" aria-label="Priorité impôts">
+              <label class="settings-option">
+                <input type="radio" name="tax-priority" value="normal" />
+                <span>
+                  <span class="settings-option__title">Normale</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="tax-priority" value="high" />
+                <span>
+                  <span class="settings-option__title">Élevée</span>
+                </span>
+              </label>
+              <label class="settings-option">
+                <input type="radio" name="tax-priority" value="critical" />
+                <span>
+                  <span class="settings-option__title">Critique</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <div class="settings-actions">
+            <button type="button" class="ghost-btn" id="settings-reset">Réinitialiser</button>
+          </div>
+          <p class="settings-save-status" data-save-status></p>
+        </div>
+
+        <p class="settings-empty" id="settings-no-user" hidden>
+          Aucun profil actif détecté. Ouvre d'abord ton profil utilisateur SmartSave.
+        </p>
+      </main>
+    </div>
+
+    <script src="monthlyStore.js?v=20260218-04"></script>
+    <script>
+      const STORAGE_KEY_ACTIVE_USER = "smartsaveActiveUser";
+      const STORAGE_KEY_FORM = "smartsaveFormData";
+      const PROFILE_FALLBACK_URL = "profil.html";
+
+      const goBackToProfile = () => {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = PROFILE_FALLBACK_URL;
+      };
+      window.goBackToProfile = goBackToProfile;
+
+      const DEFAULT_SMART_SETTINGS = Object.freeze({
+        limits: { minCurrentMonths: 1 },
+        savings: { strategy: "equilibre" },
+        investments: { strategy: "equilibre" },
+        taxes: {
+          enabled: true,
+          provisionMode: "smoothed",
+          priority: "normal",
+        },
+      });
+      const DEFAULT_USER_SETTINGS = Object.freeze({
+        taxMode: "AUTO_PROVISION",
+      });
+
+      const deepClone = (value) => {
+        try {
+          return JSON.parse(JSON.stringify(value));
+        } catch (_error) {
+          return null;
+        }
+      };
+
+      const mergeDeep = (base, patch) => {
+        const safeBase = base && typeof base === "object" && !Array.isArray(base) ? base : {};
+        const safePatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+        const out = { ...safeBase };
+        Object.keys(safePatch).forEach((key) => {
+          const nextValue = safePatch[key];
+          if (Array.isArray(nextValue)) {
+            out[key] = nextValue.slice();
+            return;
+          }
+          if (nextValue && typeof nextValue === "object") {
+            out[key] = mergeDeep(out[key], nextValue);
+            return;
+          }
+          out[key] = nextValue;
+        });
+        return out;
+      };
+
+      const readStorage = (key) => {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        } catch (_error) {
+          return null;
+        }
+      };
+
+      const writeStorage = (key, value) => {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+          return true;
+        } catch (_error) {
+          return false;
+        }
+      };
+
+      const normalizeCurrentMonths = (value) => {
+        const months = Math.round(Number(value));
+        if (months >= 1 && months <= 3) return months;
+        return 1;
+      };
+
+      const normalizeSavingsStrategy = (value) => {
+        const raw = String(value || "").trim().toLowerCase();
+        if (raw === "prudent") return "prudent";
+        if (["agressif", "aggressif", "aggressive"].includes(raw)) return "aggressif";
+        return "equilibre";
+      };
+
+      const normalizeInvestStrategy = (value) => {
+        const raw = String(value || "").trim().toLowerCase();
+        if (["securite", "sécurité", "security"].includes(raw)) return "securite";
+        if (["agressif", "aggressif", "aggressive"].includes(raw)) return "aggressif";
+        return "equilibre";
+      };
+
+      const normalizeTaxPriority = (value) => {
+        const raw = String(value || "").trim().toLowerCase();
+        if (raw === "high") return "high";
+        if (raw === "critical") return "critical";
+        return "normal";
+      };
+
+      const normalizeTaxMode = (value, smartSettings = {}) => {
+        const raw = String(value || "").trim().toUpperCase();
+        if (raw === "PAY_LATER") return "PAY_LATER";
+        if (raw === "AUTO_PROVISION") return "AUTO_PROVISION";
+        const provisionMode = String(smartSettings?.taxes?.provisionMode || "smoothed").toLowerCase();
+        const enabled = smartSettings?.taxes?.enabled !== false;
+        if (!enabled || provisionMode === "recommendations") return "PAY_LATER";
+        return "AUTO_PROVISION";
+      };
+
+      const normalizeSmartSettings = (raw = {}) => {
+        const merged = mergeDeep(deepClone(DEFAULT_SMART_SETTINGS) || {}, raw || {});
+        merged.limits = merged.limits || {};
+        merged.limits.minCurrentMonths = normalizeCurrentMonths(merged?.limits?.minCurrentMonths);
+        merged.savings = merged.savings || {};
+        merged.savings.strategy = normalizeSavingsStrategy(merged?.savings?.strategy);
+        merged.investments = merged.investments || {};
+        merged.investments.strategy = normalizeInvestStrategy(merged?.investments?.strategy);
+        merged.taxes = merged.taxes || {};
+        merged.taxes.enabled = merged?.taxes?.enabled !== false;
+        merged.taxes.provisionMode = String(merged?.taxes?.provisionMode || "smoothed").toLowerCase();
+        if (!["smoothed", "recommendations"].includes(merged.taxes.provisionMode)) {
+          merged.taxes.provisionMode = "smoothed";
+        }
+        merged.taxes.priority = normalizeTaxPriority(merged?.taxes?.priority);
+        return merged;
+      };
+
+      const resolveActiveUser = () => {
+        if (typeof window.loadActiveUser === "function") {
+          return window.loadActiveUser() || {};
+        }
+        return readStorage(STORAGE_KEY_ACTIVE_USER) || {};
+      };
+
+      const resolveUserId = () => {
+        const activeUser = resolveActiveUser();
+        const id = String(activeUser?.id || activeUser?.userId || activeUser?.profileId || "").trim();
+        return id || null;
+      };
+
+      const loadSettings = (userId) => {
+        const store = window.SmartSaveMonthlyStore;
+        const userSettingsFromStore =
+          userId && store && typeof store.getStateForUser === "function"
+            ? store.getStateForUser(userId)?.userSettings || null
+            : null;
+        if (userSettingsFromStore && typeof userSettingsFromStore === "object") {
+          const smart = normalizeSmartSettings(userSettingsFromStore?.smartSaveSettings || {});
+          const taxMode = normalizeTaxMode(userSettingsFromStore?.taxMode, smart);
+          return { smartSaveSettings: smart, taxMode };
+        }
+
+        const formStore = readStorage(STORAGE_KEY_FORM) || {};
+        const formData =
+          (userId && formStore && typeof formStore === "object" && formStore[userId]) ||
+          formStore.__default ||
+          formStore ||
+          {};
+        const smartRaw = formData?.smartSaveSettings || formData?.userSettings?.smartSaveSettings || {};
+        const smart = normalizeSmartSettings(smartRaw);
+        const taxMode = normalizeTaxMode(formData?.userSettings?.taxMode, smart);
+        return { smartSaveSettings: smart, taxMode };
+      };
+
+      const persistSettingsInFormStorage = (userId, settings) => {
+        const store = readStorage(STORAGE_KEY_FORM);
+        if (!store || typeof store !== "object") return;
+        const patchTarget =
+          (userId && store[userId] && typeof store[userId] === "object" && store[userId]) ||
+          (store.__default && typeof store.__default === "object" && store.__default) ||
+          (typeof store === "object" ? store : null);
+        if (!patchTarget || Array.isArray(patchTarget)) return;
+
+        patchTarget.smartSaveSettings = mergeDeep(
+          patchTarget.smartSaveSettings && typeof patchTarget.smartSaveSettings === "object"
+            ? patchTarget.smartSaveSettings
+            : {},
+          settings.smartSaveSettings
+        );
+        patchTarget.userSettings =
+          patchTarget.userSettings && typeof patchTarget.userSettings === "object"
+            ? patchTarget.userSettings
+            : {};
+        patchTarget.userSettings.taxMode = settings.taxMode;
+        patchTarget.userSettings.smartSaveSettings = mergeDeep(
+          patchTarget.userSettings.smartSaveSettings &&
+            typeof patchTarget.userSettings.smartSaveSettings === "object"
+            ? patchTarget.userSettings.smartSaveSettings
+            : {},
+          settings.smartSaveSettings
+        );
+        patchTarget.taxes =
+          patchTarget.taxes && typeof patchTarget.taxes === "object" ? patchTarget.taxes : {};
+        patchTarget.taxes.taxMode = settings.taxMode;
+        writeStorage(STORAGE_KEY_FORM, store);
+      };
+
+      const updateSettings = (userId, nextSettings) => {
+        const store = window.SmartSaveMonthlyStore;
+        const normalizedSmart = normalizeSmartSettings(nextSettings?.smartSaveSettings || {});
+        const normalizedTaxMode = normalizeTaxMode(nextSettings?.taxMode, normalizedSmart);
+        const normalized = {
+          smartSaveSettings: normalizedSmart,
+          taxMode: normalizedTaxMode,
+        };
+        if (store && typeof store.updateUserSettingsForUser === "function" && userId) {
+          store.updateUserSettingsForUser({
+            userId,
+            patch: {
+              smartSaveSettings: normalized.smartSaveSettings,
+              taxMode: normalized.taxMode,
+            },
+          });
+        }
+        persistSettingsInFormStorage(userId, normalized);
+      };
+
+      const setStatus = (text, isError = false) => {
+        const node = document.querySelector("[data-save-status]");
+        if (!node) return;
+        node.textContent = text || "";
+        node.style.color = isError ? "#b91c1c" : "#1d4ed8";
+      };
+
+      const applySettingsToForm = (settings) => {
+        const safe = {
+          smartSaveSettings: normalizeSmartSettings(settings?.smartSaveSettings || {}),
+          taxMode: normalizeTaxMode(settings?.taxMode, settings?.smartSaveSettings || {}),
+        };
+        const setRadio = (name, value) => {
+          const selector = `input[name="${name}"]`;
+          document.querySelectorAll(selector).forEach((input) => {
+            input.checked = String(input.value) === String(value);
+          });
+        };
+        setRadio("current-months", String(safe.smartSaveSettings.limits.minCurrentMonths));
+        setRadio("savings-strategy", safe.smartSaveSettings.savings.strategy);
+        setRadio("invest-strategy", safe.smartSaveSettings.investments.strategy);
+        setRadio("tax-mode", safe.taxMode);
+        setRadio("tax-priority", safe.smartSaveSettings.taxes.priority);
+      };
+
+      const collectSettingsFromForm = () => {
+        const readChecked = (name, fallback) => {
+          const checked = document.querySelector(`input[name="${name}"]:checked`);
+          return checked ? checked.value : fallback;
+        };
+        const taxMode = normalizeTaxMode(readChecked("tax-mode", DEFAULT_USER_SETTINGS.taxMode));
+        const smartSettings = normalizeSmartSettings({
+          limits: {
+            minCurrentMonths: readChecked("current-months", "1"),
+          },
+          savings: {
+            strategy: readChecked("savings-strategy", "equilibre"),
+          },
+          investments: {
+            strategy: readChecked("invest-strategy", "equilibre"),
+          },
+          taxes: {
+            enabled: true,
+            provisionMode: taxMode === "PAY_LATER" ? "recommendations" : "smoothed",
+            priority: readChecked("tax-priority", "normal"),
+          },
+        });
+        return {
+          smartSaveSettings: smartSettings,
+          taxMode,
+        };
+      };
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const userId = resolveUserId();
+        const root = document.getElementById("settings-root");
+        const noUser = document.getElementById("settings-no-user");
+        const resetBtn = document.getElementById("settings-reset");
+
+        if (!userId) {
+          if (root) root.hidden = true;
+          if (noUser) noUser.hidden = false;
+          return;
+        }
+
+        if (noUser) noUser.hidden = true;
+        if (root) root.hidden = false;
+
+        let currentSettings = loadSettings(userId);
+        applySettingsToForm(currentSettings);
+
+        let saveTimer = null;
+        const scheduleSave = () => {
+          if (saveTimer) clearTimeout(saveTimer);
+          saveTimer = setTimeout(() => {
+            try {
+              const nextSettings = collectSettingsFromForm();
+              updateSettings(userId, nextSettings);
+              currentSettings = nextSettings;
+              setStatus("Préférences enregistrées.");
+            } catch (_error) {
+              setStatus("Impossible d'enregistrer pour le moment.", true);
+            }
+          }, 180);
+        };
+
+        document.querySelectorAll('input[name="current-months"], input[name="savings-strategy"], input[name="invest-strategy"], input[name="tax-mode"], input[name="tax-priority"]').forEach((input) => {
+          input.addEventListener("change", scheduleSave);
+        });
+
+        if (resetBtn) {
+          resetBtn.addEventListener("click", () => {
+            const defaults = {
+              smartSaveSettings: normalizeSmartSettings(DEFAULT_SMART_SETTINGS),
+              taxMode: DEFAULT_USER_SETTINGS.taxMode,
+            };
+            applySettingsToForm(defaults);
+            updateSettings(userId, defaults);
+            currentSettings = defaults;
+            setStatus("Préférences remises par défaut.");
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

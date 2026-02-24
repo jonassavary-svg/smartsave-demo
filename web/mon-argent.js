@@ -5,6 +5,8 @@
   const ACTIONS_STORAGE_KEY = "smartsaveHubActionState";
   const VARIABLE_BUDGET_SETTINGS_KEY = "smartsaveVariableBudgetSettings";
   const PENDING_MON_ARGENT_ACTION_KEY = "smartsavePendingMonArgentAction";
+  const MONTH_COACH_MODE_KEY = "smartsaveMonthCoachMode";
+  const MONTH_COACH_MODES = new Set(["focus", "tempo", "next"]);
   const ACCOUNT_LABELS = {
     current: "Compte courant",
     security: "Compte épargne",
@@ -13,6 +15,19 @@
     investments: "Investissements",
     pillar3a: "3e pilier",
     growth: "Investissements",
+  };
+  const normalizeTransactionAccountKey = (value) => {
+    const key = String(value || "").trim().toLowerCase();
+    if (!key) return "";
+    if (["current", "comptecourant", "checking"].includes(key)) return "current";
+    if (["security", "securite", "savings", "epargne"].includes(key)) return "security";
+    if (["tax", "impots", "provisionimpots"].includes(key)) return "tax";
+    if (["investments", "investissement", "investissements"].includes(key)) return "investments";
+    if (["pillar3a", "pilier3a", "thirdpillar", "pillar3"].includes(key)) return "pillar3a";
+    if (["projects", "projets", "projetslongterme", "projetscourtterme", "shortterm", "longterm"].includes(key)) {
+      return "projects";
+    }
+    return key;
   };
   const OVERVIEW_PRIMARY_METRIC_KEY = "smartsaveOverviewPrimaryMetric";
   const OVERVIEW_METRIC_CONFIG = {
@@ -63,6 +78,25 @@
   };
 
   let overviewPrimaryMetric = readOverviewPrimaryMetric();
+  const readMonthCoachMode = () => {
+    try {
+      const raw = String(localStorage.getItem(MONTH_COACH_MODE_KEY) || "").trim().toLowerCase();
+      return MONTH_COACH_MODES.has(raw) ? raw : "focus";
+    } catch (_error) {
+      return "focus";
+    }
+  };
+
+  const saveMonthCoachMode = (mode) => {
+    const safeMode = MONTH_COACH_MODES.has(mode) ? mode : "focus";
+    try {
+      localStorage.setItem(MONTH_COACH_MODE_KEY, safeMode);
+    } catch (_error) {
+      // ignore storage issues
+    }
+  };
+
+  let monthCoachMode = readMonthCoachMode();
 
   const toNumber = (value) => {
     if (typeof window.toNumber === "function") return window.toNumber(value);
@@ -708,14 +742,20 @@
     const extras = {};
 
     const applyDelta = (accountKey, accountLabel, delta) => {
-      if (accountKey && Object.prototype.hasOwnProperty.call(updated, accountKey)) {
-        updated[accountKey] += delta;
+      const rawKey = String(accountKey || "").trim();
+      const normalizedKey = normalizeTransactionAccountKey(rawKey);
+      if (normalizedKey && Object.prototype.hasOwnProperty.call(updated, normalizedKey)) {
+        updated[normalizedKey] += delta;
+        return;
+      }
+      if (rawKey && Object.prototype.hasOwnProperty.call(updated, rawKey)) {
+        updated[rawKey] += delta;
         return;
       }
       const derivedLabel =
         accountLabel ||
-        (typeof accountKey === "string" && accountKey.startsWith("custom-")
-          ? accountKey.slice("custom-".length)
+        (rawKey.toLowerCase().startsWith("custom-")
+          ? rawKey.slice("custom-".length)
           : "");
       if (derivedLabel) {
         extras[derivedLabel] = (extras[derivedLabel] || 0) + delta;
@@ -833,12 +873,39 @@
     };
   };
 
+  const resolveMonthlyFlow = (activeUserId, monthId, monthlyContext) => {
+    const fallback = {
+      state: "NOUVEAU_MOIS",
+      message: "Commence ton mois en définissant ton budget.",
+      ctaLabel: "Faire mon budget",
+      action: "open_budget",
+    };
+    const store = getMonthlyStore();
+    if (!store || typeof store.getFlowStateForMonth !== "function") return fallback;
+    const flow = store.getFlowStateForMonth({
+      userId: activeUserId,
+      monthId,
+      now: new Date(),
+      monthlyPlan: monthlyContext?.monthlyPlan || null,
+    });
+    if (!flow || typeof flow !== "object") return fallback;
+    return {
+      state: flow.state || fallback.state,
+      message: flow.message || fallback.message,
+      ctaLabel: flow.ctaLabel || fallback.ctaLabel,
+      action: flow.action || fallback.action,
+      monthStatus: flow.monthStatus || "active",
+    };
+  };
+
   const getActiveMonthInfo = (activeUser, formData, mvpData, transactions = []) => {
     const userState = ensureMonthState(activeUser, formData, mvpData, transactions);
     if (!userState) return null;
     const activeKey = userState.activeMonthKey;
     const month = userState.months?.[activeKey];
-    return { userState, activeKey, month, monthlyContext: userState.monthlyContext || null };
+    const monthlyContext = userState.monthlyContext || null;
+    const flow = resolveMonthlyFlow(activeUser?.id, activeKey, monthlyContext);
+    return { userState, activeKey, month, monthlyContext, flow };
   };
 
   const getMonthTransactions = (transactions, monthKey, userId) =>
@@ -1060,14 +1127,14 @@
 
   const updateMonthHeader = (monthKey) => {
     const monthLabel = formatMonthLabel(monthKey);
-    const titleNode = document.querySelector("#home-month-title");
-    if (titleNode) {
-      const normalized = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
-      titleNode.textContent = `Suivi mois ${normalized}`;
-    }
     const label = document.querySelector("[data-month-label]");
-    if (label && label !== titleNode) {
+    if (label) {
       label.textContent = monthLabel;
+    }
+    const monthNode = document.querySelector("[data-month-current-label]");
+    if (monthNode) {
+      const normalized = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+      monthNode.textContent = `Mois actif : ${normalized}`;
     }
   };
 
@@ -1084,15 +1151,333 @@
     }
   };
 
+  const getMonthSummary = (monthInfo, formData, data) => {
+    const monthlyPlan = monthInfo?.monthlyContext?.monthlyPlan || {};
+    const monthlyTracking = monthInfo?.monthlyContext?.monthlyTracking || {};
+    const inputs = monthlyPlan?.inputsSnapshot || {};
+    const allocation = monthlyPlan?.allocationResultSnapshot || {};
+    const revenuMensuel = Math.max(
+      0,
+      toNumber(inputs.revenuNetMensuel || data?.metrics?.monthlyNetIncome || getMonthlyIncomeEstimate(formData))
+    );
+    const budgetVariable = Math.max(
+      0,
+      toNumber(monthlyTracking.variableBudget || formData?.allocationPlan?.leisureMonthly || 0)
+    );
+    const variableSpent = Math.max(0, toNumber(monthlyTracking.variableSpent || 0));
+    const epargnePrevue = Math.max(
+      0,
+      toNumber(allocation.totalSmartSave || data?.allocation?.summary?.totalSmartSave || 0)
+    );
+    const depensesFromInputs = Math.max(
+      0,
+      toNumber(inputs.fixedTotal) +
+        toNumber(inputs.mandatoryTotal) +
+        toNumber(inputs.debtsTotal) +
+        toNumber(inputs.taxesNeed) +
+        budgetVariable
+    );
+    const depensesPrevues = Math.max(0, depensesFromInputs || revenuMensuel - epargnePrevue);
+    const surplusPrevu = revenuMensuel - depensesPrevues;
+    return {
+      revenuMensuel,
+      depensesPrevues,
+      surplusPrevu,
+      budgetVariable,
+      variableSpent,
+    };
+  };
+
+  const resolveMonthStatus = (monthInfo, monthSummary) => {
+    const flowAction = String(monthInfo?.flow?.action || "").trim();
+    const monthStatus = String(monthInfo?.flow?.monthStatus || monthInfo?.month?.status || "active");
+    if (monthStatus === "closed") return "control";
+    if (flowAction === "open_allocation") return "action";
+
+    const budget = Math.max(0, toNumber(monthSummary?.budgetVariable || 0));
+    const spent = Math.max(0, toNumber(monthSummary?.variableSpent || 0));
+    const ratio = budget > 0 ? spent / budget : spent > 0 ? 1 : 0;
+    if (ratio >= 1 || toNumber(monthSummary?.surplusPrevu) < 0) return "action";
+    if (ratio >= 0.85 || toNumber(monthSummary?.surplusPrevu) <= 0) return "fragile";
+    return "control";
+  };
+
+  const renderMonthStatusCard = (monthInfo, monthSummary) => {
+    const card = document.querySelector("[data-month-status-card]");
+    const badge = document.querySelector("[data-month-status-badge]");
+    const message = document.querySelector("[data-month-status-message]");
+    if (!card || !badge || !message) return "control";
+    const statusKey = resolveMonthStatus(monthInfo, monthSummary);
+    const statusMap = {
+      control: {
+        badge: "🟢 Sous contrôle",
+        message: "Ton mois est bien cadré.",
+        className: "is-control",
+      },
+      fragile: {
+        badge: "🟡 Équilibre fragile",
+        message: "Tes dépenses variables risquent de dépasser le plan.",
+        className: "is-fragile",
+      },
+      action: {
+        badge: "🔴 Action requise",
+        message: "Un ajustement est nécessaire pour éviter un problème.",
+        className: "is-action",
+      },
+    };
+    const current = statusMap[statusKey] || statusMap.control;
+
+    card.classList.remove("is-control", "is-fragile", "is-action");
+    badge.classList.remove("is-control", "is-fragile", "is-action");
+    card.classList.add(current.className);
+    badge.classList.add(current.className);
+    badge.textContent = current.badge;
+    message.textContent = current.message;
+    return statusKey;
+  };
+
+  const resolveActionBlockContent = (monthInfo) => {
+    const flowAction = String(monthInfo?.flow?.action || "open_budget").trim();
+    const monthStatus = String(monthInfo?.flow?.monthStatus || monthInfo?.month?.status || "active");
+
+    if (monthStatus === "closed") {
+      return {
+        title: "Ton mois est clôturé.",
+        subtitle: "Prépare le mois suivant pour repartir sur un plan clair.",
+        ctaLabel: "Préparer le mois suivant",
+        action: "open_budget",
+        disabled: false,
+        secondaryLabel: "",
+        secondaryHref: "",
+        showWhy: false,
+        showClosedBanner: true,
+      };
+    }
+
+    if (flowAction === "open_plan") {
+      return {
+        title: "Ton plan est déjà appliqué pour ce mois.",
+        subtitle: "Aucune action immédiate requise.",
+        ctaLabel: "Plan appliqué",
+        action: "open_plan",
+        disabled: true,
+        secondaryLabel: "Voir ce qui a été fait",
+        secondaryHref: "smartsave.html",
+        showWhy: false,
+        showClosedBanner: false,
+      };
+    }
+
+    if (flowAction === "open_allocation") {
+      return {
+        title: "Avant la répartition, SmartSave te propose un ajustement.",
+        subtitle: "Valide l’ajustement pour continuer.",
+        ctaLabel: "Ajuster mes comptes",
+        action: "open_allocation",
+        disabled: false,
+        secondaryLabel: "",
+        secondaryHref: "",
+        showWhy: true,
+        showClosedBanner: false,
+      };
+    }
+
+    if (flowAction === "open_review") {
+      return {
+        title: "Ton mois est prêt pour le bilan.",
+        subtitle: "Fais le point pour préparer la suite.",
+        ctaLabel: "Préparer le mois suivant",
+        action: "open_review",
+        disabled: false,
+        secondaryLabel: "",
+        secondaryHref: "",
+        showWhy: false,
+        showClosedBanner: false,
+      };
+    }
+
+    return {
+      title: "SmartSave a préparé ton plan pour ce mois.",
+      subtitle: "Applique-le pour démarrer.",
+      ctaLabel: "Appliquer mon plan",
+      action: "open_budget",
+      disabled: false,
+      secondaryLabel: "",
+      secondaryHref: "",
+      showWhy: false,
+      showClosedBanner: false,
+    };
+  };
+
   const renderMonthControls = (monthInfo) => {
     const wrapper = document.querySelector("[data-month-controls]");
-    const closeButton = document.querySelector("[data-close-month]");
-    const startButton = document.querySelector("[data-start-month]");
-    if (!wrapper || !closeButton || !startButton) return;
-    const _month = monthInfo?.month || {};
-    wrapper.hidden = true;
-    closeButton.hidden = true;
-    startButton.hidden = true;
+    const messageNode = document.querySelector("[data-month-flow-message]");
+    const subtitleNode = document.querySelector("[data-month-flow-submessage]");
+    const ctaNode = document.querySelector("[data-month-primary-cta]");
+    const secondaryNode = document.querySelector("[data-month-secondary-link]");
+    const whyNode = document.querySelector("[data-month-why-link]");
+    const whyPanel = document.querySelector("[data-month-why-panel]");
+    const closedBanner = document.querySelector("[data-month-closed-banner]");
+    if (!wrapper || !messageNode || !subtitleNode || !ctaNode) return;
+
+    const content = resolveActionBlockContent(monthInfo);
+    messageNode.textContent = content.title;
+    subtitleNode.textContent = content.subtitle;
+    ctaNode.textContent = content.ctaLabel;
+    ctaNode.dataset.flowAction = content.action;
+    ctaNode.disabled = Boolean(content.disabled);
+
+    ctaNode.hidden = false;
+    wrapper.hidden = false;
+
+    if (secondaryNode) {
+      if (content.secondaryLabel) {
+        secondaryNode.textContent = content.secondaryLabel;
+        secondaryNode.href = content.secondaryHref || "smartsave.html";
+        secondaryNode.hidden = false;
+      } else {
+        secondaryNode.hidden = true;
+      }
+    }
+
+    if (whyNode) {
+      whyNode.hidden = !content.showWhy;
+      whyNode.setAttribute("aria-expanded", "false");
+    }
+    if (whyPanel && !content.showWhy) {
+      whyPanel.hidden = true;
+    }
+
+    if (closedBanner) {
+      closedBanner.hidden = !content.showClosedBanner;
+    }
+  };
+
+  const renderMonthMiniSummary = (monthInfo, formData, monthSummary) => {
+    const incomeNode = document.querySelector("[data-month-summary-income]");
+    const expensesNode = document.querySelector("[data-month-summary-expenses]");
+    const surplusNode = document.querySelector("[data-month-summary-surplus]");
+    const surplusLabelNode = document.querySelector("[data-month-summary-surplus-label]");
+    const thirteenthBadge = document.querySelector("[data-month-thirteenth-badge]");
+    if (!incomeNode || !expensesNode || !surplusNode || !surplusLabelNode) return;
+
+    incomeNode.textContent = formatCurrency(monthSummary.revenuMensuel);
+    expensesNode.textContent = formatCurrency(monthSummary.depensesPrevues);
+
+    const surplus = toNumber(monthSummary.surplusPrevu);
+    surplusLabelNode.textContent = surplus < 0 ? "Marge prévue :" : "Avance prévue :";
+    surplusNode.classList.remove("is-positive", "is-negative");
+    surplusNode.classList.add(surplus < 0 ? "is-negative" : "is-positive");
+    surplusNode.textContent =
+      surplus < 0 ? `-${formatCurrency(Math.abs(surplus))}` : formatCurrency(surplus);
+
+    if (thirteenthBadge) {
+      const monthDate = parseMonthKey(monthInfo?.activeKey || "");
+      const incomes = formData?.incomes || {};
+      const hasThirteenth =
+        incomes?.thirteenth === "oui" || incomes?.thirteenth === true || Boolean(incomes?.thirteenthSalary);
+      const thirteenthMonth = Math.max(
+        1,
+        Math.min(
+          12,
+          Math.round(
+            toNumber(
+              incomes?.thirteenthMonth ||
+                incomes?.thirteenthSalaryMonth ||
+                formData?.personal?.thirteenthSalaryMonth ||
+                12
+            )
+          )
+        )
+      );
+      const isThirteenthMonth =
+        Boolean(monthDate) && monthDate.getMonth() + 1 === thirteenthMonth && thirteenthMonth === 12;
+      thirteenthBadge.hidden = !(hasThirteenth && isThirteenthMonth);
+    }
+  };
+
+  const renderMonthCoachMessage = (monthInfo, monthSummary, statusKey, activeUser) => {
+    const messageNode = document.querySelector("[data-month-coach-message]");
+    const metaNode = document.querySelector("[data-month-coach-meta]");
+    if (!messageNode) return;
+
+    const flowAction = String(monthInfo?.flow?.action || "").trim();
+    const surplus = toNumber(monthSummary?.surplusPrevu || 0);
+    const variableBudget = Math.max(0, toNumber(monthSummary?.budgetVariable || 0));
+    const variableSpent = Math.max(0, toNumber(monthSummary?.variableSpent || 0));
+    const budgetDelta = variableBudget - variableSpent;
+    const spentPct =
+      variableBudget > 0
+        ? Math.max(0, Math.round((variableSpent / variableBudget) * 100))
+        : variableSpent > 0
+        ? 100
+        : 0;
+
+    const rawName = String(
+      activeUser?.firstName || activeUser?.prenom || activeUser?.displayName || activeUser?.name || ""
+    ).trim();
+    const firstName = rawName ? rawName.split(/\s+/)[0] : "Tu";
+    const greeting = rawName ? `${firstName},` : "Tu";
+
+    const mode = MONTH_COACH_MODES.has(monthCoachMode) ? monthCoachMode : "focus";
+    const modeButtons = document.querySelectorAll("[data-month-coach-mode]");
+    modeButtons.forEach((button) => {
+      const isActive = String(button.dataset.monthCoachMode || "") === mode;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+
+    let message = `${greeting} si tu suis ce plan, tu avances de ${formatCurrency(
+      Math.max(0, surplus)
+    )} ce mois-ci.`;
+
+    if (mode === "tempo") {
+      if (variableBudget <= 0 && variableSpent > 0) {
+        message = `${greeting} ton budget variable est déjà consommé ce mois-ci.`;
+      } else if (budgetDelta < 0) {
+        message = `${greeting} tu dépasses le variable de ${formatCurrency(Math.abs(budgetDelta))}.`;
+      } else if (spentPct >= 85) {
+        message = `${greeting} tu as utilisé ${spentPct}% du variable, il reste ${formatCurrency(
+          budgetDelta
+        )}.`;
+      } else {
+        message = `${greeting} tu as utilisé ${spentPct}% du variable, rythme bien maîtrisé.`;
+      }
+    } else if (mode === "next") {
+      if (flowAction === "open_budget") {
+        message = "Action du jour: applique ton plan pour démarrer le mois.";
+      } else if (flowAction === "open_allocation") {
+        message = "Action du jour: ajuste tes comptes avant la répartition.";
+      } else if (flowAction === "open_plan") {
+        message = "Aucune action urgente aujourd’hui, garde simplement ce rythme.";
+      } else if (surplus <= 0) {
+        message = "Action utile: vérifie ton budget variable pour protéger ta marge.";
+      } else {
+        message = "Prochain pas: regarde tes objectifs pour confirmer ton avancée du mois.";
+      }
+    } else {
+      if (surplus <= 0) {
+        message = `${greeting} ce mois-ci, la marge est serrée: on protège l’essentiel.`;
+      } else if (statusKey === "action") {
+        message = `${greeting} priorité cette semaine: stabilise tes dépenses variables.`;
+      } else if (flowAction === "open_plan") {
+        message = `${greeting} bonne nouvelle: aucune action requise cette semaine.`;
+      } else if (flowAction === "open_allocation") {
+        message = `${greeting} un ajustement rapide évite les écarts ce mois-ci.`;
+      }
+    }
+
+    messageNode.textContent = message;
+    if (metaNode) {
+      const modeLabel = mode === "tempo" ? "Tempo" : mode === "next" ? "Prochain pas" : "Focus";
+      metaNode.textContent = rawName ? `Personnalisé pour ${firstName} • ${modeLabel}` : `Personnalisé • ${modeLabel}`;
+      metaNode.hidden = false;
+    }
+
+    const budgetShortcut = document.querySelector("[data-month-shortcut-budget]");
+    if (budgetShortcut) {
+      budgetShortcut.classList.toggle("is-recommended", surplus <= 0);
+    }
   };
 
   const renderRealSection = (monthInfo, formData, transactions, activeUser) => {
@@ -2148,16 +2533,106 @@
     });
   };
 
+  const setupMonthInfoModal = () => {
+    const modal = document.querySelector("[data-month-info-modal]");
+    const openButton = document.querySelector("[data-month-info-open]");
+    if (!modal || !openButton) return;
+    const closeButtons = modal.querySelectorAll("[data-month-info-close]");
+
+    const close = () => {
+      modal.hidden = true;
+      openButton.setAttribute("aria-expanded", "false");
+    };
+
+    const open = () => {
+      modal.hidden = false;
+      openButton.setAttribute("aria-expanded", "true");
+    };
+
+    openButton.addEventListener("click", () => {
+      if (modal.hidden) {
+        open();
+      } else {
+        close();
+      }
+    });
+
+    closeButtons.forEach((button) => {
+      button.addEventListener("click", () => close());
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") close();
+    });
+  };
+
+  const setupMonthWhyToggle = () => {
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-month-why-link]");
+      if (!trigger) return;
+      const panel = document.querySelector("[data-month-why-panel]");
+      if (!panel) return;
+      const nextOpen = panel.hidden;
+      panel.hidden = !nextOpen;
+      trigger.setAttribute("aria-expanded", String(nextOpen));
+    });
+  };
+
+  const setupMonthCoachInteractions = () => {
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-month-coach-mode]");
+      if (!button) return;
+      const mode = String(button.dataset.monthCoachMode || "").trim().toLowerCase();
+      if (!MONTH_COACH_MODES.has(mode)) return;
+      monthCoachMode = mode;
+      saveMonthCoachMode(mode);
+      renderAll();
+    });
+  };
+
   const setupMonthClose = () => {
     document.addEventListener("click", (event) => {
       const button = event.target.closest("[data-close-month]");
       const startButton = event.target.closest("[data-start-month]");
-      if (!button && !startButton) return;
+      const primaryButton = event.target.closest("[data-month-primary-cta]");
+      if (!button && !startButton && !primaryButton) return;
 
       const activeUser = loadActiveUser();
       if (!activeUser?.id) return;
       const formData = loadUserForm(activeUser.id);
       if (!formData) return;
+      const store = getMonthlyStore();
+      const monthId =
+        getActiveMonthInfo(
+          activeUser,
+          formData,
+          typeof window.buildMvpData === "function" ? window.buildMvpData(formData) : {},
+          loadTransactions()
+        )?.activeKey || getMonthKey(new Date());
+
+      if (primaryButton) {
+        const action = String(primaryButton.dataset.flowAction || "").trim();
+        if (action === "open_budget") {
+          window.location.href = "budget.html";
+          return;
+        }
+        if (action === "open_allocation") {
+          if (store && typeof store.markBudgetValidatedForMonth === "function") {
+            store.markBudgetValidatedForMonth({ userId: activeUser.id, monthId });
+          }
+          window.location.href = "smartsave.html";
+          return;
+        }
+        if (action === "open_plan") {
+          window.location.href = "plan.html";
+          return;
+        }
+        if (action === "open_review") {
+          window.location.href = "bilan.html";
+          return;
+        }
+        return;
+      }
 
       if (button) {
         const confirmed = window.confirm(
@@ -2294,7 +2769,7 @@
     if (!activeUser) return;
     const formData = loadUserForm(activeUser.id);
     if (!formData) return;
-    let transactions = loadTransactions();
+    const transactions = loadTransactions();
     const data = typeof window.buildMvpData === "function" ? window.buildMvpData(formData) : {};
 
     const monthInfo = getActiveMonthInfo(activeUser, formData, data, transactions);
@@ -2302,26 +2777,11 @@
 
     updateMonthHeader(monthInfo.activeKey);
     updateMonthBanner(monthInfo.activeKey);
+    const monthSummary = getMonthSummary(monthInfo, formData, data);
+    const statusKey = renderMonthStatusCard(monthInfo, monthSummary);
     renderMonthControls(monthInfo);
-
-    const migratedTransactions = migrateFixedMonthKeys(transactions);
-    if (migratedTransactions.changed) {
-      transactions = migratedTransactions.transactions;
-      saveTransactions(transactions);
-    }
-    const monthTransactions = getMonthTransactions(
-      transactions,
-      monthInfo.activeKey,
-      activeUser.id
-    );
-    const realMetrics = renderRealSection(monthInfo, formData, transactions, activeUser);
-    renderPlanSection(formData, data, realMetrics);
-    renderRemainingBudget(formData, data, monthTransactions, monthInfo.monthlyContext);
-    renderVariableBudgets(formData, monthTransactions);
-    renderTopVariableCategories(monthTransactions);
-    renderSpendingInsights(formData, monthTransactions);
-    renderAccountsOverview(realMetrics.balances, data, realMetrics.extraBalances, formData);
-    renderTransferHistory(transactions, activeUser, monthInfo.activeKey);
+    renderMonthMiniSummary(monthInfo, formData, monthSummary);
+    renderMonthCoachMessage(monthInfo, monthSummary, statusKey, activeUser);
   };
 
   let lastProfileVersion = null;
@@ -2432,6 +2892,9 @@
   document.addEventListener("DOMContentLoaded", () => {
     renderAll();
     setupHamburgerMenu();
+    setupMonthInfoModal();
+    setupMonthWhyToggle();
+    setupMonthCoachInteractions();
     setupQuickActions();
     setupMonthClose();
     setupVariableBudgetEditor();

@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+Derni<!DOCTYPE html>Mais 
 <html lang="fr">
-  <head>
+  <head> 
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
     <title>SmartSave – Dépenses</title>
     <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
@@ -76,9 +77,12 @@
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
               <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
+              <a class="hamburger-link" role="menuitem" href="budget.html" data-nav="budget">Budget</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
               <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
+              <a class="hamburger-link" role="menuitem" href="mes-depenses.html">Mois précédents</a>
+              <a class="hamburger-link" role="menuitem" href="profil.html">Mes données</a>
+              <a class="hamburger-link hamburger-link--danger" role="menuitem" href="index.html">Déconnexion</a>
             </div>
           </div>
         </div>
@@ -96,30 +100,24 @@
     </div>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
-          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
-        </svg>
-        <span>SmartSave</span>
-      </a>
       <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Suivi</span>
+        <span>Mon Mois</span>
       </a>
-      <a class="bottom-nav__link" href="actions.html" data-nav="actions">
+      <a class="bottom-nav__link" href="budget.html" data-nav="budget">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Home</span>
+        <span>Budget</span>
       </a>
-      <a class="bottom-nav__link" href="future.html" data-nav="future">
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="repartition">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 16l5-5 4 3 7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
         </svg>
-        <span>Future</span>
+        <span>Répartition</span>
       </a>
       <a class="bottom-nav__link" href="score.html" data-nav="score">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -127,16 +125,23 @@
         </svg>
         <span>Objectifs</span>
       </a>
+      <a class="bottom-nav__link" href="profil.html" data-nav="profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Profil</span>
+      </a>
     </nav>
 
+
     <script src="financialScoreEngine.js?v=20260212-01" defer></script>
-    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260216-12" defer></script>
     <script src="projectionEngine.js?v=20260212-01" defer></script>
     <script src="taxEngine.js?v=20260212-01" defer></script>
     <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
     <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
-    <script src="mvp-v2.js?v=20260212-01" defer></script>
-    <script src="app-pages.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260218-04" defer></script>
+    <script src="app-pages.js?v=20260218-06" defer></script>
     <script src="/dev-reload.js" defer></script>
 </body>
 </html>

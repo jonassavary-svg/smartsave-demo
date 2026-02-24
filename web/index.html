@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>SmartSave | Analyse financière instantanée</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#eef2ff">
@@ -13,42 +13,36 @@
   <link rel="apple-touch-icon" href="/icons/icon-180.png">
   <link rel="stylesheet" href="styles.css?v=20260212-01">
 </head>
-<body class="smartsave-page">
-  <main class="smartsave-shell landing-shell" aria-label="Accueil SmartSave">
-    <section class="landing-hero">
-      <div class="landing-hero__brand">
-        <div class="landing-logo-square" aria-hidden="true">
-          <span class="landing-logo__icon">S</span>
-        </div>
-        <div class="landing-logo__text-block">
-          <p class="landing-logo__title">SmartSave</p>
-          <p class="landing-logo__subtitle">Guide financier</p>
-        </div>
-      </div>
-
-      <p class="landing-hero__tagline">
-        Partagez votre nom pour démarrer une analyse qui vous aide à structurer votre épargne et vos décisions.
+<body class="smartsave-page entry-page">
+  <main class="smartsave-shell entry-shell" aria-label="Accueil SmartSave">
+    <section class="entry-card" aria-labelledby="entry-title">
+      <a class="logo entry-logo" href="index.html" aria-label="SmartSave">
+        <span class="logo-mark" aria-hidden="true">S</span>
+        <span class="logo-text">SmartSave</span>
+      </a>
+      <p class="entry-eyebrow">Personal Finance</p>
+      <h1 id="entry-title" class="entry-title">Reprenez le contrôle de votre budget, simplement.</h1>
+      <p class="entry-subtitle">
+        Renseignez votre nom pour reprendre votre profil ou démarrer votre parcours SmartSave.
       </p>
 
-      <form class="landing-form" action="formulaire.html">
-        <div class="landing-form__grid">
-          <label>
-            <span>Prénom</span>
+      <form class="entry-form" action="formulaire.html">
+        <div class="entry-form__row">
+          <label class="field entry-field">
+            <span class="field-label">Prénom</span>
             <input type="text" name="prenom" placeholder="Alice" autocomplete="given-name" required>
           </label>
-          <label>
-            <span>Nom</span>
+          <label class="field entry-field">
+            <span class="field-label">Nom</span>
             <input type="text" name="nom" placeholder="Dupont" autocomplete="family-name" required>
           </label>
         </div>
-
-        <button class="landing-cta landing-cta--large" type="submit">
-          Commencer votre analyse
-        </button>
-        <p class="landing-hero__hint">
-          Vos données restent confidentielles et vous êtes guidé·e à chaque étape du parcours.
-        </p>
+        <button class="cta entry-cta" type="submit">Commencer</button>
       </form>
+
+      <p class="entry-note">
+        Vos données restent privées et vous gardez le contrôle à chaque étape.
+      </p>
     </section>
   </main>
   <script>
@@ -58,7 +52,7 @@
       const NAME_INDEX_KEY = "smartsaveNameIndex";
       const PENDING_NAME_KEY = "smartsavePendingName";
       const RECAP_PENDING_KEY = "smartsaveRecapPendingByUser";
-      const form = document.querySelector(".landing-form");
+      const form = document.querySelector(".entry-form");
       const firstNameInput = form?.querySelector("input[name='prenom']");
       const lastNameInput = form?.querySelector("input[name='nom']");
 
@@ -105,7 +99,7 @@
       });
 
       function resolvePostLoginTarget(userId) {
-        return isRecapPending(userId) ? "resultats.html" : "mon-argent.html";
+        return isRecapPending(userId) ? "resultats.html" : "actions.html";
       }
 
       function isRecapPending(userId) {

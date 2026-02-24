@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
     <title>SmartSave – Objectifs</title>
     <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
@@ -79,129 +80,74 @@
               <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
               <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
+              <a class="hamburger-link" role="menuitem" href="mes-depenses.html">Mois précédents</a>
+              <a class="hamburger-link" role="menuitem" href="profil.html">Mes données</a>
+              <a class="hamburger-link hamburger-link--danger" role="menuitem" href="index.html">Déconnexion</a>
             </div>
           </div>
         </div>
       </header>
 
-      <main class="app-main objectifs-page" data-goals-root>
+      <main class="app-main objectifs-page objectifs-v3" data-goals-root>
         <section class="page-title">
           <h1>Objectifs</h1>
-          <p>Choisis ton budget de vie, ton CT et ton LT.</p>
+          <p>Ton argent avance pour toi.</p>
         </section>
 
-        <section class="card objectifs-card">
-          <div class="card-header">
-            <h3>Mon budget mensuel de vie</h3>
+        <section class="card objectifs-month-card" data-goals-month-card>
+          <div class="objectifs-month-card__head">
+            <h3>Ce mois-ci, tu as avancé</h3>
+            <a class="objectifs-cta objectifs-cta--secondary" href="smartsave.html" data-goals-month-cta hidden>
+              Aller à Répartition
+            </a>
           </div>
-          <p class="objectifs-hint">Loisirs, sorties, restaurants, achats plaisir.</p>
-          <div class="objectifs-slider-row">
-            <input
-              type="range"
-              min="0"
-              max="0"
-              step="10"
-              value="0"
-              data-goals-field="leisure-slider"
-            />
-            <label class="objectifs-amount-input">
-              <span>CHF</span>
-              <input type="number" min="0" step="10" value="0" data-goals-field="leisure-input" />
-            </label>
-          </div>
-          <p class="objectifs-feedback" data-goals-variable-feedback>
-            Avec ce choix, il te restera CHF 0 à répartir.
+          <ul class="objectifs-month-card__list" data-goals-monthly-list></ul>
+          <p class="objectifs-month-card__copy" data-goals-monthly-copy>
+            C’est ce que ton plan SmartSave a mis de côté ce mois-ci.
           </p>
-          <small class="objectifs-saving-state" data-goals-saving-state>Auto-save activé</small>
-        </section>
-
-        <section class="card objectifs-card">
-          <div class="card-header">
-            <h3>Objectif Court Terme (CT)</h3>
-          </div>
-          <label class="objectifs-toggle">
-            <input type="checkbox" data-goals-field="ct-enabled" />
-            <span>J’ai un objectif court terme</span>
-          </label>
-
-          <div class="objectifs-grid" data-goals-ct-fields hidden>
-            <label>
-              <span>Type</span>
-              <select data-goals-field="ct-type">
-                <option value="vacances">Vacances</option>
-                <option value="cadeaux">Cadeaux</option>
-                <option value="voiture">Voiture</option>
-                <option value="mariage">Mariage</option>
-                <option value="autre">Autre</option>
-              </select>
-            </label>
-            <label>
-              <span>Montant cible (CHF)</span>
-              <input type="number" min="0" step="100" value="0" data-goals-field="ct-amount" />
-            </label>
-            <label>
-              <span>Horizon (années)</span>
-              <input type="number" min="1" max="5" step="1" value="1" data-goals-field="ct-horizon" />
-            </label>
-          </div>
-
-          <p class="objectifs-feedback" data-goals-ct-monthly>
-            Cela représente CHF 0/mois mis de côté avant la répartition.
+          <p class="objectifs-month-card__pending" data-goals-monthly-pending hidden>
+            Valide ta répartition pour voir ton impact du mois.
           </p>
         </section>
 
-        <section class="card objectifs-card">
-          <div class="card-header">
-            <h3>Objectif Long Terme (LT)</h3>
+        <section class="card objectifs-goals-card">
+          <div class="objectifs-goals-card__head">
+            <h3>Objectifs</h3>
+            <button class="objectifs-cta objectifs-cta--primary" type="button" data-goals-add-open>
+              + Ajouter un objectif
+            </button>
           </div>
-
-          <div class="objectifs-radio-list">
-            <label><input type="radio" name="lt-type" value="security" data-goals-field="lt-type" />Sécurité financière</label>
-            <label><input type="radio" name="lt-type" value="home" data-goals-field="lt-type" />Achat immobilier</label>
-            <label><input type="radio" name="lt-type" value="invest" data-goals-field="lt-type" />Patrimoine-investissement</label>
-            <label><input type="radio" name="lt-type" value="retirement" data-goals-field="lt-type" />Retraite</label>
+          <div class="objectifs-goals-empty" data-goals-empty hidden>
+            <p>Donne une destination à ton argent.</p>
+            <button class="objectifs-cta objectifs-cta--primary" type="button" data-goals-add-open>
+              Créer mon premier objectif
+            </button>
           </div>
-
-          <div class="objectifs-grid objectifs-grid--two">
-            <label>
-              <span>Objectif cible (CHF)</span>
-              <input type="number" min="0" step="1000" value="0" data-goals-field="lt-target" />
-            </label>
-            <label>
-              <span>Horizon (années)</span>
-              <input type="number" min="3" max="40" step="1" value="10" data-goals-field="lt-horizon" />
-            </label>
-          </div>
-
-          <div class="objectifs-diagnostic" data-goals-lt-diagnostic>
-            <p>Besoin mensuel: CHF 0</p>
-            <p>Financement actuel: CHF 0/mois</p>
-            <p class="objectifs-status is-neutral" data-goals-lt-status>Renseigne une cible et un horizon pour le diagnostic.</p>
-          </div>
+          <div class="objectifs-goals-list" data-goals-list></div>
         </section>
 
-        <section class="card objectifs-card objectifs-impact">
-          <div class="card-header">
-            <h3>Impact</h3>
+        <section class="card objectifs-future-card">
+          <h3>Patrimoine &amp; Futur</h3>
+          <p class="objectifs-future-card__line">
+            Ce mois-ci, tu as investi : <strong data-goals-invest-now>CHF 0</strong>
+          </p>
+          <div class="objectifs-future-card__kpis">
+            <p>
+              <span>Dans 10 ans</span>
+              <strong data-goals-projection-10y>~CHF 0</strong>
+            </p>
+            <p>
+              <span>Dans 20 ans</span>
+              <strong data-goals-projection-20y>~CHF 0</strong>
+            </p>
           </div>
-          <div class="objectifs-impact-summary">
-            <article class="objectifs-impact-item">
-              <p>Budget de vie</p>
-              <strong data-goals-impact-summary-life>CHF 0 utilisés · CHF 0 à répartir</strong>
-            </article>
-            <article class="objectifs-impact-item">
-              <p>Objectif court terme</p>
-              <strong data-goals-impact-summary-ct>Non actif</strong>
-            </article>
-            <article class="objectifs-impact-item">
-              <p>Objectif long terme</p>
-              <strong data-goals-impact-summary-lt>—</strong>
-            </article>
-          </div>
-          <div class="objectifs-cta-row">
-            <a class="objectifs-cta objectifs-cta--primary" href="smartsave.html">Voir mon plan SmartSave</a>
-            <a class="objectifs-cta objectifs-cta--secondary" href="future.html">Voir la projection</a>
-          </div>
+          <p class="objectifs-future-card__note" data-goals-projection-label>
+            C’est la puissance de l’investissement régulier.
+          </p>
+          <p class="objectifs-future-card__missing" data-goals-projection-missing hidden>
+            Ajoute tes paramètres d’investissement dans Profil.
+            <a href="profil.html">Ouvrir Profil</a>
+          </p>
         </section>
       </main>
     </div>
@@ -240,16 +186,77 @@
       </a>
     </nav>
 
+    <div class="objectifs-modal" data-goals-detail-modal hidden aria-hidden="true">
+      <div class="objectifs-modal__overlay" data-goals-modal-close></div>
+      <div class="objectifs-modal__content" role="dialog" aria-modal="true" aria-labelledby="goals-detail-title">
+        <header class="objectifs-modal__head">
+          <h2 id="goals-detail-title" data-goals-detail-title>Objectif</h2>
+          <button class="objectifs-modal__close" type="button" data-goals-modal-close aria-label="Fermer">×</button>
+        </header>
+        <p class="objectifs-modal__why" data-goals-detail-why>Pourquoi cet objectif</p>
+        <p class="objectifs-modal__month" data-goals-detail-month>Ce mois-ci : +CHF 0</p>
+        <div class="objectifs-modal__history">
+          <h4>3 derniers mois</h4>
+          <ul data-goals-detail-history></ul>
+          <p data-goals-detail-history-empty hidden>Historique bientôt.</p>
+        </div>
+        <div class="objectifs-modal__actions">
+          <a class="objectifs-cta objectifs-cta--secondary" href="profil.html">Modifier</a>
+          <button class="objectifs-cta objectifs-cta--secondary" type="button" data-goals-archive-btn hidden>
+            Archiver
+          </button>
+          <button class="objectifs-cta objectifs-cta--primary" type="button" data-goals-create-next-btn hidden>
+            Créer un nouvel objectif
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="objectifs-modal" data-goals-create-modal hidden aria-hidden="true">
+      <div class="objectifs-modal__overlay" data-goals-modal-close></div>
+      <form class="objectifs-modal__content objectifs-modal__content--form" data-goals-create-form>
+        <header class="objectifs-modal__head">
+          <h2>Nouvel objectif</h2>
+          <button class="objectifs-modal__close" type="button" data-goals-modal-close aria-label="Fermer">×</button>
+        </header>
+        <label class="objectifs-form-row">
+          <span>Nom</span>
+          <input type="text" name="name" required maxlength="80" />
+        </label>
+        <label class="objectifs-form-row">
+          <span>Type</span>
+          <select name="type" required>
+            <option value="projet">Projet</option>
+            <option value="securite">Sécurité</option>
+            <option value="croissance">Croissance</option>
+          </select>
+        </label>
+        <label class="objectifs-form-row">
+          <span>Montant cible (CHF)</span>
+          <input type="number" name="target" min="1" step="100" required />
+        </label>
+        <label class="objectifs-form-row">
+          <span>Horizon (mois, optionnel)</span>
+          <input type="number" name="horizonMonths" min="1" step="1" />
+        </label>
+        <label class="objectifs-form-row">
+          <span>Priorité (optionnel)</span>
+          <input type="number" name="priority" min="1" step="1" />
+        </label>
+        <button class="objectifs-cta objectifs-cta--primary" type="submit">Créer l’objectif</button>
+      </form>
+    </div>
+
     <script src="financialScoreEngine.js?v=20260212-01" defer></script>
-    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260216-12" defer></script>
     <script src="projectionEngine.js?v=20260212-01" defer></script>
     <script src="taxEngine.js?v=20260212-01" defer></script>
     <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
     <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
     <script src="runtimeConfig.js?v=20260212-01" defer></script>
-    <script src="mvp-v2.js?v=20260212-01" defer></script>
-    <script src="monthlyStore.js?v=20260212-01" defer></script>
-    <script src="app-pages.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260218-04" defer></script>
+    <script src="monthlyStore.js?v=20260218-04" defer></script>
+    <script src="app-pages.js?v=20260218-06" defer></script>
     <script src="/dev-reload.js" defer></script>
     <script>
       localStorage.setItem("profileLastMain", "score.html");

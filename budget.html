@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#eef2ff" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
+    <title>SmartSave – Budget</title>
+    <link rel="stylesheet" href="styles.css?v=20260216-02" />
+    <link rel="stylesheet" href="theme-polish.css" />
+    <style>
+      :root {
+        --budget-flat-bg-top: #f6f9ff;
+        --budget-flat-bg-bottom: #eef3fb;
+        --budget-flat-text: #0f172a;
+        --budget-flat-muted: #5e687d;
+        --budget-flat-line: rgba(15, 23, 42, 0.14);
+        --budget-flat-accent: #1458c4;
+        --budget-flat-positive: #0f9b63;
+        --budget-flat-negative: #c03b2b;
+      }
+
+      body[data-page="budget"] {
+        --budget-page-gutter: clamp(0.9rem, 4vw, 1.35rem);
+        --budget-band-inner-pad: clamp(1.45rem, 7vw, 2.55rem);
+        --budget-band-right-extra: 0.45rem;
+        background: linear-gradient(180deg, var(--budget-flat-bg-top) 0%, var(--budget-flat-bg-bottom) 100%);
+        color: var(--budget-flat-text);
+      }
+
+      body[data-page="budget"] .app-main {
+        max-width: none;
+        width: 100%;
+        margin: 0;
+        padding: clamp(0.95rem, 2.2vw, 1.45rem) var(--budget-page-gutter)
+          calc(6.7rem + env(safe-area-inset-bottom));
+      }
+
+      body[data-page="budget"] .budget-page {
+        max-width: none;
+        display: block;
+      }
+
+      body[data-page="budget"] .budget-alert {
+        width: 100%;
+        margin: 0 0 0.75rem;
+        border-radius: 12px;
+      }
+
+      body[data-page="budget"] .budget-mode-card {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        border-radius: 0;
+      }
+
+      body[data-page="budget"] .budget-step-panel {
+        min-height: 0;
+      }
+
+      body[data-page="budget"] .budget-summary {
+        margin-top: 0;
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .budget-overview {
+        margin-top: 0.5rem;
+      }
+
+      .budget-overview__eyebrow {
+        margin: 0;
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--budget-flat-accent);
+        font-weight: 700;
+      }
+
+      .budget-overview__summary {
+        margin-top: 0.6rem;
+        padding: 0.85rem 0.95rem;
+        border: 1px solid rgba(20, 88, 196, 0.24);
+        border-radius: 16px;
+        background: linear-gradient(125deg, rgba(20, 88, 196, 0.13), rgba(20, 88, 196, 0.03));
+      }
+
+      .budget-overview__row {
+        margin: 0;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .budget-overview__row + .budget-overview__row {
+        border-top: 1px solid rgba(20, 88, 196, 0.2);
+      }
+
+      .budget-overview__row span {
+        color: #334155;
+      }
+
+      .budget-overview__row strong {
+        text-align: right;
+        font-size: 1.1rem;
+      }
+
+      .budget-overview__row strong.is-positive {
+        color: var(--budget-flat-positive);
+      }
+
+      .budget-overview__row strong.is-negative {
+        color: var(--budget-flat-negative);
+      }
+
+      .budget-overview__legacy-income,
+      .budget-overview__legacy-gauges {
+        display: none;
+      }
+
+      .budget-overview__categories {
+        margin-top: 0;
+        margin-inline: calc(var(--budget-page-gutter) * -1);
+        border-top: 1px solid var(--budget-flat-line);
+        display: grid;
+        gap: 0;
+      }
+
+      body[data-page="budget"] .budget-overview .budget-summary-toggle {
+        box-sizing: border-box;
+        max-width: 100%;
+        width: 100%;
+        min-height: 52px;
+        margin: 0;
+        position: relative;
+        border: 1px solid rgba(15, 23, 42, 0.14);
+        border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+        border-left: 0 !important;
+        border-right: 0;
+        background: #ffffff !important;
+        border-radius: 0;
+        padding-top: 0.9rem;
+        padding-bottom: 0.9rem;
+        padding-left: calc(var(--budget-band-inner-pad) + env(safe-area-inset-left)) !important;
+        padding-right: calc(var(--budget-band-inner-pad) + var(--budget-band-right-extra) + env(safe-area-inset-right)) !important;
+        color: inherit !important;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.8rem;
+        text-align: left;
+        box-shadow: none;
+      }
+
+      .budget-overview .budget-summary-toggle + .budget-summary-details {
+        margin: 0;
+      }
+
+      .budget-overview .budget-summary-toggle::after {
+        display: none;
+      }
+
+      .budget-overview .budget-summary-toggle:last-of-type::after {
+        display: none;
+      }
+
+      .budget-overview .budget-summary-toggle.is-open {
+        border-bottom-color: transparent;
+      }
+
+      .budget-overview .budget-summary-toggle__label {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: grid;
+        gap: 0.1rem;
+      }
+
+      .budget-overview__name {
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      .budget-overview__count {
+        color: var(--budget-flat-muted);
+        font-size: 0.84rem;
+        font-weight: 500;
+      }
+
+      .budget-overview .budget-summary-toggle strong {
+        flex: 0 0 auto;
+        margin-left: auto;
+        font-size: 1rem;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .budget-overview .budget-summary-toggle__arrow {
+        flex: 0 0 auto;
+        margin-left: 0.15rem;
+        color: #64748b;
+        font-size: 1rem;
+        transition: transform 0.2s ease;
+      }
+
+      .budget-overview .budget-summary-toggle.is-open .budget-summary-toggle__arrow {
+        transform: rotate(180deg);
+      }
+
+      body[data-page="budget"] .budget-overview .budget-summary-details {
+        box-sizing: border-box;
+        max-width: 100%;
+        margin: -1px 0 0;
+        padding-top: 0.2rem;
+        padding-bottom: 0.85rem;
+        padding-left: calc(var(--budget-band-inner-pad) + env(safe-area-inset-left)) !important;
+        padding-right: calc(var(--budget-band-inner-pad) + var(--budget-band-right-extra) + env(safe-area-inset-right)) !important;
+        border-radius: 0;
+        background: #ffffff !important;
+        border: 1px solid rgba(15, 23, 42, 0.14);
+        border-left: 0;
+        border-right: 0;
+        border-top: 0;
+        box-shadow: none;
+      }
+
+      .budget-overview .budget-summary-details__line {
+        min-height: 44px;
+        margin: 0;
+        padding: 0.52rem 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.6rem;
+        align-items: center;
+        border-top: 1px dashed rgba(15, 23, 42, 0.12);
+        font-size: 0.92rem;
+      }
+
+      .budget-overview .budget-summary-details__line:first-child {
+        border-top: 1px solid rgba(15, 23, 42, 0.12);
+      }
+
+      .budget-overview .budget-summary-details__line strong {
+        text-align: right;
+      }
+
+      .budget-overview .budget-summary-details__empty {
+        margin: 0;
+        padding: 0.7rem 0;
+        color: #94a3b8;
+        font-style: italic;
+      }
+
+      .budget-summary-details__subtotal {
+        margin: 0.45rem 0 0;
+        padding-top: 0.6rem;
+        border-top: 1px solid rgba(15, 23, 42, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+      }
+
+      .budget-summary-details__subtotal span {
+        color: #334155;
+        font-size: 0.9rem;
+      }
+
+      .budget-summary-details__subtotal strong {
+        text-align: right;
+      }
+
+      .budget-overview__total {
+        min-height: 50px;
+        margin-top: 0.3rem;
+        padding: 0.85rem 0 0.95rem;
+        border-bottom: 1px solid var(--budget-flat-line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+      }
+
+      .budget-overview__total span {
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+
+      .budget-overview__total strong {
+        font-size: 1.16rem;
+        text-align: right;
+      }
+
+      .budget-overview__fructifier {
+        margin-top: 1rem;
+        padding: 0.92rem 1rem;
+        border-radius: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        background: rgba(255, 255, 255, 0.36);
+      }
+
+      .budget-overview__fructifier-line {
+        min-height: 44px;
+        margin: 0;
+        padding: 0.42rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .budget-overview__fructifier-line + .budget-overview__fructifier-line {
+        border-top: 1px dashed rgba(15, 23, 42, 0.14);
+      }
+
+      .budget-overview__fructifier-line span {
+        color: #334155;
+      }
+
+      .budget-overview__fructifier-line strong {
+        text-align: right;
+        font-size: 1rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .budget-overview__fructifier-line--income strong {
+        color: #1458c4;
+      }
+
+      .budget-overview__fructifier-line--expenses strong {
+        color: #b45309;
+      }
+
+      .budget-overview__fructifier-line--remaining strong {
+        color: var(--budget-flat-positive);
+      }
+
+      .budget-overview__fructifier.is-negative .budget-overview__fructifier-line--remaining strong {
+        color: var(--budget-flat-negative);
+      }
+
+      .budget-overview__fructifier.is-neutral .budget-overview__fructifier-line--remaining strong {
+        color: var(--budget-flat-text);
+      }
+
+      .budget-overview__fructifier.is-positive {
+        border-color: rgba(15, 155, 99, 0.34);
+        background: rgba(15, 155, 99, 0.1);
+      }
+
+      .budget-overview__fructifier.is-negative {
+        border-color: rgba(192, 59, 43, 0.36);
+        background: rgba(192, 59, 43, 0.08);
+      }
+
+      .budget-overview__fructifier.is-neutral {
+        border-color: rgba(15, 23, 42, 0.2);
+        background: rgba(255, 255, 255, 0.32);
+      }
+
+      body[data-page="budget"] .budget-note {
+        margin-top: 0.85rem;
+        font-size: 0.9rem;
+      }
+
+      body[data-page="budget"] .budget-secondary {
+        width: 100%;
+        margin-top: 0.8rem;
+      }
+
+      body[data-page="budget"] .budget-step-actions [data-budget-prev] {
+        color: #0f172a !important;
+        background: #ffffff !important;
+        border-color: rgba(15, 23, 42, 0.25) !important;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+      }
+
+      body[data-page="budget"] .budget-step-actions [data-budget-prev]:hover,
+      body[data-page="budget"] .budget-step-actions [data-budget-prev]:focus-visible {
+        background: #f8fafc !important;
+        border-color: rgba(15, 23, 42, 0.35) !important;
+      }
+
+      body[data-page="budget"] .budget-step-actions [data-budget-next] {
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #0f172a, #1e293b) !important;
+        border-color: rgba(15, 23, 42, 0.68) !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
+      }
+
+      body[data-page="budget"] .budget-step-actions [data-budget-next]:hover,
+      body[data-page="budget"] .budget-step-actions [data-budget-next]:focus-visible {
+        background: linear-gradient(135deg, #111827, #334155) !important;
+        border-color: rgba(15, 23, 42, 0.72) !important;
+      }
+
+      @media (max-width: 640px) {
+        body[data-page="budget"] {
+          --budget-page-gutter: clamp(1rem, 4.8vw, 1.25rem);
+          --budget-band-inner-pad: clamp(1.05rem, 5vw, 1.3rem);
+        }
+
+        body[data-page="budget"] .app-main {
+          padding-top: 1.1rem;
+          padding-bottom: calc(8.4rem + env(safe-area-inset-bottom));
+        }
+
+        body[data-page="budget"] .budget-stepper {
+          margin-bottom: 1rem;
+          gap: 0.34rem;
+        }
+
+        body[data-page="budget"] .budget-stepper__item {
+          min-height: 60px;
+          gap: 0.34rem;
+          font-size: 0.74rem;
+        }
+
+        body[data-page="budget"] .budget-stepper__item:not(:last-child)::after {
+          top: 15px;
+        }
+
+        body[data-page="budget"] .budget-stepper__dot {
+          width: 30px;
+          height: 30px;
+          font-size: 0.8rem;
+        }
+
+        body[data-page="budget"] .budget-step-panel {
+          min-height: 290px;
+        }
+
+        body[data-page="budget"] .budget-fieldset {
+          padding: 0.95rem 0 0.85rem;
+        }
+
+        body[data-page="budget"] .budget-fieldset legend {
+          font-size: 0.88rem;
+        }
+
+        body[data-page="budget"] .budget-label {
+          margin: 0.65rem 0 0.32rem;
+          font-size: 0.96rem;
+          line-height: 1.35;
+        }
+
+        body[data-page="budget"] .budget-help {
+          margin-top: 0.42rem;
+          font-size: 0.88rem;
+          line-height: 1.38;
+        }
+
+        body[data-page="budget"] .budget-toggle-row {
+          margin-top: 0.7rem;
+          gap: 0.56rem;
+          font-size: 0.93rem;
+        }
+
+        body[data-page="budget"] .budget-toggle-row input[type="checkbox"] {
+          width: 1.1rem;
+          height: 1.1rem;
+        }
+
+        body[data-page="budget"] .budget-lines-list {
+          gap: 0.56rem;
+        }
+
+        body[data-page="budget"] .budget-line-row {
+          grid-template-columns: 1fr minmax(96px, 118px) auto;
+          gap: 0.5rem;
+        }
+
+        body[data-page="budget"] .budget-line-input,
+        body[data-page="budget"] .budget-line-amount,
+        body[data-page="budget"] .budget-fieldset input[type="number"],
+        body[data-page="budget"] .budget-variable-controls select,
+        body[data-page="budget"] .budget-variable-controls input {
+          min-height: 52px;
+          border-radius: 12px;
+          padding: 0.76rem 0.82rem;
+          font-size: 1rem;
+        }
+
+        body[data-page="budget"] .budget-line-row:has(.budget-line-amount--money)::before {
+          left: calc(100% - 118px + 8px);
+          font-size: 0.78rem;
+        }
+
+        body[data-page="budget"] .budget-line-remove {
+          width: 42px;
+          height: 42px;
+          font-size: 1.12rem;
+        }
+
+        body[data-page="budget"] .budget-money-input {
+          min-height: 54px;
+          grid-template-columns: 58px 1fr;
+          border-radius: 12px;
+        }
+
+        body[data-page="budget"] .budget-money-input > span {
+          font-size: 0.84rem;
+        }
+
+        body[data-page="budget"] .budget-money-input input[type="number"] {
+          min-height: 54px;
+          padding-left: 0.72rem;
+          font-size: 1.04rem;
+        }
+
+        body[data-page="budget"] .budget-add-line {
+          margin-top: 0.64rem;
+          min-height: 44px;
+          padding: 0.45rem 0.84rem;
+          font-size: 0.88rem;
+        }
+
+        body[data-page="budget"] .budget-variable-gauge {
+          margin-top: 0.62rem;
+          gap: 0.46rem;
+        }
+
+        body[data-page="budget"] .budget-variable-controls {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px;
+          gap: 0.42rem;
+        }
+
+        body[data-page="budget"] .budget-step-total {
+          margin-top: 0.72rem;
+          padding: 0.78rem 0.86rem;
+          border-radius: 12px;
+          font-size: 0.95rem;
+          line-height: 1.35;
+        }
+
+        body[data-page="budget"] .budget-step-total strong {
+          font-size: 1.04rem;
+        }
+
+        body[data-page="budget"] .budget-step-actions {
+          margin-top: 1.05rem;
+          padding-top: 0.12rem;
+          padding-bottom: calc(0.55rem + env(safe-area-inset-bottom));
+          gap: 0.62rem;
+        }
+
+        body[data-page="budget"] .budget-nav-btn,
+        body[data-page="budget"] .budget-submit {
+          min-height: 56px;
+          border-radius: 14px;
+          font-size: 1rem;
+          padding-left: 0.95rem;
+          padding-right: 0.95rem;
+        }
+
+        .budget-overview__row {
+          min-height: 50px;
+        }
+
+        .budget-overview__row strong {
+          font-size: 1.04rem;
+        }
+
+        .budget-overview__name {
+          font-size: 0.98rem;
+        }
+
+        .budget-overview__count {
+          font-size: 0.83rem;
+        }
+
+        .budget-overview .budget-summary-toggle strong {
+          font-size: 0.98rem;
+        }
+
+        .budget-overview .budget-summary-details__line {
+          font-size: 0.92rem;
+        }
+      }
+
+      @media (max-width: 430px) {
+        body[data-page="budget"] .budget-stepper__item {
+          font-size: 0.69rem;
+        }
+
+        body[data-page="budget"] .budget-line-row {
+          grid-template-columns: 1fr minmax(92px, 108px) auto;
+        }
+
+        body[data-page="budget"] .budget-line-row:has(.budget-line-amount--money)::before {
+          left: calc(100% - 108px + 8px);
+        }
+      }
+    </style>
+  </head>
+  <body class="dashboard app-page" data-page="budget" data-mvp>
+    <div class="dashboard-shell app-shell">
+      <header class="dashboard-header app-header">
+        <div class="brand-block">
+          <a class="logo" href="mon-argent.html">
+            <div class="logo-mark" aria-hidden="true">S</div>
+            <span class="logo-text">SmartSave</span>
+          </a>
+          <span class="logo-subtitle">Budget mensuel</span>
+        </div>
+        <div class="header-search"></div>
+        <div class="header-actions">
+          <div class="hamburger-wrapper">
+            <button class="icon-button menu-button" type="button" aria-label="Menu" aria-expanded="false" aria-controls="app-nav">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Mon Mois</a>
+              <a class="hamburger-link" role="menuitem" href="budget.html" data-nav="budget">Budget</a>
+              <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="repartition">Répartition</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
+              <a class="hamburger-link" role="menuitem" href="mes-depenses.html">Mois précédents</a>
+              <a class="hamburger-link hamburger-link--danger" role="menuitem" href="index.html">Déconnexion</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main budget-page">
+        <p class="budget-alert" data-budget-endmonth-banner hidden>
+          Ton mois est à clôturer — fais le bilan dans Mon Mois.
+        </p>
+
+        <section class="budget-mode-card" data-budget-mode-edit hidden>
+          <form data-budget-form>
+            <section class="budget-stepper" aria-label="Étapes du budget">
+              <button class="budget-stepper__item" type="button" data-budget-step-index="0">
+                <span class="budget-stepper__dot">1</span>
+                <span>Revenus</span>
+              </button>
+              <button class="budget-stepper__item" type="button" data-budget-step-index="1">
+                <span class="budget-stepper__dot">2</span>
+                <span>Dépenses fixes</span>
+              </button>
+              <button class="budget-stepper__item" type="button" data-budget-step-index="2">
+                <span class="budget-stepper__dot">3</span>
+                <span>Dépenses obligatoires</span>
+              </button>
+              <button class="budget-stepper__item" type="button" data-budget-step-index="3">
+                <span class="budget-stepper__dot">4</span>
+                <span>Dépenses variables</span>
+              </button>
+              <button class="budget-stepper__item" type="button" data-budget-step-index="4">
+                <span class="budget-stepper__dot">5</span>
+                <span>Résumé</span>
+              </button>
+            </section>
+
+            <section class="budget-step-panel" data-budget-step-panel="0">
+              <fieldset class="budget-fieldset">
+                <legend>Revenu du mois</legend>
+                <div class="budget-lines-list" data-budget-income-list></div>
+                <button class="budget-add-line" type="button" data-budget-add-income>+ Ajouter un revenu</button>
+              </fieldset>
+              <p class="budget-step-total">
+                Total revenus disponibles: <strong data-budget-step-income-total>CHF 0</strong>
+              </p>
+            </section>
+
+            <section class="budget-step-panel" data-budget-step-panel="1" hidden>
+              <fieldset class="budget-fieldset">
+                <legend>Dépenses fixes</legend>
+                <div class="budget-lines-list" data-budget-fixed-list></div>
+                <button class="budget-add-line" type="button" data-budget-add-fixed>+ Ajouter une dépense fixe</button>
+              </fieldset>
+              <p class="budget-step-total">
+                Reste après dépenses fixes: <strong data-budget-after-fixed>CHF 0</strong>
+              </p>
+            </section>
+
+            <section class="budget-step-panel" data-budget-step-panel="2" hidden>
+              <fieldset class="budget-fieldset">
+                <legend>Dépenses obligatoires</legend>
+                <div class="budget-lines-list" data-budget-mandatory-list></div>
+                <button class="budget-add-line" type="button" data-budget-add-mandatory>
+                  + Ajouter une dépense obligatoire
+                </button>
+              </fieldset>
+              <p class="budget-step-total">
+                Reste après fixes + obligatoires: <strong data-budget-after-mandatory>CHF 0</strong>
+              </p>
+            </section>
+
+            <section class="budget-step-panel" data-budget-step-panel="3" hidden>
+              <fieldset class="budget-fieldset">
+                <legend>Dépenses variables prévues</legend>
+                <label class="budget-label" for="budget-variable-planned">Dépenses variables prévues (reste à vivre)</label>
+                <div class="budget-money-input budget-money-input--key">
+                  <span>CHF</span>
+                  <input id="budget-variable-planned" name="variablePlanned" type="number" min="0" step="1" required />
+                </div>
+                <div class="budget-variable-gauge">
+                  <input
+                    id="budget-variable-slider"
+                    type="range"
+                    min="0"
+                    max="0"
+                    step="10"
+                    value="0"
+                    data-budget-variable-slider
+                  />
+                  <p class="budget-help budget-help--inline">
+                    Capacité max ce mois: <strong data-budget-variable-cap>CHF 0</strong>
+                  </p>
+                </div>
+                <p class="budget-help">Courses, loisirs, sorties, divers… (montant global)</p>
+
+                <label class="budget-toggle-row">
+                  <input type="checkbox" id="budget-split-enabled" name="splitEnabled" />
+                  <span>Répartir mes dépenses variables (optionnel)</span>
+                </label>
+
+                <div class="budget-variable-split" data-budget-split-fields hidden>
+                  <div class="budget-variable-list" data-budget-variable-list></div>
+                  <button class="budget-add-line" type="button" data-budget-add-variable>
+                    + Ajouter une catégorie variable
+                  </button>
+                  <p class="budget-help" data-budget-split-hint>La somme doit égaler le total des dépenses variables.</p>
+                </div>
+              </fieldset>
+              <p class="budget-step-total">
+                Reste après variables: <strong data-budget-after-variable>CHF 0</strong>
+              </p>
+            </section>
+
+            <section class="budget-step-panel" data-budget-step-panel="4" hidden>
+              <section class="budget-overview budget-overview--edit" aria-live="polite">
+                <div class="budget-overview__legacy-income" hidden>
+                  <button class="budget-summary-toggle" type="button" data-budget-summary-income-toggle aria-expanded="false">
+                    <span class="budget-summary-toggle__label">
+                      Revenus
+                      <span class="budget-summary-toggle__arrow" aria-hidden="true">▾</span>
+                    </span>
+                  </button>
+                  <div class="budget-summary-details" data-budget-summary-income-details hidden></div>
+                </div>
+
+                <section class="budget-overview__categories" aria-label="Catégories de dépenses">
+                  <button class="budget-summary-toggle" type="button" data-budget-summary-fixed-toggle aria-expanded="false">
+                    <span class="budget-summary-toggle__label">
+                      <span class="budget-overview__name">Dépenses fixes</span>
+                      <span class="budget-overview__count" data-budget-summary-fixed-count>0 poste</span>
+                    </span>
+                    <strong data-budget-summary-fixed>CHF 0</strong>
+                    <span class="budget-summary-toggle__arrow" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="budget-summary-details" data-budget-summary-fixed-details hidden></div>
+
+                  <button class="budget-summary-toggle" type="button" data-budget-summary-mandatory-toggle aria-expanded="false">
+                    <span class="budget-summary-toggle__label">
+                      <span class="budget-overview__name">Dépenses obligatoires</span>
+                      <span class="budget-overview__count" data-budget-summary-mandatory-count>0 poste</span>
+                    </span>
+                    <strong data-budget-summary-mandatory>CHF 0</strong>
+                    <span class="budget-summary-toggle__arrow" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="budget-summary-details" data-budget-summary-mandatory-details hidden></div>
+
+                  <button class="budget-summary-toggle" type="button" data-budget-summary-variable-toggle aria-expanded="false">
+                    <span class="budget-summary-toggle__label">
+                      <span class="budget-overview__name">Dépenses variables</span>
+                      <span class="budget-overview__count" data-budget-summary-variable-count>0 poste</span>
+                    </span>
+                    <strong data-budget-summary-variable>CHF 0</strong>
+                    <span class="budget-summary-toggle__arrow" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="budget-summary-details" data-budget-summary-variable-details hidden></div>
+                </section>
+
+                <div class="budget-overview__total">
+                  <span>Total des dépenses (3 catégories)</span>
+                  <strong data-budget-summary-expenses-total-bottom>CHF 0</strong>
+                </div>
+
+                <section class="budget-overview__fructifier is-neutral" data-budget-summary-fructifier>
+                  <p class="budget-overview__fructifier-line budget-overview__fructifier-line--income">
+                    <span>Revenu</span>
+                    <strong data-budget-summary-fructifier-income>CHF 0</strong>
+                  </p>
+                  <p class="budget-overview__fructifier-line budget-overview__fructifier-line--expenses">
+                    <span>Dépenses</span>
+                    <strong data-budget-summary-fructifier-expenses>CHF 0</strong>
+                  </p>
+                  <p class="budget-overview__fructifier-line budget-overview__fructifier-line--remaining">
+                    <span>Reste</span>
+                    <strong data-budget-summary-fructifier-remaining>CHF 0</strong>
+                  </p>
+                </section>
+
+                <div class="budget-overview__legacy-gauges" hidden>
+                  <p class="budget-warning" data-budget-warning hidden>Ton budget n’est pas équilibré.</p>
+                  <span data-budget-gauge-fixed></span>
+                  <span data-budget-gauge-mandatory></span>
+                  <span data-budget-gauge-variable></span>
+                </div>
+              </section>
+            </section>
+
+            <div class="budget-step-actions">
+              <button class="budget-nav-btn budget-nav-btn--ghost" type="button" data-budget-prev>
+                Précédent
+              </button>
+              <button class="budget-nav-btn budget-nav-btn--next" type="button" data-budget-next>
+                Suivant
+              </button>
+              <button class="month-btn month-btn--start budget-submit" type="submit" data-budget-submit hidden>
+                Valider mon budget
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="budget-mode-card" data-budget-mode-read hidden>
+          <section class="budget-overview budget-overview--read" aria-live="polite">
+            <section class="budget-overview__categories" aria-label="Catégories de dépenses">
+              <button class="budget-summary-toggle" type="button" data-budget-read-fixed-toggle aria-expanded="false">
+                <span class="budget-summary-toggle__label">
+                  <span class="budget-overview__name">Dépenses fixes</span>
+                  <span class="budget-overview__count" data-budget-read-fixed-count>0 poste</span>
+                </span>
+                <strong data-budget-read-fixed>CHF 0</strong>
+                <span class="budget-summary-toggle__arrow" aria-hidden="true">▾</span>
+              </button>
+              <div class="budget-summary-details" data-budget-read-fixed-details hidden></div>
+
+              <button class="budget-summary-toggle" type="button" data-budget-read-mandatory-toggle aria-expanded="false">
+                <span class="budget-summary-toggle__label">
+                  <span class="budget-overview__name">Dépenses obligatoires</span>
+                  <span class="budget-overview__count" data-budget-read-mandatory-count>0 poste</span>
+                </span>
+                <strong data-budget-read-mandatory>CHF 0</strong>
+                <span class="budget-summary-toggle__arrow" aria-hidden="true">▾</span>
+              </button>
+              <div class="budget-summary-details" data-budget-read-mandatory-details hidden></div>
+
+              <button class="budget-summary-toggle" type="button" data-budget-read-variable-toggle aria-expanded="false">
+                <span class="budget-summary-toggle__label">
+                  <span class="budget-overview__name">Dépenses variables</span>
+                  <span class="budget-overview__count" data-budget-read-variable-count>0 poste</span>
+                </span>
+                <strong data-budget-read-variable>CHF 0</strong>
+                <span class="budget-summary-toggle__arrow" aria-hidden="true">▾</span>
+              </button>
+              <div class="budget-summary-details" data-budget-read-variable-details hidden></div>
+            </section>
+
+            <div class="budget-overview__total">
+              <span>Total des dépenses (3 catégories)</span>
+              <strong data-budget-read-expenses-total-bottom>CHF 0</strong>
+            </div>
+
+            <section class="budget-overview__fructifier is-neutral" data-budget-read-fructifier>
+              <p class="budget-overview__fructifier-line budget-overview__fructifier-line--income">
+                <span>Revenu</span>
+                <strong data-budget-read-fructifier-income>CHF 0</strong>
+              </p>
+              <p class="budget-overview__fructifier-line budget-overview__fructifier-line--expenses">
+                <span>Dépenses</span>
+                <strong data-budget-read-fructifier-expenses>CHF 0</strong>
+              </p>
+              <p class="budget-overview__fructifier-line budget-overview__fructifier-line--remaining">
+                <span>Reste</span>
+                <strong data-budget-read-fructifier-remaining>CHF 0</strong>
+              </p>
+            </section>
+          </section>
+          <p class="budget-note">Budget figé pour ce mois (tu ajusteras le mois prochain).</p>
+          <a class="month-btn month-btn--start budget-secondary" href="smartsave.html" data-budget-read-primary>
+            Voir la Répartition
+          </a>
+        </section>
+      </main>
+    </div>
+
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Mon Mois</span>
+      </a>
+      <a class="bottom-nav__link" href="budget.html" data-nav="budget">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span>Budget</span>
+      </a>
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="repartition">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+        <span>Répartition</span>
+      </a>
+      <a class="bottom-nav__link" href="score.html" data-nav="score">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Objectifs</span>
+      </a>
+      <a class="bottom-nav__link" href="profil.html" data-nav="profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Profil</span>
+      </a>
+    </nav>
+
+    <script src="runtimeConfig.js?v=20260212-01" defer></script>
+    <script src="monthlyStore.js?v=20260219-01" defer></script>
+    <script src="budget-page.js?v=20260219-01" defer></script>
+    <script src="/dev-reload.js" defer></script>
+  </body>
+</html>

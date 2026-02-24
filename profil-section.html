@@ -2,14 +2,14 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
     <title>SmartSave – Profil détaillé</title>
     <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
   </head>
-  <body class="profile-page" data-page="profil">
+  <body class="profile-page" data-page="profil" data-profile-section="personal">
     <div class="profile-overlay profile-section-page">
       <main class="profile-modal__content profile-details">
         <div class="profile-section-heading">
@@ -68,7 +68,7 @@
 
     <script src="runtimeConfig.js?v=20260212-01"></script>
     <script src="taxEngine.js?v=20260212-01"></script>
-    <script src="allocationEngine.js?v=20260212-01"></script>
+    <script src="allocationEngine.js?v=20260216-12"></script>
     <script>
       const STORAGE_KEY_FORM = "smartsaveFormData";
       const PROFILE_UPDATE_KEY = "smartsaveProfileUpdated";
@@ -82,7 +82,7 @@
 
       const CATEGORY_DEFINITIONS = [
         { section: "personal", label: "Informations personnelles", description: "Mon identité et statut", icon: "M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3 0-6 1.5-6 3.5V19h12v-1.5c0-2-3-3.5-6-3.5z" },
-        { section: "assets", label: "Mes comptes et liquidités", description: "Solde et réserves", icon: "M4 11h16v8H4zM6 5h12v4H6z" },
+        { section: "assets", label: "Comptes SmartSave", description: "Solde et réserves", icon: "M4 11h16v8H4zM6 5h12v4H6z" },
         { section: "incomes", label: "Revenus", description: "Toutes mes sources de revenu", icon: "M4 12h16M4 16h10M4 8h6", stroke: true },
         { section: "expenses", label: "Dépenses", description: "Charges fixes et variables", icon: "M4 6h16M4 12h16M4 18h16", stroke: true },
         { section: "investments", label: "Investissements", description: "Portefeuille actif", icon: "M12 4l2.5 4.5L18 11l-3 2.5L14 18l-4-2.5L6 18l-.5-4.5L2 11l3.5-2.5z" },
@@ -170,10 +170,33 @@
       };
 
       const DEFAULT_ASSET_ACCOUNTS = [
-        { key: "assets.currentAccount", label: "Compte courant" },
-        { key: "assets.savingsAccount", label: "Épargne" },
-        { key: "assets.thirdPillarAmount", label: "3ᵉ pilier" },
-        { key: "assets.taxProvision", label: "Impôts" },
+        {
+          editPath: "assets.currentAccount",
+          readPaths: ["assets.currentAccount", "assets.compteCourant", "assets.paymentAccount", "assets.paymentBalance", "assets.checking"],
+          label: "Compte courant",
+        },
+        {
+          editPath: "assets.savingsAccount",
+          readPaths: ["assets.savingsAccount", "assets.securitySavings", "assets.savingsSecurity", "assets.emergencyFund", "assets.savings", "assets.epargne"],
+          label: "Compte épargne",
+        },
+        {
+          editPath: "assets.thirdPillarAmount",
+          readPaths: ["assets.thirdPillarAmount", "assets.pillar3a", "assets.pilier3a", "assets.thirdPillar", "assets.pillar3", "assets.thirdPillarValue"],
+          label: "Compte 3e pilier",
+        },
+        {
+          editPath: "assets.investments",
+          readPaths: ["assets.investments", "assets.investmentAccount", "assets.portfolio", "assets.portefeuille", "assets.placements"],
+          label: "Compte investissements",
+          sumReadPaths: true,
+        },
+        {
+          editPath: "assets.taxAccountAmount",
+          readPaths: ["assets.taxAccountAmount", "assets.taxProvision", "assets.impotsProvision", "assets.provisionImpots", "assets.impots", "assets.taxesProvision", "assets.tax"],
+          syncPaths: ["assets.taxProvision"],
+          label: "Compte provision d'impôts",
+        },
       ];
 
       const CANTON_LABELS = {
@@ -222,7 +245,7 @@
           ],
         },
         assets: {
-          title: "Comptes & liquidités",
+          title: "Comptes SmartSave",
           description: "Ce que vous détenez sur vos comptes.",
           fields: [],
           lists: [
@@ -231,13 +254,24 @@
               addLabel: "Ajouter un compte",
               removeLabel: "Supprimer un compte",
               entriesPath: "assets.otherAssets",
-              entries: (data) => (Array.isArray(data.assets?.otherAssets) ? data.assets.otherAssets : []),
+              entries: (data) =>
+                (Array.isArray(data.assets?.otherAssets) ? data.assets.otherAssets : [])
+                  .filter((entry) => entry && typeof entry === "object")
+                  .map((entry) => {
+                    const name = String(entry.name || entry.label || entry.type || "").trim();
+                    return {
+                      ...entry,
+                      name,
+                      label: String(name || entry.label || "").trim(),
+                      amount: toNumber(entry.amount ?? entry.balance ?? entry.value ?? 0),
+                    };
+                  }),
               fields: [
-                { label: "Nom", path: "label" },
+                { label: "Nom", path: "name" },
                 { label: "Montant", path: "amount", format: "currency" },
               ],
               empty: "Aucun compte personnalisé",
-              defaultEntry: { label: "", amount: 0 },
+              defaultEntry: { name: "", label: "", amount: 0, purpose: "anticipation" },
             },
           ],
         },
@@ -514,6 +548,9 @@
       const createProfileItem = (label, value, options = {}) => {
         const node = document.createElement("div");
         node.className = "profile-item";
+        if (options.section === "personal") {
+          node.classList.add("profile-item--personal");
+        }
         const field = document.createElement("div");
         field.className = "profile-field";
         const labelEl = document.createElement("span");
@@ -542,6 +579,7 @@
 
       const renderFields = (container, fields, data) => {
         if (!container) return;
+        container.classList.toggle("profile-details__grid--personal", currentSectionKey === "personal");
         container.innerHTML = "";
         fields.forEach((field) => {
           const raw = field.value
@@ -589,7 +627,7 @@
       };
 
       const createProfileEntryCard = (list, entry, index) => {
-        const title = entry?.label ? entry.label : `${list.label} ${index + 1}`;
+        const title = entry?.label || entry?.name || `${list.label} ${index + 1}`;
         const card = document.createElement("article");
         card.className = "profile-entry";
         card.innerHTML = `<h3 class="profile-entry__title">${title}</h3>`;
@@ -986,10 +1024,23 @@
       };
 
       const renderDefaultAssetAccounts = (container, data) => {
+        const resolveAccountAmount = (account, source) => {
+          const paths = Array.isArray(account?.readPaths) ? account.readPaths : [account?.editPath];
+          const values = paths
+            .filter(Boolean)
+            .map((path) => toNumber(getValueByPath(source, path)));
+          if (!values.length) return 0;
+          if (account?.sumReadPaths) {
+            return values.reduce((sum, value) => sum + Math.max(0, toNumber(value)), 0);
+          }
+          if (values[0] !== 0) return values[0];
+          const fallback = values.find((value) => value !== 0);
+          return fallback || 0;
+        };
         const wrapper = document.createElement("div");
         wrapper.className = "profile-account-defaults";
         DEFAULT_ASSET_ACCOUNTS.forEach((account) => {
-          const amount = toNumber(getValueByPath(data, account.key));
+          const amount = resolveAccountAmount(account, data);
           const card = document.createElement("article");
           card.className = "profile-account-card";
           const header = document.createElement("div");
@@ -1000,7 +1051,8 @@
           const editButton = createEditButton({
             section: "assets",
             field: account.label,
-            fieldPath: account.key,
+            fieldPath: account.editPath,
+            syncPaths: Array.isArray(account.syncPaths) ? account.syncPaths : [],
           });
           header.append(labelNode, editButton);
           const valueNode = document.createElement("div");
@@ -1112,15 +1164,24 @@
         clearRemovalPickers();
         removeSpouseEditor();
         const config = SECTION_CONFIG[currentSectionKey] || SECTION_CONFIG.personal;
+        const hasLists = Array.isArray(config.lists) && config.lists.length > 0;
+        if (listContainer) {
+          listContainer.hidden = !hasLists;
+          if (!hasLists) listContainer.innerHTML = "";
+        }
+        if (spouseSectionNode) {
+          const showSpouse = currentSectionKey === "incomes";
+          spouseSectionNode.hidden = !showSpouse;
+          if (!showSpouse) toggleSpouseContent(false);
+        }
         if (currentSectionKey === "incomes") {
-          renderLists(listContainer, config.lists || [], activeFormData);
+          if (hasLists) renderLists(listContainer, config.lists || [], activeFormData);
           renderFields(fieldContainer, config.fields || [], activeFormData);
           renderSpouseSection();
           return;
         }
         renderFields(fieldContainer, config.fields || [], activeFormData);
-        renderLists(listContainer, config.lists || [], activeFormData);
-        renderSpouseSection();
+        if (hasLists) renderLists(listContainer, config.lists || [], activeFormData);
       };
 
       const readStorage = (key) => {
@@ -1316,17 +1377,26 @@
       const loadSectionConfig = () => {
         const params = new URLSearchParams(window.location.search);
         const sectionKey = params.get("section") || "personal";
-        currentSectionKey = sectionKey;
-        return SECTION_CONFIG[sectionKey] || SECTION_CONFIG.personal;
+        const resolvedSection = SECTION_CONFIG[sectionKey] ? sectionKey : "personal";
+        currentSectionKey = resolvedSection;
+        if (document.body) {
+          document.body.dataset.profileSection = resolvedSection;
+        }
+        return SECTION_CONFIG[resolvedSection] || SECTION_CONFIG.personal;
       };
 
       const init = () => {
         const fromParam = new URLSearchParams(window.location.search).get("from");
         const stored = localStorage.getItem(PROFILE_FROM_STORAGE) || "mon-argent.html";
         const resolvedFrom = fromParam || stored;
+        const profileFallbackUrl = `profil.html?from=${encodeURIComponent(resolvedFrom)}`;
         localStorage.setItem(PROFILE_FROM_STORAGE, resolvedFrom);
         window.goBackToProfile = () => {
-          window.location.href = `profil.html?from=${encodeURIComponent(resolvedFrom)}`;
+          if (window.history.length > 1) {
+            window.history.back();
+            return;
+          }
+          window.location.href = profileFallbackUrl;
         };
 
         const activeUser = getActiveUser() || {};
@@ -1507,6 +1577,13 @@
           }
         } else {
           setValueByPath(activeFormData, editContext.fieldPath, normalized);
+          if (Array.isArray(editContext.syncPaths)) {
+            editContext.syncPaths
+              .filter((path) => typeof path === "string" && path.trim())
+              .forEach((path) => {
+                setValueByPath(activeFormData, path, normalized);
+              });
+          }
         }
       closeEditDialog();
       refreshSection();

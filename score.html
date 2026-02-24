@@ -2,9 +2,10 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
     <title>SmartSave – Objectifs</title>
     <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
@@ -76,161 +77,156 @@
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
               <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
+              <a class="hamburger-link" role="menuitem" href="budget.html" data-nav="budget">Budget</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
               <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
+              <a class="hamburger-link" role="menuitem" href="mes-depenses.html">Mois précédents</a>
+              <a class="hamburger-link" role="menuitem" href="profil.html">Mes données</a>
+              <a class="hamburger-link hamburger-link--danger" role="menuitem" href="index.html">Déconnexion</a>
             </div>
           </div>
         </div>
       </header>
 
-      <main class="app-main objectifs-page" data-goals-root>
-        <section class="page-title">
-          <h1>Objectifs</h1>
-          <p>Choisis ton budget de vie, ton CT et ton LT.</p>
+      <main class="app-main objectifs-page objectifs-v4" data-goals-root>
+        <section class="page-title objectifs-head">
+          <div>
+            <h1>Objectifs</h1>
+            <p>Suis tes projets, ta sécurité et ta croissance.</p>
+          </div>
+          <button
+            class="objectifs-info-btn"
+            type="button"
+            aria-label="Comment ça marche ?"
+            data-goals-info-open
+          >
+            i
+          </button>
         </section>
 
-        <section class="card objectifs-card">
-          <div class="card-header">
-            <h3>Mon budget mensuel de vie</h3>
-          </div>
-          <p class="objectifs-hint">Loisirs, sorties, restaurants, achats plaisir.</p>
-          <div class="objectifs-slider-row">
-            <input
-              type="range"
-              min="0"
-              max="0"
-              step="10"
-              value="0"
-              data-goals-field="leisure-slider"
-            />
-            <label class="objectifs-amount-input">
-              <span>CHF</span>
-              <input type="number" min="0" step="10" value="0" data-goals-field="leisure-input" />
-            </label>
-          </div>
-          <p class="objectifs-feedback" data-goals-variable-feedback>
-            Avec ce choix, il te restera CHF 0 à répartir.
+        <section class="objectifs-summary-card" aria-live="polite">
+          <p class="objectifs-summary-card__line objectifs-summary-card__line--strong" data-goals-summary-active>
+            Objectifs actifs : 0
           </p>
-          <small class="objectifs-saving-state" data-goals-saving-state>Auto-save activé</small>
-        </section>
-
-        <section class="card objectifs-card">
-          <div class="card-header">
-            <h3>Objectif Court Terme (CT)</h3>
-          </div>
-          <label class="objectifs-toggle">
-            <input type="checkbox" data-goals-field="ct-enabled" />
-            <span>J’ai un objectif court terme</span>
-          </label>
-
-          <div class="objectifs-grid" data-goals-ct-fields hidden>
-            <label>
-              <span>Type</span>
-              <select data-goals-field="ct-type">
-                <option value="vacances">Vacances</option>
-                <option value="cadeaux">Cadeaux</option>
-                <option value="voiture">Voiture</option>
-                <option value="mariage">Mariage</option>
-                <option value="autre">Autre</option>
-              </select>
-            </label>
-            <label>
-              <span>Montant cible (CHF)</span>
-              <input type="number" min="0" step="100" value="0" data-goals-field="ct-amount" />
-            </label>
-            <label>
-              <span>Horizon (années)</span>
-              <input type="number" min="1" max="5" step="1" value="1" data-goals-field="ct-horizon" />
-            </label>
-          </div>
-
-          <p class="objectifs-feedback" data-goals-ct-monthly>
-            Cela représente CHF 0/mois mis de côté avant la répartition.
+          <p class="objectifs-summary-card__line" data-goals-summary-status>
+            En avance : 0 • Sur la bonne trajectoire : 0 • En retard : 0
+          </p>
+          <p class="objectifs-summary-card__line objectifs-summary-card__line--hint" data-goals-summary-copy>
+            Tu avances régulièrement.
           </p>
         </section>
 
-        <section class="card objectifs-card">
-          <div class="card-header">
-            <h3>Objectif Long Terme (LT)</h3>
-          </div>
-
-          <div class="objectifs-radio-list">
-            <label><input type="radio" name="lt-type" value="security" data-goals-field="lt-type" />Sécurité financière</label>
-            <label><input type="radio" name="lt-type" value="home" data-goals-field="lt-type" />Achat immobilier</label>
-            <label><input type="radio" name="lt-type" value="invest" data-goals-field="lt-type" />Patrimoine-investissement</label>
-            <label><input type="radio" name="lt-type" value="retirement" data-goals-field="lt-type" />Retraite</label>
-          </div>
-
-          <div class="objectifs-grid objectifs-grid--two">
-            <label>
-              <span>Objectif cible (CHF)</span>
-              <input type="number" min="0" step="1000" value="0" data-goals-field="lt-target" />
-            </label>
-            <label>
-              <span>Horizon (années)</span>
-              <input type="number" min="3" max="40" step="1" value="10" data-goals-field="lt-horizon" />
-            </label>
-          </div>
-
-          <div class="objectifs-diagnostic" data-goals-lt-diagnostic>
-            <p>Besoin mensuel: CHF 0</p>
-            <p>Financement actuel: CHF 0/mois</p>
-            <p class="objectifs-status is-neutral" data-goals-lt-status>Renseigne une cible et un horizon pour le diagnostic.</p>
-          </div>
+        <section class="objectifs-budget-note" data-goals-surplus-note hidden>
+          <p>
+            Ce mois-ci, la contribution à certains objectifs peut être limitée.
+            <a href="budget.html">Voir mon budget</a>
+          </p>
         </section>
 
-        <section class="card objectifs-card objectifs-impact">
-          <div class="card-header">
-            <h3>Impact</h3>
+        <details class="objectifs-band objectifs-category" data-goals-band="projects">
+          <summary class="objectifs-band__summary">
+            <span class="objectifs-band__label">
+              <span class="objectifs-band__title">Projets</span>
+              <span class="objectifs-band__description">Vacances, achats, études… des objectifs concrets.</span>
+            </span>
+            <span class="objectifs-band__stats" data-goals-section-summary="projects">0 objectif • +CHF 0/mois</span>
+            <span class="objectifs-band__arrow" aria-hidden="true">▾</span>
+          </summary>
+          <div class="objectifs-band__content">
+            <div class="objectifs-empty-card" data-goals-empty-projects hidden>
+              <p>Ajoute un objectif (vacances, achat…) pour suivre ta progression.</p>
+              <a class="objectifs-cta objectifs-cta--secondary" href="profil.html">Créer un objectif</a>
+            </div>
+            <div class="objectifs-cards-list" data-goals-projects-list></div>
+            <button
+              class="objectifs-cta objectifs-cta--secondary objectifs-see-more"
+              type="button"
+              data-goals-see-more="projects"
+              hidden
+            >
+              Voir plus
+            </button>
           </div>
-          <div class="objectifs-impact-summary">
-            <article class="objectifs-impact-item">
-              <p>Budget de vie</p>
-              <strong data-goals-impact-summary-life>CHF 0 utilisés · CHF 0 à répartir</strong>
-            </article>
-            <article class="objectifs-impact-item">
-              <p>Objectif court terme</p>
-              <strong data-goals-impact-summary-ct>Non actif</strong>
-            </article>
-            <article class="objectifs-impact-item">
-              <p>Objectif long terme</p>
-              <strong data-goals-impact-summary-lt>—</strong>
-            </article>
+        </details>
+
+        <details class="objectifs-band objectifs-category" data-goals-band="safety">
+          <summary class="objectifs-band__summary">
+            <span class="objectifs-band__label">
+              <span class="objectifs-band__title">Sécurité</span>
+              <span class="objectifs-band__description">Impôts et matelas de sécurité pour éviter les surprises.</span>
+            </span>
+            <span class="objectifs-band__stats" data-goals-section-summary="safety">0 objectif • +CHF 0/mois</span>
+            <span class="objectifs-band__arrow" aria-hidden="true">▾</span>
+          </summary>
+          <div class="objectifs-band__content">
+            <div class="objectifs-cards-list" data-goals-safety-list></div>
+            <button
+              class="objectifs-cta objectifs-cta--secondary objectifs-see-more"
+              type="button"
+              data-goals-see-more="safety"
+              hidden
+            >
+              Voir plus
+            </button>
           </div>
-          <div class="objectifs-cta-row">
-            <a class="objectifs-cta objectifs-cta--primary" href="smartsave.html">Voir mon plan SmartSave</a>
-            <a class="objectifs-cta objectifs-cta--secondary" href="future.html">Voir la projection</a>
+        </details>
+
+        <details class="objectifs-band objectifs-category" data-goals-band="growth">
+          <summary class="objectifs-band__summary">
+            <span class="objectifs-band__label">
+              <span class="objectifs-band__title">Croissance</span>
+              <span class="objectifs-band__description">Patrimoine long terme, retraite et investissements.</span>
+            </span>
+            <span class="objectifs-band__stats" data-goals-section-summary="growth">0 objectif • +CHF 0/mois</span>
+            <span class="objectifs-band__arrow" aria-hidden="true">▾</span>
+          </summary>
+          <div class="objectifs-band__content">
+            <p class="objectifs-empty-text" data-goals-empty-growth hidden>
+              Définis un objectif de croissance pour donner une direction à ton plan.
+            </p>
+            <div class="objectifs-cards-list" data-goals-growth-list></div>
+            <button
+              class="objectifs-cta objectifs-cta--secondary objectifs-see-more"
+              type="button"
+              data-goals-see-more="growth"
+              hidden
+            >
+              Voir plus
+            </button>
           </div>
+        </details>
+
+        <details class="objectifs-completed" data-goals-completed-wrap hidden>
+          <summary class="objectifs-completed__summary">Objectifs terminés</summary>
+          <ul class="objectifs-completed__list" data-goals-completed-list></ul>
+        </details>
+
+        <section class="objectifs-page-actions">
+          <a class="objectifs-cta objectifs-cta--secondary" href="profil.html">Gérer mes objectifs</a>
+          <a class="objectifs-page-actions__link" href="smartsave.html">Voir l’impact sur mon plan</a>
         </section>
       </main>
     </div>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
-          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
-        </svg>
-        <span>SmartSave</span>
-      </a>
       <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Suivi</span>
+        <span>Mon Mois</span>
       </a>
-      <a class="bottom-nav__link" href="actions.html" data-nav="actions">
+      <a class="bottom-nav__link" href="budget.html" data-nav="budget">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Home</span>
+        <span>Budget</span>
       </a>
-      <a class="bottom-nav__link" href="future.html" data-nav="future">
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="repartition">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 16l5-5 4 3 7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
         </svg>
-        <span>Future</span>
+        <span>Répartition</span>
       </a>
       <a class="bottom-nav__link" href="score.html" data-nav="score">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -238,18 +234,81 @@
         </svg>
         <span>Objectifs</span>
       </a>
+      <a class="bottom-nav__link" href="profil.html" data-nav="profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Profil</span>
+      </a>
     </nav>
 
+    <div class="objectifs-mini-modal" data-goals-info-modal hidden aria-hidden="true">
+      <div class="objectifs-mini-modal__overlay" data-goals-info-close></div>
+      <div class="objectifs-mini-modal__content" role="dialog" aria-modal="true" aria-labelledby="goals-info-title">
+        <header class="objectifs-mini-modal__head">
+          <h2 id="goals-info-title">Comment ça marche ?</h2>
+          <button class="objectifs-mini-modal__close" type="button" data-goals-info-close aria-label="Fermer">×</button>
+        </header>
+        <ul class="objectifs-mini-modal__list">
+          <li>SmartSave contribue automatiquement selon ton plan du mois.</li>
+          <li>Tu suis ta progression ici.</li>
+          <li>Tu ajustes tes objectifs dans Profil.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="objectifs-drawer" data-goals-detail-drawer hidden aria-hidden="true">
+      <div class="objectifs-drawer__overlay" data-goals-drawer-close></div>
+      <aside class="objectifs-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="goals-drawer-title">
+        <header class="objectifs-drawer__head">
+          <div>
+            <h2 id="goals-drawer-title" data-goals-detail-title>Objectif</h2>
+            <p data-goals-detail-category>Catégorie</p>
+          </div>
+          <button class="objectifs-drawer__close" type="button" data-goals-drawer-close aria-label="Fermer">×</button>
+        </header>
+
+        <section class="objectifs-drawer__section">
+          <p class="objectifs-drawer__ratio" data-goals-detail-ratio>CHF 0 / CHF 0</p>
+          <div class="progress-track">
+            <span class="progress-fill" data-goals-detail-progress style="width: 0%"></span>
+          </div>
+          <p class="objectifs-drawer__status" data-goals-detail-status>Sur la bonne trajectoire</p>
+        </section>
+
+        <section class="objectifs-drawer__section">
+          <ul class="objectifs-drawer__meta">
+            <li><span>Ce mois-ci</span><strong data-goals-detail-month>+CHF 0</strong></li>
+            <li><span>Reste à atteindre</span><strong data-goals-detail-remaining>CHF 0</strong></li>
+            <li data-goals-detail-date-row hidden><span>Date cible / échéance</span><strong data-goals-detail-date>—</strong></li>
+          </ul>
+        </section>
+
+        <section class="objectifs-drawer__section">
+          <p class="objectifs-drawer__advice" data-goals-detail-advice>
+            Si tu veux aller plus vite, baisse ton budget variable ou allonge l’échéance.
+          </p>
+        </section>
+
+        <div class="objectifs-drawer__actions">
+          <a class="objectifs-cta objectifs-cta--secondary" href="profil.html" data-goals-detail-edit>
+            Modifier cet objectif
+          </a>
+        </div>
+      </aside>
+    </div>
+
+
     <script src="financialScoreEngine.js?v=20260212-01" defer></script>
-    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260216-12" defer></script>
     <script src="projectionEngine.js?v=20260212-01" defer></script>
     <script src="taxEngine.js?v=20260212-01" defer></script>
     <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
     <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
     <script src="runtimeConfig.js?v=20260212-01" defer></script>
-    <script src="mvp-v2.js?v=20260212-01" defer></script>
-    <script src="monthlyStore.js?v=20260212-01" defer></script>
-    <script src="app-pages.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260218-04" defer></script>
+    <script src="monthlyStore.js?v=20260218-04" defer></script>
+    <script src="app-pages.js?v=20260218-06" defer></script>
     <script src="/dev-reload.js" defer></script>
     <script>
       localStorage.setItem("profileLastMain", "score.html");

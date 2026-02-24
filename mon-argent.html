@@ -2,10 +2,11 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#eef2ff" />
     <link rel="manifest" href="manifest.webmanifest" />
     <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
     <title>SmartSave – Home</title>
     <link rel="stylesheet" href="styles.css?v=20260212-01" />
     <link rel="stylesheet" href="theme-polish.css" />
@@ -75,275 +76,138 @@
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
               <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
+              <a class="hamburger-link" role="menuitem" href="budget.html" data-nav="budget">Budget</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
               <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
+              <a class="hamburger-link" role="menuitem" href="mes-depenses.html">Mois précédents</a>
+              <a class="hamburger-link" role="menuitem" href="profil.html">Mes données</a>
+              <a class="hamburger-link hamburger-link--danger" role="menuitem" href="index.html">Déconnexion</a>
             </div>
           </div>
         </div>
       </header>
 
-      <main class="app-main home-monthly">
-        <section class="page-title page-title--month">
-          <h1 id="home-month-title" data-month-label>Suivi mois —</h1>
-          <div class="month-controls" data-month-controls hidden>
-            <button class="month-btn month-btn--close" type="button" data-close-month hidden>
-              🔒 Clôturer ce mois
-            </button>
-            <button class="month-btn month-btn--start" type="button" data-start-month hidden>
-              ▶️ Démarrer le nouveau mois
-            </button>
+      <main class="app-main mon-mois-page">
+        <section class="mon-mois-header" aria-labelledby="mon-mois-title">
+          <div class="mon-mois-header__copy">
+            <h1 id="mon-mois-title">Mon Mois</h1>
+            <p>Ton plan, ton suivi, sans prise de tête.</p>
+            <span id="home-month-title" data-month-label hidden>—</span>
           </div>
-        </section>
-
-        <nav class="tab-nav" aria-label="Sections de la page mon argent">
           <button
+            class="mon-mois-info-btn"
             type="button"
-            class="is-active"
-            data-tab-target="depenses"
-            aria-selected="true"
+            data-month-info-open
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-controls="month-info-modal"
           >
-            Mes dépenses
+            i
           </button>
-          <button type="button" data-tab-target="comptes" aria-selected="false">Mes comptes</button>
-        </nav>
-
-        <section data-tab-panel="depenses">
-          <section class="card remaining-card">
-          <h3 data-home-variable-title>Budget variable - —</h3>
-          <div class="remaining-headline">
-            <div class="remaining-amount" data-home-remaining>0 / 0 CHF</div>
-            <a class="remaining-edit-link" href="score.html">Modifier mes choix</a>
-          </div>
-          <div class="progress-bar" data-home-progress-bar>
-            <div class="progress-bar__fill" data-home-progress-fill></div>
-          </div>
-          <p class="progress-caption" data-home-progress-caption>Il te reste 0 CHF à dépenser ce mois-ci.</p>
-          </section>
-
-          <section class="card spending-insights-card" data-spending-insights-card>
-            <div class="card-header top-categories-header">
-              <h3>Suivi des dépenses</h3>
-              <span class="top-categories-toggle">Vue mensuelle</span>
-            </div>
-
-            <div class="spending-summary-grid">
-              <article class="spending-summary-item">
-                <p>Variables (réel)</p>
-                <strong data-spending-summary-variable>CHF 0</strong>
-              </article>
-              <article class="spending-summary-item">
-                <p>Fixes (prévu)</p>
-                <strong data-spending-summary-fixed>CHF 0</strong>
-              </article>
-              <article class="spending-summary-item">
-                <p>Obligatoires (prévu)</p>
-                <strong data-spending-summary-obligatory>CHF 0</strong>
-              </article>
-            </div>
-
-            <section class="quick-actions quick-actions--inline">
-              <button class="quick-action quick-action--accent" type="button" data-quick-action="expense">
-                <span class="quick-action__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M6 4h11l3 3v13H4V4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-                    <path d="M8 4v6h7V4" fill="none" stroke="currentColor" stroke-width="1.8" />
-                  </svg>
-                </span>
-                <span class="quick-action__label">Ajouter une dépense</span>
-                <span class="quick-action__arrow" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </span>
-              </button>
-              <button class="quick-action quick-action--success" type="button" data-quick-action="income">
-                <span class="quick-action__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 17l5-6 4 4 7-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-                  </svg>
-                </span>
-                <span class="quick-action__label">Ajouter un revenu</span>
-                <span class="quick-action__arrow" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </span>
-              </button>
-            </section>
-
-            <div class="spending-ledger-wrap">
-              <table class="spending-ledger-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Libellé</th>
-                    <th>Type</th>
-                    <th>Montant</th>
-                  </tr>
-                </thead>
-                <tbody data-spending-ledger-rows></tbody>
-              </table>
-              <p class="top-categories-empty" data-spending-ledger-empty hidden>Aucune dépense sur ce mois.</p>
-            </div>
-
-            <div class="spending-donuts-grid">
-              <article class="spending-donut-card">
-                <h4>Fixes</h4>
-                <div class="spending-donut" data-spending-donut-fixed aria-hidden="true"></div>
-                <ul class="spending-donut-legend" data-spending-donut-fixed-legend></ul>
-              </article>
-              <article class="spending-donut-card">
-                <h4>Obligatoires</h4>
-                <div class="spending-donut" data-spending-donut-obligatory aria-hidden="true"></div>
-                <ul class="spending-donut-legend" data-spending-donut-obligatory-legend></ul>
-              </article>
-              <article class="spending-donut-card">
-                <h4>Variables</h4>
-                <div class="spending-donut" data-spending-donut-variable aria-hidden="true"></div>
-                <ul class="spending-donut-legend" data-spending-donut-variable-legend></ul>
-              </article>
-            </div>
-          </section>
-
         </section>
 
-        <section data-tab-panel="comptes" hidden>
-          <section class="card accounts-overview-card">
-            <div class="card-header">
-              <h3>Mes comptes (SmartSave)</h3>
-            </div>
-            <div class="spending-ledger-wrap">
-              <table class="spending-ledger-table accounts-ledger-table">
-                <thead>
-                  <tr>
-                    <th>Compte</th>
-                    <th>Solde actuel</th>
-                    <th>Objectif SmartSave</th>
-                    <th>Écart</th>
-                    <th>Où on en est</th>
-                  </tr>
-                </thead>
-                <tbody data-accounts-ledger-rows></tbody>
-              </table>
-              <p class="top-categories-empty" data-accounts-ledger-empty hidden>Aucun compte disponible.</p>
-            </div>
-            <button class="account-transfer-btn" type="button" data-quick-action="transfer">
-              <span aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 7h11M12 4l4 3-4 3M19 17H8m7-3-4 3 4 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-              <span>Transférer de l’argent</span>
-            </button>
-          </section>
+        <section class="card mon-mois-status-card is-control" data-month-status-card>
+          <span class="mon-mois-status-badge is-control" data-month-status-badge>
+            🟢 Sous contrôle
+          </span>
+          <p class="mon-mois-status-text" data-month-status-message>
+            Ton mois est bien cadré.
+          </p>
+          <p class="mon-mois-status-month" data-month-current-label>—</p>
+        </section>
 
-          <section class="card accounts-overview-card">
-            <div class="card-header">
-              <h3>Historique des transferts</h3>
-            </div>
-            <ul class="transfer-history-list" data-home-transfer-history></ul>
-            <p class="transfer-history-empty" data-home-transfer-history-empty hidden>
-              Aucun transfert enregistré pour le moment.
-            </p>
+        <section class="card mon-mois-action-card" data-month-controls hidden>
+          <p class="mon-mois-action-title" data-month-flow-message>
+            SmartSave a préparé ton plan pour ce mois.
+          </p>
+          <p class="mon-mois-action-subtitle" data-month-flow-submessage>
+            Applique-le pour démarrer.
+          </p>
+          <p class="mon-mois-closed-banner" data-month-closed-banner hidden>Mois clôturé</p>
+          <button class="month-btn month-btn--primary" type="button" data-month-primary-cta hidden>
+            Appliquer mon plan
+          </button>
+          <a class="mon-mois-inline-link" href="smartsave.html" data-month-secondary-link hidden>
+            Voir ce qui a été fait
+          </a>
+          <button class="mon-mois-inline-link mon-mois-inline-link--button" type="button" data-month-why-link hidden>
+            Pourquoi ?
+          </button>
+          <section class="mon-mois-why-panel" data-month-why-panel hidden aria-label="Pourquoi un ajustement ?">
+            <ul>
+              <li>Le plan vérifie que tes comptes restent cohérents.</li>
+              <li>Tu valides une fois avant la répartition du mois.</li>
+              <li>Aucun réglage ici: tu ajustes dans Profil si besoin.</li>
+            </ul>
           </section>
+        </section>
+
+        <section class="card mon-mois-summary-card" aria-labelledby="mon-mois-summary-title">
+          <h2 id="mon-mois-summary-title">Résumé du mois</h2>
+          <div class="mon-mois-summary-list" role="list">
+            <p class="mon-mois-summary-row" role="listitem">
+              <span class="mon-mois-summary-label">Revenu du mois :</span>
+              <strong class="mon-mois-summary-value" data-month-summary-income>CHF 0</strong>
+            </p>
+            <p class="mon-mois-summary-row" role="listitem">
+              <span class="mon-mois-summary-label">Dépenses prévues :</span>
+              <strong class="mon-mois-summary-value" data-month-summary-expenses>CHF 0</strong>
+            </p>
+            <p class="mon-mois-summary-row" role="listitem">
+              <span class="mon-mois-summary-label" data-month-summary-surplus-label>Avance prévue :</span>
+              <strong class="mon-mois-summary-value" data-month-summary-surplus>CHF 0</strong>
+            </p>
+          </div>
+          <p class="mon-mois-summary-badge" data-month-thirteenth-badge hidden>Décembre : 13e salaire inclus</p>
+        </section>
+
+        <section class="card mon-mois-coach-card" aria-labelledby="mon-mois-coach-title">
+          <h2 id="mon-mois-coach-title">SmartSave te dit :</h2>
+          <p data-month-coach-message>Bonne nouvelle : aucune action requise cette semaine.</p>
+        </section>
+
+        <section class="mon-mois-shortcuts" aria-label="Raccourcis">
+          <a href="budget.html" data-month-shortcut-budget>Budget</a>
+          <a href="smartsave.html">Répartition</a>
+          <a href="score.html">Objectifs</a>
         </section>
       </main>
     </div>
 
-    <div class="hub-modal" data-quick-modal>
-      <div class="hub-modal__overlay" data-quick-close></div>
-      <div class="hub-modal__content" role="dialog" aria-modal="true" aria-labelledby="quick-modal-title">
-        <header class="hub-modal__header">
-          <h2 id="quick-modal-title">Ajouter une opération</h2>
-          <button class="hub-modal__close" type="button" data-quick-close aria-label="Fermer">×</button>
-        </header>
-        <form class="hub-modal__form" data-quick-form>
-          <div class="hub-field">
-            <label for="quick-amount">Montant (CHF)</label>
-            <input id="quick-amount" name="amount" type="number" min="0" step="1" placeholder="0" required />
-          </div>
-          <div class="hub-field" data-quick-field="category">
-            <label for="quick-category">Catégorie</label>
-            <select id="quick-category" name="category">
-              <option value="">Sélectionner</option>
-              <option value="Logement">Logement</option>
-              <option value="Transport">Transport</option>
-              <option value="Alimentation">Alimentation</option>
-              <option value="Santé">Santé</option>
-              <option value="Loisirs">Loisirs</option>
-              <option value="Autre">Autre</option>
-            </select>
-            <input
-              id="quick-category-other"
-              name="categoryOther"
-              type="text"
-              placeholder="Nom de la dépense ou du revenu"
-              data-quick-other="category"
-              hidden
-            />
-          </div>
-          <div class="hub-field" data-quick-field="account">
-            <label for="quick-account">Compte</label>
-            <select id="quick-account" name="account"></select>
-            <input
-              id="quick-account-other"
-              name="accountOther"
-              type="text"
-              placeholder="Nom du compte"
-              data-quick-other="account"
-              hidden
-            />
-          </div>
-          <div class="hub-field hub-field--inline" data-quick-field="transfer">
-            <div>
-              <label for="quick-from">Compte source</label>
-              <select id="quick-from" name="from"></select>
-            </div>
-            <div>
-              <label for="quick-to">Compte destination</label>
-              <select id="quick-to" name="to"></select>
-            </div>
-          </div>
-          <div class="hub-field">
-            <label for="quick-date">Date</label>
-            <input id="quick-date" name="date" type="date" required />
-          </div>
-          <div class="hub-field">
-            <label for="quick-note">Note (optionnelle)</label>
-            <input id="quick-note" name="note" type="text" placeholder="Ex: courses" />
-          </div>
-          <button class="cta hub-cta" type="submit">Enregistrer</button>
-        </form>
-      </div>
+    <div class="mon-mois-help-modal" data-month-info-modal id="month-info-modal" hidden>
+      <button class="mon-mois-help-modal__overlay" type="button" data-month-info-close aria-label="Fermer le modal"></button>
+      <section class="mon-mois-help-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="month-info-title">
+        <button class="mon-mois-help-modal__close" type="button" data-month-info-close aria-label="Fermer">
+          ×
+        </button>
+        <h2 id="month-info-title">Comment ça marche ?</h2>
+        <ul>
+          <li>SmartSave prépare ton mois</li>
+          <li>Tu appliques ton plan une fois</li>
+          <li>Tu suis ta progression au fil du mois</li>
+        </ul>
+      </section>
     </div>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
-          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
-        </svg>
-        <span>SmartSave</span>
-      </a>
       <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Suivi</span>
+        <span>Mon Mois</span>
       </a>
-      <a class="bottom-nav__link" href="actions.html" data-nav="actions">
+      <a class="bottom-nav__link" href="budget.html" data-nav="budget">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Home</span>
+        <span>Budget</span>
       </a>
-      <a class="bottom-nav__link" href="future.html" data-nav="future">
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="repartition">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 16l5-5 4 3 7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
         </svg>
-        <span>Future</span>
+        <span>Répartition</span>
       </a>
       <a class="bottom-nav__link" href="score.html" data-nav="score">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -351,50 +215,34 @@
         </svg>
         <span>Objectifs</span>
       </a>
+      <a class="bottom-nav__link" href="profil.html" data-nav="profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Profil</span>
+      </a>
     </nav>
+
 
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         const title = document.getElementById("home-month-title");
         if (title && !title.textContent.trim()) {
-          title.textContent = "Suivi mois —";
-        }
-
-        const tabButtons = Array.from(document.querySelectorAll(".tab-nav [data-tab-target]"));
-        const tabPanels = Array.from(document.querySelectorAll("[data-tab-panel]"));
-
-        const activateTab = (target) => {
-          tabButtons.forEach((button) => {
-            const isActive = button.dataset.tabTarget === target;
-            button.classList.toggle("is-active", isActive);
-            button.setAttribute("aria-selected", String(isActive));
-          });
-          tabPanels.forEach((panel) => {
-            panel.hidden = panel.dataset.tabPanel !== target;
-          });
-        };
-
-        tabButtons.forEach((button) => {
-          button.addEventListener("click", () => activateTab(button.dataset.tabTarget));
-        });
-
-        const requestedTab = new URLSearchParams(window.location.search).get("tab");
-        if (requestedTab === "comptes" || requestedTab === "depenses") {
-          activateTab(requestedTab);
+          title.textContent = "—";
         }
 
         localStorage.setItem("profileLastMain", "mon-argent.html");
       });
     </script>
     <script src="financialScoreEngine.js?v=20260212-01" defer></script>
-    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260216-12" defer></script>
     <script src="projectionEngine.js?v=20260212-01" defer></script>
     <script src="taxEngine.js?v=20260212-01" defer></script>
     <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
     <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
     <script src="runtimeConfig.js?v=20260212-01" defer></script>
-    <script src="mvp-v2.js?v=20260212-01" defer></script>
-    <script src="monthlyStore.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260218-04" defer></script>
+    <script src="monthlyStore.js?v=20260218-04" defer></script>
     <script src="mon-argent.js?v=20260212-01" defer></script>
     <script src="/dev-reload.js" defer></script>
 </body>

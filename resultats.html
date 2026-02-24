@@ -2,601 +2,216 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#eef2ff" />
-    <title>SmartSave - Recapitulatif</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>SmartSave - Synthese</title>
     <link rel="stylesheet" href="styles.css?v=20260212-01" />
+    <script src="device-mode.js?v=20260213-01" defer></script>
     <style>
-      body.results-recap {
+      :root {
+        --bg: #ffffff;
+        --text: #0f172a;
+        --muted: #64748b;
+        --line: #e2e8f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body.results-summary {
         margin: 0;
-        background: #eef2ff;
-        color: #0f172a;
+        background: var(--bg);
+        color: var(--text);
         font-family: "Avenir Next", "Segoe UI", sans-serif;
       }
-      .recap-shell {
-        width: 100%;
-        max-width: none;
-        margin: 0;
-        padding: 0;
-      }
-      .recap-card {
-        background: transparent;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-        padding: 0;
-      }
-      .recap-title {
-        margin: 0;
-        padding: 0.25rem clamp(0.28rem, 1.2vw, 0.6rem) 0;
-        text-align: center;
-        font-size: clamp(1.4rem, 4vw, 2rem);
-      }
-      .recap-subtitle {
-        margin: 0;
-        padding: 0.2rem clamp(0.28rem, 1.2vw, 0.6rem) 0;
-        text-align: center;
-        color: rgba(15, 23, 42, 0.74);
-      }
-      .recap-section {
-        margin: 0.45rem clamp(0.28rem, 1.2vw, 0.6rem) 0;
-        padding: 0.45rem 0.08rem 0.16rem;
-        border-top: 2px solid rgba(31, 58, 138, 0.32);
-      }
-      .recap-section:nth-of-type(odd) {
-        background: rgba(31, 58, 138, 0.018);
-      }
-      .recap-section:nth-of-type(even) {
-        background: rgba(15, 23, 42, 0.02);
-      }
-      .recap-section h2 {
-        display: inline-flex;
-        align-items: center;
-        margin: 0 0 0.75rem;
-        font-size: 1.1rem;
-        padding: 0.22rem 0.68rem;
-        border-radius: 999px;
-        background: rgba(219, 234, 254, 0.95);
-        border: 1px solid rgba(31, 58, 138, 0.18);
-      }
-      .score-grid {
-        display: grid;
-        grid-template-columns: minmax(200px, 250px) 1fr;
-        gap: 1rem;
-        align-items: center;
-      }
-      .score-gauge-wrap {
-        text-align: center;
-      }
-      .score-gauge {
-        width: 160px;
-        height: 160px;
+
+      .page {
+        width: min(760px, 100%);
         margin: 0 auto;
-      }
-      .score-gauge svg {
-        width: 100%;
-        height: 100%;
-        transform: rotate(-90deg);
-      }
-      .score-track {
-        fill: none;
-        stroke: #e2e8f0;
-        stroke-width: 12;
-      }
-      .score-progress {
-        fill: none;
-        stroke: #1f3a8a;
-        stroke-width: 12;
-        stroke-linecap: round;
-        transition: stroke-dashoffset 0.25s ease, stroke 0.25s ease;
-      }
-      .score-value {
-        margin-top: -102px;
-        font-weight: 800;
-        font-size: 1.9rem;
-      }
-      .score-level {
-        margin-top: 0.2rem;
-        color: rgba(15, 23, 42, 0.72);
-      }
-      .pillar-list {
+        padding: clamp(0.95rem, 3vw, 1.5rem);
         display: grid;
+        gap: 1rem;
+      }
+
+      .summary-head {
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--line);
+        display: grid;
+        gap: 0.28rem;
+      }
+
+      .summary-head h1 {
+        margin: 0;
+        font-size: clamp(1.2rem, 3vw, 1.55rem);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .summary-head p {
+        margin: 0;
+        font-size: 0.93rem;
+      }
+
+      .summary-person {
+        color: #0f172a;
+      }
+
+      .summary-birth {
+        color: var(--muted);
+      }
+
+      .section {
+        display: grid;
+        gap: 0.6rem;
+        padding-bottom: 0.9rem;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .section h2 {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .simple-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 0.44rem;
+      }
+
+      .simple-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
         gap: 0.65rem;
       }
-      .pillar-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 0.6rem;
-        align-items: center;
+
+      .row-label {
+        color: #334155;
+        font-size: 0.92rem;
+        line-height: 1.35;
       }
-      .pillar-row strong {
+
+      .row-value {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        font-size: 0.92rem;
+        color: #0f172a;
+      }
+
+      .row-value.is-debt {
+        color: #7f1d1d;
+      }
+
+      .empty {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .total-block {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.7rem;
+        padding-top: 0.2rem;
+      }
+
+      .total-block span {
+        color: #334155;
         font-size: 0.95rem;
       }
-      .pillar-meter {
-        grid-column: 1 / -1;
-        height: 8px;
-        border-radius: 999px;
-        background: #e2e8f0;
-        overflow: hidden;
-      }
-      .pillar-meter > span {
-        display: block;
-        width: 0;
-        height: 100%;
-        background: #1f3a8a;
-        transition: width 0.25s ease;
+
+      .total-block strong {
+        font-size: clamp(1.08rem, 3vw, 1.32rem);
+        font-variant-numeric: tabular-nums;
       }
 
-      .situation-grid {
-        display: grid;
-        gap: 1rem;
-      }
-      .situation-kpis {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.85rem;
-      }
-      .situation-card {
-        background: #ffffff;
-        border: 1px solid rgba(15, 23, 42, 0.1);
-        border-radius: 14px;
-        padding: 0.9rem;
-      }
-      .situation-card--main {
-        background: linear-gradient(135deg, rgba(31, 58, 138, 0.08), rgba(59, 130, 246, 0.02));
-      }
-      .metric-label {
-        margin: 0;
-        color: rgba(15, 23, 42, 0.66);
-        font-size: 0.84rem;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-      }
-      .metric-value {
-        display: block;
-        margin: 0.35rem 0 0;
-        font-size: 1.4rem;
-        font-weight: 800;
-        line-height: 1.2;
-      }
-      .metric-note {
-        margin: 0.25rem 0 0;
-        color: rgba(15, 23, 42, 0.56);
-        font-size: 0.8rem;
-      }
-      .situation-details {
+      .cta-row {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.65rem;
-      }
-      .detail-item {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
         gap: 0.6rem;
-        background: #ffffff;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 12px;
-        padding: 0.75rem 0.85rem;
-      }
-      .detail-item span {
-        color: rgba(15, 23, 42, 0.7);
-        font-size: 0.9rem;
-      }
-      .detail-item strong {
-        font-size: 1rem;
-        font-weight: 800;
-        color: #0f172a;
       }
 
-      .donut {
-        width: 190px;
-        height: 190px;
-        border-radius: 50%;
-        background: var(--donut-gradient, conic-gradient(#1f3a8a 0 100%));
-        margin: 0 auto 0.6rem;
-        position: relative;
-        box-shadow:
-          inset 0 0 0 1px rgba(15, 23, 42, 0.08),
-          0 12px 24px rgba(15, 23, 42, 0.08);
-      }
-      .donut::before {
-        content: "";
-        position: absolute;
-        inset: 24%;
-        border-radius: 50%;
-        background: #f8fafc;
-        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
-      }
-      .donut::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border-radius: 50%;
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0));
-        pointer-events: none;
-      }
-      .legend {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: grid;
-        gap: 0.35rem;
-      }
-      .legend li {
-        display: flex;
-        justify-content: space-between;
-        gap: 0.5rem;
-        font-size: 0.88rem;
-      }
-      .legend li span {
+      .cta {
         display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-      }
-      .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: #1f3a8a;
-      }
-      .points {
-        margin: 0;
-        padding-left: 1.1rem;
-        display: grid;
-        gap: 0.45rem;
-      }
-      .alloc-wrap {
-        margin-top: 0.9rem;
-        display: grid;
-        justify-items: center;
-        gap: 0.55rem;
-      }
-      .alloc-donut {
-        width: 236px;
-        height: 236px;
-      }
-      .alloc-total-line {
-        margin: 0;
-        font-size: 0.9rem;
-        color: rgba(15, 23, 42, 0.72);
-      }
-      .alloc-total-line strong {
-        color: #0f172a;
-        font-size: 1rem;
-      }
-      .projection-chart {
-        margin: 0.15rem 0 0.2rem;
         width: 100%;
-        max-width: none;
-        background: transparent;
-        border: none;
-        border-radius: 0;
-        padding: 0;
-        min-height: 0 !important;
-        height: auto !important;
-        display: block !important;
-        justify-content: initial !important;
-        position: relative;
-        overflow: visible;
-      }
-      .projection-chart svg {
-        display: block;
-        width: 100%;
-        height: 228px !important;
-      }
-      .projection-axis {
-        stroke: rgba(15, 23, 42, 0.34);
-        stroke-width: 1.4;
-      }
-      .projection-grid-line {
-        stroke: rgba(15, 23, 42, 0.14);
-        stroke-width: 1;
-      }
-      .projection-line {
-        fill: none;
-        stroke: #2563eb;
-        stroke-width: 1.9;
-      }
-      .projection-point {
-        stroke-width: 0;
-        cursor: pointer;
-        transition: transform 0.18s ease;
-      }
-      .projection-point:hover,
-      .projection-point:focus-visible {
-        transform: scale(1.16);
-      }
-      .projection-hit {
-        fill: transparent;
-        cursor: pointer;
-      }
-      .projection-point--today {
-        fill: #64748b;
-      }
-      .projection-point--future {
-        fill: #2563eb;
-      }
-      .projection-svg-label {
-        font-size: 7px;
-        fill: rgba(15, 23, 42, 0.62);
-      }
-      .projection-svg-label--x {
-        text-anchor: middle;
-      }
-      .projection-svg-label--y {
-        text-anchor: end;
-      }
-      .projection-tooltip {
-        position: absolute;
-        z-index: 4;
-        left: 0;
-        top: 0;
-        transform: translate(-50%, -120%);
-        background: rgba(15, 23, 42, 0.92);
-        color: #fff;
-        font-size: 0.7rem;
-        font-weight: 600;
-        padding: 0.28rem 0.42rem;
-        border-radius: 8px;
-        pointer-events: none;
-        white-space: nowrap;
-        opacity: 0;
-        transition: opacity 0.12s ease;
-      }
-      .projection-tooltip.is-visible {
-        opacity: 1;
-      }
-      .projection-flow {
-        display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.28rem;
-        flex-wrap: nowrap;
-        white-space: nowrap;
-        font-size: 0.7rem;
-        overflow: visible;
-      }
-      .projection-flow__label {
-        color: rgba(15, 23, 42, 0.66);
-      }
-      .projection-flow__label--today {
-        color: #64748b;
-      }
-      .projection-flow__label--future {
-        color: #2563eb;
-      }
-      .projection-flow__value {
-        color: #0f172a;
-        font-size: 0.78rem;
-        font-weight: 800;
-      }
-      .projection-flow__value--today {
-        color: #475569;
-      }
-      .projection-flow__value--future {
-        color: #1d4ed8;
-      }
-      .projection-flow__arrow {
-        color: rgba(15, 23, 42, 0.45);
-        font-size: 0.74rem;
-        font-weight: 700;
-      }
-      .projection-gain-line {
-        margin: 0.3rem 0 0;
-        text-align: center;
-        color: rgba(15, 23, 42, 0.78);
-        font-size: 0.72rem;
-        white-space: nowrap;
-      }
-      .projection-gain-line strong {
-        color: #059669;
-        font-size: 0.8rem;
-      }
-      .projection-note {
-        margin: 0.5rem 0 0;
-        text-align: center;
-        font-size: 0.76rem;
-        color: rgba(15, 23, 42, 0.7);
-      }
-      .cta-wrap {
-        margin-top: 0.55rem;
-        padding: 0 clamp(0.28rem, 1.2vw, 0.6rem) 0.6rem;
-      }
-      .cta-strong {
-        display: block;
         text-align: center;
         text-decoration: none;
-        background: #1f3a8a;
-        color: #fff;
         border-radius: 999px;
-        padding: 0.85rem 1rem;
         font-weight: 700;
+        font-size: 0.95rem;
+        padding: 0.82rem 1rem;
       }
-      @media (max-width: 860px) {
-        .score-grid,
-        .situation-kpis,
-        .situation-details {
+
+      .cta--primary {
+        border: 1px solid rgba(15, 23, 42, 0.68);
+        color: #ffffff;
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+      }
+
+      .cta--secondary {
+        border: 1px solid rgba(15, 23, 42, 0.25);
+        color: #0f172a;
+        background: #ffffff;
+      }
+
+      @media (max-width: 640px) {
+        .cta-row {
           grid-template-columns: 1fr;
-        }
-      }
-      @media (max-width: 420px) {
-        .projection-chart svg {
-          height: 190px !important;
-        }
-        .projection-flow {
-          font-size: 0.64rem;
-          gap: 0.2rem;
-          flex-wrap: wrap;
-          white-space: normal;
-        }
-        .projection-flow__value {
-          font-size: 0.72rem;
-        }
-        .projection-gain-line {
-          font-size: 0.66rem;
-          white-space: normal;
-        }
-        .projection-gain-line strong {
-          font-size: 0.74rem;
         }
       }
     </style>
   </head>
-  <body class="results-recap">
-    <main class="recap-shell">
-      <section class="recap-card">
-        <h1 class="recap-title" data-recap-title>Recapitulatif - Profil</h1>
-        <p class="recap-subtitle">Voici la synthese de ta situation financiere et la methode que SmartSave va appliquer.</p>
+  <body class="results-summary">
+    <main class="page">
+      <header class="summary-head">
+        <h1>Synthese</h1>
+        <p class="summary-person"><strong data-person-name>Profil</strong></p>
+        <p class="summary-birth">Date de naissance : <span data-person-birth>Non renseignee</span></p>
+      </header>
 
-        <section class="recap-section">
-          <h2>Ton score financier</h2>
-          <div class="score-grid">
-            <div class="score-gauge-wrap">
-              <div class="score-gauge">
-                <svg viewBox="0 0 120 120" aria-hidden="true">
-                  <circle class="score-track" cx="60" cy="60" r="48"></circle>
-                  <circle class="score-progress" cx="60" cy="60" r="48" data-score-circle></circle>
-                </svg>
-              </div>
-              <div class="score-value" data-score-total>0</div>
-              <div class="score-level" data-score-level>SmartSave</div>
-            </div>
-            <div class="pillar-list">
-              <div class="pillar-row">
-                <span>Securite</span><strong data-score-pillar-securite>0/100</strong>
-                <div class="pillar-meter"><span data-score-fill-securite></span></div>
-              </div>
-              <div class="pillar-row">
-                <span>Anticipation</span><strong data-score-pillar-anticipation>0/100</strong>
-                <div class="pillar-meter"><span data-score-fill-anticipation></span></div>
-              </div>
-              <div class="pillar-row">
-                <span>Croissance</span><strong data-score-pillar-croissance>0/100</strong>
-                <div class="pillar-meter"><span data-score-fill-croissance></span></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="recap-section">
-          <h2>Ta situation</h2>
-          <div class="situation-grid">
-            <article class="situation-kpis">
-              <div class="situation-card">
-                <p class="metric-label">Revenu mensuel net</p>
-                <strong class="metric-value" data-kpi-income>CHF 0</strong>
-                <p class="metric-note">Total mensuel du foyer</p>
-              </div>
-              <div class="situation-card">
-                <p class="metric-label">Total depenses fixes</p>
-                <strong class="metric-value" data-kpi-fixed>CHF 0</strong>
-                <p class="metric-note">Charges recurrentes mensuelles</p>
-              </div>
-              <div class="situation-card situation-card--main">
-                <p class="metric-label">Surplus mensuel net</p>
-                <strong class="metric-value" data-kpi-surplus>CHF 0</strong>
-                <p class="metric-note">Revenu net - depenses fixes</p>
-              </div>
-            </article>
-            <article class="situation-details">
-              <div class="detail-item">
-                <span>Estimation des impots (annuel)</span>
-                <strong data-kpi-tax-annual>CHF 0</strong>
-              </div>
-              <div class="detail-item">
-                <span>Investissements</span>
-                <strong data-kpi-investments>CHF 0</strong>
-              </div>
-              <div class="detail-item">
-                <span>3e pilier actuel</span>
-                <strong data-kpi-pillar3>CHF 0</strong>
-              </div>
-              <div class="detail-item">
-                <span>Dettes</span>
-                <strong data-kpi-debts>CHF 0</strong>
-              </div>
-              <div class="detail-item">
-                <span>Patrimoine total</span>
-                <strong data-kpi-wealth>CHF 0</strong>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="recap-section">
-          <h2>Ce que va faire SmartSave</h2>
-          <ul class="points">
-            <li>Te proposer une repartition claire de ton argent</li>
-            <li>Prioriser securite, anticipation et croissance</li>
-            <li>T'aider a suivre tes depenses variables au quotidien</li>
-          </ul>
-          <div class="alloc-wrap">
-            <div class="donut alloc-donut" data-alloc-donut></div>
-            <p class="alloc-total-line">Montant mensuel a repartir: <strong data-alloc-total>CHF 0</strong></p>
-            <ul class="legend" data-alloc-legend></ul>
-          </div>
-        </section>
-
-        <section class="recap-section">
-          <h2>Projection patrimoine sur 20 ans</h2>
-          <div class="projection-chart">
-            <svg viewBox="0 0 340 150" role="img" aria-label="Evolution du patrimoine entre aujourd'hui et 20 ans">
-              <line class="projection-grid-line" x1="42" y1="12" x2="318" y2="12"></line>
-              <line class="projection-grid-line" x1="42" y1="42" x2="318" y2="42"></line>
-              <line class="projection-grid-line" x1="42" y1="72" x2="318" y2="72"></line>
-              <line class="projection-grid-line" x1="42" y1="102" x2="318" y2="102"></line>
-              <line class="projection-grid-line" x1="42" y1="132" x2="318" y2="132"></line>
-
-              <line class="projection-axis" x1="42" y1="12" x2="42" y2="132"></line>
-              <line class="projection-axis" x1="42" y1="132" x2="318" y2="132"></line>
-
-              <text class="projection-svg-label projection-svg-label--y" data-proj-y-label-0 x="36" y="15">0</text>
-              <text class="projection-svg-label projection-svg-label--y" data-proj-y-label-1 x="36" y="45">0</text>
-              <text class="projection-svg-label projection-svg-label--y" data-proj-y-label-2 x="36" y="75">0</text>
-              <text class="projection-svg-label projection-svg-label--y" data-proj-y-label-3 x="36" y="105">0</text>
-              <text class="projection-svg-label projection-svg-label--y" data-proj-y-label-4 x="36" y="135">0</text>
-
-              <text class="projection-svg-label projection-svg-label--x" x="42" y="147">0</text>
-              <text class="projection-svg-label projection-svg-label--x" x="111" y="147">5</text>
-              <text class="projection-svg-label projection-svg-label--x" x="180" y="147">10</text>
-              <text class="projection-svg-label projection-svg-label--x" x="249" y="147">15</text>
-              <text class="projection-svg-label projection-svg-label--x" x="318" y="147">20 ans</text>
-
-              <path class="projection-line" data-proj-line d="M42 132 L318 42"></path>
-              <circle class="projection-hit" data-proj-hit-today cx="42" cy="132" r="12" tabindex="0" role="button" aria-label="Patrimoine aujourd'hui"></circle>
-              <circle class="projection-hit" data-proj-hit-future cx="318" cy="42" r="12" tabindex="0" role="button" aria-label="Patrimoine dans 20 ans"></circle>
-              <circle class="projection-point projection-point--today" data-proj-point-today cx="42" cy="132" r="3.6"></circle>
-              <circle class="projection-point projection-point--future" data-proj-point-future cx="318" cy="42" r="3.8"></circle>
-            </svg>
-            <div class="projection-tooltip" data-proj-tooltip hidden></div>
-          </div>
-          <div class="projection-flow">
-            <span class="projection-flow__label projection-flow__label--today">Patrimoine aujourd'hui</span>
-            <strong class="projection-flow__value projection-flow__value--today" data-proj-today>CHF 0</strong>
-            <span class="projection-flow__arrow">→</span>
-            <span class="projection-flow__label projection-flow__label--future">Patrimoine dans 20 ans</span>
-            <strong class="projection-flow__value projection-flow__value--future" data-proj-future>CHF 0</strong>
-          </div>
-          <p class="projection-gain-line">Gains interets composes: <strong data-proj-gain>+CHF 0</strong></p>
-        </section>
+      <section class="section" id="accounts-section">
+        <h2>Comptes</h2>
+        <ul class="simple-list" data-accounts-list></ul>
+        <p class="empty" data-accounts-empty hidden>Aucun compte avec montant renseigne.</p>
       </section>
 
-      <div class="cta-wrap">
-        <a class="cta-strong" href="mon-argent.html">commencer SmartSave</a>
+      <section class="section" id="investments-section" hidden>
+        <h2>Investissements</h2>
+        <ul class="simple-list" data-investments-list></ul>
+        <p class="empty" data-investments-empty hidden>Investissements declares sans montant renseigne.</p>
+      </section>
+
+      <section class="section" id="wealth-section">
+        <h2>Patrimoine</h2>
+        <ul class="simple-list" data-wealth-list></ul>
+        <p class="empty" data-wealth-empty hidden>Aucun element de patrimoine renseigne.</p>
+      </section>
+
+      <section class="total-block" aria-label="Patrimoine total">
+        <span>Patrimoine total</span>
+        <strong data-total-networth>Non renseigne</strong>
+      </section>
+
+      <div class="cta-row">
+        <a class="cta cta--primary" href="budget.html">Faire mon budget</a>
+        <a class="cta cta--secondary" href="formulaire.html">Retour au formulaire</a>
       </div>
     </main>
 
-    <script src="financialScoreEngine.js?v=20260212-01"></script>
-    <script src="allocationEngine.js?v=20260212-01"></script>
-    <script src="taxEngine.js?v=20260212-01"></script>
-    <script src="projectionEngine.js?v=20260212-01"></script>
-    <script src="smartsaveSnapshot.js?v=20260212-01"></script>
     <script>
       (function () {
         const ACTIVE_USER_KEY = "smartsaveActiveUser";
         const FORM_KEY = "smartsaveFormData";
         const RECAP_PENDING_KEY = "smartsaveRecapPendingByUser";
+        const RECAP_VERSION_KEY = "smartsaveRecapVersionByUser";
+        const CURRENT_RECAP_VERSION = "20260212-v2";
 
         const safeParse = (value, fallback = null) => {
           if (!value) return fallback;
@@ -612,412 +227,266 @@
           return Number.isFinite(parsed) ? parsed : 0;
         };
 
-        const scoreColor = (score) => {
-          if (score < 35) return "#dc2626";
-          if (score < 55) return "#ea580c";
-          if (score < 75) return "#ca8a04";
-          return "#16a34a";
-        };
-
-        const sumByKeys = (source, keys = []) =>
-          keys.reduce((sum, key) => sum + Math.max(0, toNumber(source?.[key])), 0);
+        const toPositive = (value) => Math.max(0, toNumber(value));
+        const ensureArray = (value) => (Array.isArray(value) ? value : value ? [value] : []);
 
         const formatCurrency = (value) =>
-          new Intl.NumberFormat("fr-CH", { style: "currency", currency: "CHF", maximumFractionDigits: 0 }).format(
-            Math.round(toNumber(value))
-          );
-        const formatCurrencyCompact = (value) =>
           new Intl.NumberFormat("fr-CH", {
             style: "currency",
             currency: "CHF",
-            notation: "compact",
-            maximumFractionDigits: 1,
+            maximumFractionDigits: 0,
           }).format(Math.round(toNumber(value)));
 
-        const monthlyAmount = (entry = {}) => {
-          const amount = Math.max(0, toNumber(entry.amount || entry.montant));
-          const frequency = String(entry.frequency || entry.frequence || "mensuel").toLowerCase();
-          if (!amount) return 0;
-          if (frequency.includes("ann")) return amount / 12;
-          if (frequency.includes("trim")) return amount / 3;
-          if (frequency.includes("heb")) return amount * 4.33;
-          return amount;
+        const formatSignedCurrency = (value) => {
+          const amount = toNumber(value);
+          const abs = formatCurrency(Math.abs(amount));
+          return amount < 0 ? `-${abs}` : abs;
         };
 
-        const incomeMonthly = (income = {}) => {
-          const amount = Math.max(0, toNumber(income.amount));
-          if (!amount) return 0;
-          const type = String(income.amountType || "net").toLowerCase();
-          const status = String(income.employmentStatus || "").toLowerCase();
-          const coef = type === "brut" ? (status.includes("indep") ? 0.75 : 0.86) : 1;
-          const with13 = income.thirteenth === true || income.thirteenth === "oui";
-          const net = amount * coef;
-          return with13 ? (net * 13) / 12 : net;
+        const formatDate = (value) => {
+          if (!value) return "Non renseignee";
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) return "Non renseignee";
+          return new Intl.DateTimeFormat("fr-CH", { dateStyle: "long" }).format(date);
         };
 
-        const paintDonut = (node, entries, palette) => {
-          if (!node) return;
-          const total = entries.reduce((sum, entry) => sum + entry.amount, 0);
-          if (!total) {
-            node.style.setProperty("--donut-gradient", "conic-gradient(#e2e8f0 0 100%)");
-            return;
-          }
-          let cursor = 0;
-          const parts = entries.map((entry, index) => {
-            const share = (entry.amount / total) * 100;
-            const from = cursor;
-            const to = cursor + share;
-            cursor = to;
-            entry.color = palette[index % palette.length];
-            return `${entry.color} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
-          });
-          node.style.setProperty("--donut-gradient", `conic-gradient(${parts.join(",")})`);
+        const text = (value, fallback = "") => {
+          const normalized = String(value ?? "").trim();
+          return normalized || fallback;
         };
 
-        const renderLegend = (node, entries) => {
-          if (!node) return;
-          if (!entries.length) {
-            node.innerHTML = '<li><span><i class="dot"></i>Aucune donnee</span><strong>—</strong></li>';
-            return;
-          }
-          node.innerHTML = entries
-            .map(
-              (entry) =>
-                `<li><span><i class="dot" style="background:${entry.color || "#1f3a8a"}"></i>${entry.label}</span><strong>${formatCurrency(
-                  entry.amount
-                )}</strong></li>`
-            )
-            .join("");
-        };
-
-        const activeUser = safeParse(localStorage.getItem(ACTIVE_USER_KEY), {});
-        const userId = String(activeUser?.id || "").trim();
-        if (!userId) {
-          window.location.href = "index.html";
-          return;
-        }
-
-        const formStore = safeParse(localStorage.getItem(FORM_KEY), {});
-        const formData = formStore?.[userId] || formStore?.__default || {};
-
-        const pendingMap = safeParse(localStorage.getItem(RECAP_PENDING_KEY), {}) || {};
-        if (pendingMap[userId]) {
-          pendingMap[userId] = false;
-          localStorage.setItem(RECAP_PENDING_KEY, JSON.stringify(pendingMap));
-        }
-
-        const personal = formData.personal || {};
-        const firstName = String(personal.firstName || personal.prenom || activeUser.firstName || "").trim();
-        const lastName = String(personal.lastName || personal.nom || activeUser.lastName || "").trim();
-        const displayName = [firstName, lastName].filter(Boolean).join(" ") || String(activeUser.displayName || "Profil");
-        const titleNode = document.querySelector("[data-recap-title]");
-        if (titleNode) titleNode.textContent = `Recapitulatif - ${displayName}`;
-
-        const sanitized = JSON.parse(JSON.stringify(formData || {}));
-        const snapshot = window.SmartSaveSnapshot?.buildSnapshot
-          ? window.SmartSaveSnapshot.buildSnapshot(sanitized, { years: 20, userId })
-          : null;
-
-        const scoreData =
-          snapshot?.outputs?.score ||
-          (window.FinancialScoreEngine?.calculateScore
-            ? window.FinancialScoreEngine.calculateScore(sanitized)
-            : { score: 0, level: "SmartSave", pillars: {} });
-
-        const scoreTotal = Math.max(0, Math.min(100, Math.round(toNumber(scoreData.score))));
-        const scoreTotalNode = document.querySelector("[data-score-total]");
-        if (scoreTotalNode) scoreTotalNode.textContent = String(scoreTotal);
-        const scoreLevelNode = document.querySelector("[data-score-level]");
-        if (scoreLevelNode) scoreLevelNode.textContent = String(scoreData.level || "SmartSave");
-
-        const scoreCircle = document.querySelector("[data-score-circle]");
-        if (scoreCircle) {
-          const radius = Number(scoreCircle.getAttribute("r")) || 48;
-          const circumference = 2 * Math.PI * radius;
-          scoreCircle.style.strokeDasharray = String(circumference);
-          scoreCircle.style.strokeDashoffset = String(circumference * (1 - scoreTotal / 100));
-          scoreCircle.style.stroke = scoreColor(scoreTotal);
-        }
-
-        ["securite", "anticipation", "croissance"].forEach((key) => {
-          const value = Math.max(0, Math.min(100, Math.round(toNumber(scoreData?.pillars?.[key]?.score))));
-          const valueNode = document.querySelector(`[data-score-pillar-${key}]`);
-          if (valueNode) valueNode.textContent = `${value}/100`;
-          const fillNode = document.querySelector(`[data-score-fill-${key}]`);
-          if (fillNode) fillNode.style.width = `${value}%`;
-        });
-
-        const incomeEntriesRaw = Array.isArray(formData?.incomes?.entries)
-          ? formData.incomes.entries
-          : formData?.incomes?.entries
-          ? [formData.incomes.entries]
-          : [];
-
-        const incomeEntries = incomeEntriesRaw
-          .map((entry, index) => {
-            const amount = incomeMonthly(entry);
-            if (!amount) return null;
-            return {
-              label: String(entry.label || entry.source || entry.name || `Revenu ${index + 1}`),
-              amount,
-            };
-          })
-          .filter(Boolean);
-
-        const spouseIncome = Math.max(
-          0,
-          toNumber(formData?.incomes?.spouseNetIncome || formData?.incomes?.spouseIncome || formData?.spouseIncome)
-        );
-        if (spouseIncome > 0) incomeEntries.push({ label: "Conjoint·e", amount: spouseIncome });
-
-        const incomeMonthlyTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0);
-
-        const fixedEntries = Array.isArray(formData?.expenses?.fixed)
-          ? formData.expenses.fixed
-          : formData?.expenses?.fixed
-          ? [formData.expenses.fixed]
-          : [];
-        const fixedTotal = fixedEntries.reduce((sum, entry) => sum + monthlyAmount(entry), 0);
-        const netSurplus = incomeMonthlyTotal - fixedTotal;
-
-        const taxSummary =
-          snapshot?.outputs?.taxSummary ||
-          (window.TaxEngine?.calculateAnnualTax ? window.TaxEngine.calculateAnnualTax(sanitized) : null);
-        const annualTaxEstimate = Math.max(0, toNumber(taxSummary?.total));
-
-        const assets = formData?.assets || {};
-        const investmentItems = Array.isArray(formData?.investments?.items) ? formData.investments.items : [];
-        const investmentItemsTotal = investmentItems.reduce((sum, item = {}) => sum + Math.max(0, toNumber(item.amount)), 0);
-        const directInvestments = sumByKeys(assets, [
-          "investments",
-          "investmentAccount",
-          "portfolio",
-          "portefeuille",
-          "stockPortfolio",
-          "etfHoldings",
-        ]);
-        const investmentsCurrent = Math.max(
-          0,
-          toNumber(scoreData?.metrics?.totalInvested),
-          toNumber(taxSummary?.breakdown?.wealth?.investments),
-          directInvestments + investmentItemsTotal
-        );
-
-        const thirdPillarCurrent = Math.max(
-          0,
-          toNumber(scoreData?.pillars?.croissance?.breakdown?.thirdPillarAmount),
-          sumByKeys(assets, ["thirdPillarAmount", "thirdPillarValue", "thirdPillar", "pillar3", "pilier3a"])
-        );
-
-        const loans = Array.isArray(formData?.credits?.loans)
-          ? formData.credits.loans
-          : Array.isArray(formData?.loans)
-          ? formData.loans
-          : [];
-        const debtsTotal = loans.reduce(
-          (sum, loan = {}) =>
-            sum +
-            Math.max(
-              0,
-              toNumber(loan.outstanding || loan.balance || loan.montant || loan.remaining || loan.soldeRestant)
-            ),
-          0
-        );
-
-        const liquidAccounts = sumByKeys(assets, [
-          "currentAccount",
-          "paymentAccount",
-          "checking",
-          "securitySavings",
-          "savingsAccount",
-          "savings",
-          "epargne",
-          "taxProvision",
-        ]);
-
-        const properties = Array.isArray(formData?.realEstate?.properties)
-          ? formData.realEstate.properties
-          : Array.isArray(formData?.immobilier?.properties)
-          ? formData.immobilier.properties
-          : [];
-
-        const propertyNet = properties.length
-          ? properties.reduce((sum, property = {}) => {
-              const value = toNumber(property.value || property.valeur || property.valeur_estimee);
-              const mortgage = toNumber(property.mortgage || property.hypotheque || property.hypotheque_actuelle);
-              return sum + Math.max(0, value - mortgage);
-            }, 0)
-          : Math.max(
-              0,
-              toNumber(assets.propertyValue || assets.realEstateValue) -
-                toNumber(assets.mortgageBalance || assets.realEstateDebt)
-            );
-
-        const fallbackWealth = Math.max(0, liquidAccounts + investmentsCurrent + thirdPillarCurrent + propertyNet - debtsTotal);
-        const totalWealth = Math.max(0, toNumber(taxSummary?.netWealth) || fallbackWealth);
+        const escapeHtml = (value) =>
+          String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
 
         const setText = (selector, value) => {
           const node = document.querySelector(selector);
           if (node) node.textContent = value;
         };
 
-        setText("[data-kpi-income]", formatCurrency(incomeMonthlyTotal));
-        setText("[data-kpi-fixed]", formatCurrency(fixedTotal));
-        setText("[data-kpi-surplus]", formatCurrency(netSurplus));
-        setText("[data-kpi-tax-annual]", formatCurrency(annualTaxEstimate));
-        setText("[data-kpi-investments]", formatCurrency(investmentsCurrent));
-        setText("[data-kpi-pillar3]", formatCurrency(thirdPillarCurrent));
-        setText("[data-kpi-debts]", formatCurrency(debtsTotal));
-        setText("[data-kpi-wealth]", formatCurrency(totalWealth));
-
-        const allocationData =
-          window.AllocationEngine?.calculateAllocation && formData
-            ? window.AllocationEngine.calculateAllocation(sanitized)
-            : { allocations: {} };
-
-        const allocLabels = {
-          securite: "Securite",
-          projets: "Anticipation",
-          impots: "Impots",
-          investissements: "Investissements",
-          pilier3a: "3e pilier",
-          dettes: "Dettes",
-        };
-
-        const allocEntries = Object.entries(allocationData?.allocations || {})
-          .map(([key, value]) => ({ key, label: allocLabels[key] || key, amount: Math.max(0, toNumber(value)) }))
-          .filter((entry) => entry.amount > 0)
-          .sort((a, b) => b.amount - a.amount)
-          .slice(0, 6);
-
-        const allocTotal = allocEntries.reduce((sum, entry) => sum + entry.amount, 0);
-        const allocTotalNode = document.querySelector("[data-alloc-total]");
-        if (allocTotalNode) allocTotalNode.textContent = formatCurrency(allocTotal);
-
-        paintDonut(document.querySelector("[data-alloc-donut]"), allocEntries, [
-          "#1f3a8a",
-          "#2563eb",
-          "#3b82f6",
-          "#60a5fa",
-          "#93c5fd",
-          "#0f766e",
-        ]);
-        renderLegend(document.querySelector("[data-alloc-legend]"), allocEntries);
-
-        const engineProjection =
-          window.ProjectionEngine?.calculateProjection
-            ? window.ProjectionEngine.calculateProjection(sanitized, { years: 20 })
-            : null;
-        const projectionSummary = snapshot?.outputs?.projectionSummary || {};
-        const projectionRaw = engineProjection || snapshot?.outputs?.projection || {};
-        const accountsTodayTotal = sumByKeys(assets, [
-          "currentAccount",
-          "paymentAccount",
-          "checking",
-          "securitySavings",
-          "safetySavings",
-          "emergencyFund",
-          "savingsAccount",
-          "savings",
-          "epargne",
-          "taxProvision",
-          "investments",
-          "investmentAccount",
-          "portfolio",
-          "portefeuille",
-          "stockPortfolio",
-          "etfHoldings",
-          "thirdPillarAmount",
-          "thirdPillarValue",
-          "thirdPillar",
-          "pillar3",
-          "pilier3a",
-        ]);
-        const netWorthToday = Math.max(0, accountsTodayTotal);
-        const netWorthFuture = Math.max(
-          0,
-          toNumber(projectionSummary.netWorthSmartSave),
-          toNumber(projectionRaw?.smartSave?.netWorth)
-        );
-        const smartInterestEarned = projectionRaw?.smartSave?.interestEarned || {};
-        const projectedGain = Math.max(
-          0,
-          Object.values(smartInterestEarned).reduce((sum, value) => sum + Math.max(0, toNumber(value)), 0),
-          toNumber(projectionSummary.gain)
-        );
-
-        setText("[data-proj-today]", formatCurrency(netWorthToday));
-        setText("[data-proj-future]", formatCurrency(netWorthFuture));
-        setText("[data-proj-gain]", `+${formatCurrency(projectedGain)}`);
-
-        const lineNode = document.querySelector("[data-proj-line]");
-        const pointTodayNode = document.querySelector("[data-proj-point-today]");
-        const pointFutureNode = document.querySelector("[data-proj-point-future]");
-        const hitTodayNode = document.querySelector("[data-proj-hit-today]");
-        const hitFutureNode = document.querySelector("[data-proj-hit-future]");
-        const chartNode = document.querySelector(".projection-chart");
-        const tooltipNode = document.querySelector("[data-proj-tooltip]");
-        const yLabelNodes = [0, 1, 2, 3, 4].map((index) =>
-          document.querySelector(`[data-proj-y-label-${index}]`)
-        );
-        const chartMax = Math.max(netWorthToday, netWorthFuture, 1);
-        const toChartY = (value) => {
-          const ratio = Math.max(0, Math.min(1, toNumber(value) / chartMax));
-          return 132 - ratio * 120;
-        };
-        const yToday = toChartY(netWorthToday);
-        const yFuture = toChartY(netWorthFuture);
-        if (lineNode) lineNode.setAttribute("d", `M42 ${yToday.toFixed(2)} L318 ${yFuture.toFixed(2)}`);
-        if (pointTodayNode) pointTodayNode.setAttribute("cy", yToday.toFixed(2));
-        if (pointFutureNode) pointFutureNode.setAttribute("cy", yFuture.toFixed(2));
-        if (hitTodayNode) hitTodayNode.setAttribute("cy", yToday.toFixed(2));
-        if (hitFutureNode) hitFutureNode.setAttribute("cy", yFuture.toFixed(2));
-        yLabelNodes.forEach((node, index) => {
+        const renderSimpleRows = (selector, rows) => {
+          const node = document.querySelector(selector);
           if (!node) return;
-          const tickValue = chartMax * (1 - index / 4);
-          node.textContent = formatCurrencyCompact(tickValue);
-        });
+          node.innerHTML = rows
+            .map(
+              (row) => `
+                <li class="simple-row">
+                  <span class="row-label">${escapeHtml(row.label)}</span>
+                  <strong class="row-value${row.isDebt ? " is-debt" : ""}">${escapeHtml(row.value)}</strong>
+                </li>
+              `
+            )
+            .join("");
+        };
 
-        const hideTooltip = () => {
-          if (!tooltipNode) return;
-          tooltipNode.hidden = true;
-          tooltipNode.classList.remove("is-visible");
-        };
-        const showTooltip = (target, label, amount, fallbackX, fallbackY) => {
-          if (!tooltipNode || !chartNode || !target) return;
-          tooltipNode.textContent = `${label}: ${amount}`;
-          const chartRect = chartNode.getBoundingClientRect();
-          const targetRect = target.getBoundingClientRect();
-          const x = fallbackX ?? targetRect.left + targetRect.width / 2 - chartRect.left;
-          const y = fallbackY ?? targetRect.top - chartRect.top - 8;
-          const clampedX = Math.max(36, Math.min(chartRect.width - 36, x));
-          const clampedY = Math.max(18, Math.min(chartRect.height - 6, y));
-          tooltipNode.style.left = `${clampedX}px`;
-          tooltipNode.style.top = `${clampedY}px`;
-          tooltipNode.hidden = false;
-          tooltipNode.classList.add("is-visible");
-        };
-        const bindInteractivePoint = (node, label, amount) => {
-          if (!node) return;
-          node.addEventListener("pointerenter", (event) => {
-            showTooltip(node, label, amount, event.offsetX, event.offsetY);
-          });
-          node.addEventListener("pointermove", (event) => {
-            showTooltip(node, label, amount, event.offsetX, event.offsetY);
-          });
-          node.addEventListener("pointerleave", hideTooltip);
-          node.addEventListener("click", () => showTooltip(node, label, amount));
-          node.addEventListener("focus", () => showTooltip(node, label, amount));
-          node.addEventListener("blur", hideTooltip);
-        };
-        bindInteractivePoint(hitTodayNode, "Aujourd'hui", formatCurrency(netWorthToday));
-        bindInteractivePoint(hitFutureNode, "Dans 20 ans", formatCurrency(netWorthFuture));
-        if (chartNode) {
-          chartNode.addEventListener("pointerleave", hideTooltip);
+        const activeUser = safeParse(localStorage.getItem(ACTIVE_USER_KEY), {}) || {};
+        const userId = String(activeUser.id || "").trim();
+        if (!userId) {
+          window.location.href = "index.html";
+          return;
         }
 
+        const recapPending = safeParse(localStorage.getItem(RECAP_PENDING_KEY), {}) || {};
+        recapPending[userId] = false;
+        localStorage.setItem(RECAP_PENDING_KEY, JSON.stringify(recapPending));
+
+        const recapVersion = safeParse(localStorage.getItem(RECAP_VERSION_KEY), {}) || {};
+        recapVersion[userId] = CURRENT_RECAP_VERSION;
+        localStorage.setItem(RECAP_VERSION_KEY, JSON.stringify(recapVersion));
+
+        const formStore = safeParse(localStorage.getItem(FORM_KEY), {}) || {};
+        const formData = formStore[userId] || formStore.__default || {};
+
+        const personal = formData.personal || {};
+        const assets = formData.assets || {};
+        const investments = formData.investments || {};
+        const credits = formData.credits || {};
+        const loans = ensureArray(credits.loans || formData.loans);
+
+        const fullName = text(
+          [
+            personal.firstName || personal.prenom || activeUser.firstName || "",
+            personal.lastName || personal.nom || activeUser.lastName || "",
+          ]
+            .filter(Boolean)
+            .join(" "),
+          "Profil"
+        );
+
+        setText("[data-person-name]", fullName);
+        setText("[data-person-birth]", formatDate(personal.birthDate));
+
+        const accountRows = [];
+        let accountsTotal = 0;
+        const pushAccount = (label, amount) => {
+          const safe = toPositive(amount);
+          if (safe > 0) {
+            accountRows.push({ label, value: formatCurrency(safe) });
+            accountsTotal += safe;
+          }
+        };
+
+        pushAccount("Compte courant", assets.currentAccount);
+        pushAccount("Compte epargne", assets.savingsAccount);
+        pushAccount("3e pilier", assets.thirdPillarAmount);
+        pushAccount("Compte impots", assets.taxAccountAmount);
+
+        const otherAccounts = ensureArray(assets.otherAssets)
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry, index) => ({
+            name: text(entry.name, `Autre compte ${index + 1}`),
+            amount: toPositive(entry.amount),
+          }))
+          .filter((entry) => entry.amount > 0);
+
+        otherAccounts.forEach((entry) => {
+          pushAccount(entry.name, entry.amount);
+        });
+
+        renderSimpleRows("[data-accounts-list]", accountRows);
+        const accountsEmpty = document.querySelector("[data-accounts-empty]");
+        if (accountsEmpty) accountsEmpty.hidden = accountRows.length > 0;
+
+        const investmentTypeLabel = (value) => {
+          const map = {
+            etf: "ETF",
+            fonds: "Fonds",
+            actions: "Actions",
+            obligations: "Obligations",
+            pilier3a: "3a bancaire",
+            crypto: "Crypto",
+            autre: "Autre",
+          };
+          return map[String(value || "").toLowerCase()] || text(value, "Investissement");
+        };
+
+        const hasInvestmentsFlag = String(investments.hasInvestments || "").toLowerCase() === "oui";
+        const investmentItems = ensureArray(investments.items)
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => ({
+            label: investmentTypeLabel(entry.investmentType),
+            amount: toPositive(entry.amount),
+            monthly: toPositive(entry.monthlyAmount),
+          }));
+
+        const investmentRows = investmentItems
+          .filter((entry) => entry.amount > 0 || entry.monthly > 0)
+          .map((entry) => {
+            let value = "";
+            if (entry.amount > 0 && entry.monthly > 0) {
+              value = `${formatCurrency(entry.amount)} · ${formatCurrency(entry.monthly)} / mois`;
+            } else if (entry.amount > 0) {
+              value = formatCurrency(entry.amount);
+            } else {
+              value = `${formatCurrency(entry.monthly)} / mois`;
+            }
+            return { label: entry.label, value };
+          });
+
+        const investmentsSection = document.querySelector("[data-investments-section]");
+        const investmentsEmpty = document.querySelector("[data-investments-empty]");
+        const showInvestments = hasInvestmentsFlag || investmentItems.length > 0;
+        if (investmentsSection) investmentsSection.hidden = !showInvestments;
+        if (showInvestments) {
+          renderSimpleRows("[data-investments-list]", investmentRows);
+          if (investmentsEmpty) investmentsEmpty.hidden = investmentRows.length > 0;
+        }
+
+        const loanTypeLabel = (value) => {
+          const map = {
+            consommation: "Credit conso",
+            leasing: "Leasing voiture",
+            carte_credit: "Carte de credit",
+            hypotheque: "Hypotheque",
+            autre: "Autre dette",
+          };
+          return map[String(value || "").toLowerCase()] || text(value, "Dette");
+        };
+
+        const wealthRows = [];
+        let wealthAssetsTotal = 0;
+        let wealthDebtsTotal = 0;
+
+        const propertyValue = toPositive(credits.propertyValue);
+        const vehicleValue = toPositive(credits.vehicleValue);
+        const mortgageBalance = toPositive(credits.mortgageBalance);
+
+        if (propertyValue > 0) {
+          wealthRows.push({ label: "Biens immobiliers", value: formatCurrency(propertyValue) });
+          wealthAssetsTotal += propertyValue;
+        }
+
+        if (vehicleValue > 0) {
+          wealthRows.push({ label: "Vehicules", value: formatCurrency(vehicleValue) });
+          wealthAssetsTotal += vehicleValue;
+        }
+
+        if (propertyValue === 0 && vehicleValue === 0) {
+          const declaredAssets = toPositive(credits.assetsTotal);
+          if (declaredAssets > 0) {
+            wealthRows.push({ label: "Patrimoine declare (biens)", value: formatCurrency(declaredAssets) });
+            wealthAssetsTotal += declaredAssets;
+          }
+        }
+
+        if (mortgageBalance > 0) {
+          wealthRows.push({
+            label: "Hypotheque restante",
+            value: `-${formatCurrency(mortgageBalance)}`,
+            isDebt: true,
+          });
+          wealthDebtsTotal += mortgageBalance;
+        }
+
+        const loansOutstanding = loans
+          .filter((loan) => loan && typeof loan === "object")
+          .map((loan) => ({
+            label: loanTypeLabel(loan.creditType),
+            amount: toPositive(loan.outstanding),
+          }))
+          .filter((loan) => loan.amount > 0);
+
+        loansOutstanding.forEach((loan) => {
+          wealthRows.push({
+            label: loan.label,
+            value: `-${formatCurrency(loan.amount)}`,
+            isDebt: true,
+          });
+          wealthDebtsTotal += loan.amount;
+        });
+
+        const declaredDebtTotal = toPositive(credits.debtsTotal);
+        if (declaredDebtTotal > wealthDebtsTotal) {
+          const deltaDebt = declaredDebtTotal - wealthDebtsTotal;
+          wealthRows.push({
+            label: "Autres dettes declarees",
+            value: `-${formatCurrency(deltaDebt)}`,
+            isDebt: true,
+          });
+          wealthDebtsTotal += deltaDebt;
+        }
+
+        renderSimpleRows("[data-wealth-list]", wealthRows);
+        const wealthEmpty = document.querySelector("[data-wealth-empty]");
+        if (wealthEmpty) wealthEmpty.hidden = wealthRows.length > 0;
+
+        const investmentsTotal = investmentItems.reduce((sum, entry) => sum + entry.amount, 0);
+        const netWorth = accountsTotal + investmentsTotal + wealthAssetsTotal - wealthDebtsTotal;
+
+        const totalNode = document.querySelector("[data-total-networth]");
+        if (totalNode) {
+          if (Math.abs(netWorth) > 0) {
+            totalNode.textContent = formatSignedCurrency(netWorth);
+          } else {
+            totalNode.textContent = "Non renseigne";
+          }
+        }
       })();
     </script>
-    <script src="/dev-reload.js" defer></script>
+    <script src="/dev-reload.js?v=20260212-01" defer></script>
   </body>
 </html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#eef2ff" />
+    <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
+    <title>SmartSave – Bilan mensuel</title>
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
+    <link rel="stylesheet" href="theme-polish.css" />
+  </head>
+  <body class="dashboard app-page" data-page="bilan" data-mvp>
+    <div class="dashboard-shell app-shell">
+      <header class="dashboard-header app-header">
+        <div class="brand-block">
+          <a class="logo" href="mon-argent.html">
+            <div class="logo-mark" aria-hidden="true">S</div>
+            <span class="logo-text">SmartSave</span>
+          </a>
+          <span class="logo-subtitle">Bilan du mois</span>
+        </div>
+      </header>
+
+      <main class="app-main budget-page">
+        <section class="page-title page-title--month">
+          <h1 data-bilan-month-label>—</h1>
+        </section>
+
+        <section class="card budget-mode-card">
+          <h2>Bilan du mois</h2>
+          <div class="budget-summary budget-summary--read">
+            <p><span>Revenu prévu</span><strong data-bilan-planned-income>CHF 0</strong></p>
+            <p><span>Dépenses prévues</span><strong data-bilan-planned-expenses>CHF 0</strong></p>
+            <p><span>Revenu réel</span><strong data-bilan-real-income>CHF 0</strong></p>
+            <p><span>Dépenses réelles</span><strong data-bilan-real-expenses>CHF 0</strong></p>
+            <p><span>Écart (réel - prévu)</span><strong data-bilan-delta>CHF 0</strong></p>
+          </div>
+          <p class="budget-note">Confirme la clôture pour passer au mois suivant.</p>
+          <button class="month-btn month-btn--start budget-submit" type="button" data-bilan-close-next>
+            Faire mon budget pour —
+          </button>
+          <a class="budget-link-secondary" href="mes-depenses.html" data-bilan-full-link>
+            Voir mon bilan complet
+          </a>
+        </section>
+      </main>
+    </div>
+
+    <script src="monthlyStore.js?v=20260218-04" defer></script>
+    <script src="bilan-page.js?v=20260214-01" defer></script>
+    <script src="/dev-reload.js" defer></script>
+  </body>
+</html>

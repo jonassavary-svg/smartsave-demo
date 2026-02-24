@@ -59,13 +59,17 @@
 
       const keepHistory = options.keepHistory === true;
       const captureFlows = options.captureFlows === true;
+      const startDate = options.startDate ? new Date(options.startDate) : new Date();
+      const taxMonth = sanitizeMonth(options.taxMonth, 3);
+      const shortTermPayoutPlan = buildShortTermPayoutPlan(context, options);
       const currentScenario = createScenarioState(
         context,
         incomeInfo,
         expensesInfo,
         "current",
         keepHistory,
-        captureFlows
+        captureFlows,
+        taxMonth
       );
       const smartScenario = createScenarioState(
         context,
@@ -73,22 +77,24 @@
         expensesInfo,
         "smartsave",
         keepHistory,
-        captureFlows
+        captureFlows,
+        taxMonth
       );
 
       const months = options.months || (options.years || 10) * 12;
-      const startDate = options.startDate ? new Date(options.startDate) : new Date();
-      const taxMonth = options.taxMonth || 3;
 
       for (let i = 0; i < months; i++) {
         const iterationDate = addMonths(startDate, i);
         const monthNumber = iterationDate.getMonth() + 1;
-        const year = iterationDate.getFullYear();
+        const projectionYearIndex = Math.floor(i / 12) + 1;
 
         if (captureFlows) {
           startMonthlyFlow(currentScenario, iterationDate);
           startMonthlyFlow(smartScenario, iterationDate);
         }
+
+        applyMonthlyInterests(currentScenario, context, iterationDate);
+        applyMonthlyInterests(smartScenario, context, iterationDate);
 
         simulateMonth(
           currentScenario,
@@ -108,12 +114,14 @@
           applySmartSaveStrategy
         );
 
-        applyMonthlyInterests(currentScenario, context, iterationDate);
-        applyMonthlyInterests(smartScenario, context, iterationDate);
-
         if (monthNumber === taxMonth) {
           settleAnnualTaxes(currentScenario, iterationDate);
           settleAnnualTaxes(smartScenario, iterationDate);
+        }
+
+        if (shouldSettleShortTermGoal(shortTermPayoutPlan, monthNumber, projectionYearIndex)) {
+          settleShortTermGoal(currentScenario, shortTermPayoutPlan);
+          settleShortTermGoal(smartScenario, shortTermPayoutPlan);
         }
 
         if (keepHistory) {
@@ -568,12 +576,12 @@
         return weightedSum / total;
       })();
       const defaultRates = {
-        savings: resolveFallbackRate(formRates.savings, 0.012),
-        blocked: resolveFallbackRate(formRates.blocked, 0.015),
-        pillar3: resolveFallbackRate(formRates.pillar3, 0.02),
+        savings: resolveFallbackRate(formRates.savings, 0.018),
+        blocked: resolveFallbackRate(formRates.blocked, 0.02),
+        pillar3: resolveFallbackRate(formRates.pillar3, 0.03),
         investments: resolveFallbackRate(
           formRates.investments,
-          weightedInvestmentRate ?? 0.04
+          weightedInvestmentRate ?? 0.05
         ),
       };
 
@@ -621,6 +629,12 @@
             formData.spouseIncome ??
             0
         ),
+        spouseIncomeFrequency:
+          formData.incomes?.spouseIncomeFrequency ??
+          formData.incomes?.spouseNetIncomeFrequency ??
+          formData.incomes?.spouseIncomePeriod ??
+          formData.spouseIncomeFrequency ??
+          "mensuel",
         personal: formData.personal || {},
         expenses: {
           fixed: ensureArray(formData.expenses?.fixed),
@@ -656,6 +670,7 @@
           pillar3: toNumber(
             formData.assets?.thirdPillarAmount ||
               formData.assets?.pillar3 ||
+              formData.assets?.pillar3a ||
               formData.assets?.pilier3a ||
               formData.assets?.troisiemePiliers ||
               0
@@ -678,6 +693,12 @@
           thirdPillarYTD: toNumber(
             formData.assets?.thirdPillarPaidYTD || formData.taxes?.thirdPillarPaidYTD || 0
           ),
+          thirdPillarYTDYear: toNumber(
+            formData.assets?.thirdPillarPaidYTDYear || formData.taxes?.thirdPillarPaidYTDYear || 0
+          ),
+          hasThirdPillarYTD:
+            formData.assets?.thirdPillarPaidYTD != null ||
+            formData.taxes?.thirdPillarPaidYTD != null,
         },
         goals: ensureArray(formData.goals),
         manualPlan: normaliseManualPlan(
@@ -739,13 +760,35 @@
           monthlyNet += netMonthly;
         }
       });
+      const spouseMonthlyIncome = resolveSpouseMonthlyIncome(context);
+      monthlyNet += spouseMonthlyIncome;
 
       return {
         monthlyNetIncome: monthlyNet,
+        spouseMonthlyIncome,
+        spouseAnnualIncome: spouseMonthlyIncome * 12,
         annualThirteenth: thirteenthBase,
         thirteenthReference: thirteenthBase,
         thirteenthPayments,
       };
+    }
+
+    function resolveSpouseMonthlyIncome(context = {}) {
+      const spouseIncome = Math.max(0, toNumber(context.spouseIncome));
+      if (!spouseIncome) return 0;
+      const frequency = String(context.spouseIncomeFrequency || "mensuel")
+        .trim()
+        .toLowerCase();
+      if (frequency.startsWith("annu") || frequency.startsWith("year")) {
+        return spouseIncome / 12;
+      }
+      if (frequency.startsWith("trim")) {
+        return spouseIncome / 3;
+      }
+      if (frequency.startsWith("hebdo") || frequency.startsWith("week")) {
+        return (spouseIncome * 52) / 12;
+      }
+      return spouseIncome;
     }
 
     function computeThirteenthForMonth(incomeInfo = {}, iterationDate = new Date()) {
@@ -778,7 +821,22 @@
       };
     }
 
-    function createScenarioState(context, incomeInfo, expensesInfo, label, keepHistory, captureFlows) {
+    function createScenarioState(
+      context,
+      incomeInfo,
+      expensesInfo,
+      label,
+      keepHistory,
+      captureFlows,
+      taxMonth
+    ) {
+      const startDate =
+        context.startDate instanceof Date && !Number.isNaN(context.startDate.getTime())
+          ? context.startDate
+          : new Date();
+      const startYear = startDate.getFullYear();
+      const thirdPillarYTDYearRaw = toNumber(context.assets.thirdPillarYTDYear);
+      const thirdPillarYTDYear = Math.round(thirdPillarYTDYearRaw) || startYear;
       const accounts = {
         current: context.assets.current,
         savings: context.assets.savings,
@@ -787,9 +845,11 @@
         investments: context.assets.investments,
         taxes: context.assets.taxes,
         thirdPillarYTD: context.assets.thirdPillarYTD || 0,
+        thirdPillarYTDYear,
+        hasThirdPillarYTD: Boolean(context.assets.hasThirdPillarYTD),
       };
 
-      const fiscal = initialiseFiscalState(context, accounts, incomeInfo);
+      const fiscal = initialiseFiscalState(context, accounts, incomeInfo, taxMonth);
 
       return {
         label,
@@ -797,6 +857,10 @@
         incomeInfo,
         expensesInfo,
         fiscal,
+        shortTerm: {
+          paid: 0,
+          shortage: 0,
+        },
         contributions: {
           current: 0,
           savings: 0,
@@ -821,7 +885,7 @@
       };
     }
 
-    function initialiseFiscalState(context, accounts, incomeInfo) {
+    function initialiseFiscalState(context, accounts, incomeInfo, taxMonth) {
       const taxEngine = root.TaxEngine || root.SmartSaveTaxEngine;
       let taxData = null;
       if (taxEngine && typeof taxEngine.calculateAnnualTax === "function") {
@@ -835,7 +899,10 @@
           context.personal
         );
       const personalAnnualIncome = annualIncome;
-      const spouseAnnualIncome = toNumber(context.spouseIncome);
+      const spouseAnnualIncome = Math.max(
+        0,
+        toNumber(incomeInfo?.spouseAnnualIncome || resolveSpouseMonthlyIncome(context) * 12)
+      );
       const totalHouseholdIncome = personalAnnualIncome + spouseAnnualIncome;
 
       let annualTax = householdTax;
@@ -848,7 +915,8 @@
 
       const already = accounts.taxes;
       const today = context.startDate || new Date();
-      const monthsRemaining = monthsUntilTaxDate(today);
+      const safeTaxMonth = sanitizeMonth(taxMonth, 3);
+      const monthsRemaining = monthsUntilTaxDate(today, safeTaxMonth);
       const remaining = Math.max(0, annualTax - already);
 
       return {
@@ -856,7 +924,8 @@
         baseAnnualTax: annualTax,
         remainingProvision: remaining,
         monthlyNeed: remaining / monthsRemaining,
-        nextPaymentDate: nextTaxDate(today),
+        nextPaymentDate: nextTaxDate(today, safeTaxMonth),
+        taxMonth: safeTaxMonth,
         shortage: 0,
         totalPaid: 0,
         householdTax,
@@ -871,13 +940,17 @@
       iterationDate,
       strategyCallback
     ) {
+      syncThirdPillarYtdForYear(scenario, iterationDate);
       const thirteenthIncome = computeThirteenthForMonth(incomeInfo, iterationDate);
       trackThirteenth(scenario, thirteenthIncome);
-      const available =
+      const grossAvailable =
         incomeInfo.monthlyNetIncome +
         thirteenthIncome -
         expensesInfo.total +
         computeAdditionalSavings(context, iterationDate);
+      const leisureDeduction = resolveLeisureDeduction(context, grossAvailable);
+      const available = grossAvailable - leisureDeduction;
+      trackLeisureDeduction(scenario, leisureDeduction);
       noteMonthlyAvailable(scenario, available);
 
       scenario.fiscal.remainingProvision = Math.max(
@@ -885,7 +958,8 @@
         scenario.fiscal.annualTax - scenario.accounts.taxes
       );
       scenario.fiscal.monthlyNeed =
-        scenario.fiscal.remainingProvision / monthsUntilTaxDate(iterationDate);
+        scenario.fiscal.remainingProvision /
+        monthsUntilTaxDate(iterationDate, scenario.fiscal.taxMonth);
 
       strategyCallback(
         scenario,
@@ -893,6 +967,29 @@
         available,
         iterationDate
       );
+    }
+
+    function resolveLeisureDeduction(context = {}, grossAvailable = 0) {
+      const safeAvailable = Math.max(0, toNumber(grossAvailable));
+      const leisureTarget = Math.max(
+        0,
+        toNumber(
+          context?.raw?.allocationPlan?.leisureMonthly ||
+            context?.raw?.allocationPlan?.budgetVariable ||
+            0
+        )
+      );
+      return Math.min(safeAvailable, leisureTarget);
+    }
+
+    function syncThirdPillarYtdForYear(scenario, iterationDate) {
+      const date = iterationDate instanceof Date ? iterationDate : new Date(iterationDate);
+      const fiscalYear = Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear();
+      const trackedYearRaw = toNumber(scenario?.accounts?.thirdPillarYTDYear);
+      const trackedYear = Math.round(trackedYearRaw) || fiscalYear;
+      if (trackedYear === fiscalYear) return;
+      scenario.accounts.thirdPillarYTD = 0;
+      scenario.accounts.thirdPillarYTDYear = fiscalYear;
     }
 
     function applyCurrentStrategy(scenario, context, available, iterationDate) {
@@ -973,9 +1070,35 @@
       clone.assets.securityBalance = scenario.accounts.savings;
       clone.assets.savingsAccount = scenario.accounts.savings;
       clone.assets.taxProvision = scenario.accounts.taxes;
-      clone.assets.thirdPillarPaidYTD = scenario.accounts.thirdPillarYTD || 0;
+      clone.assets.pillar3a = scenario.accounts.pillar3;
+      clone.assets.pilier3a = scenario.accounts.pillar3;
+      clone.assets.pillar3 = scenario.accounts.pillar3;
+      clone.assets.thirdPillarAmount = scenario.accounts.pillar3;
+      clone.assets.thirdPillar = scenario.accounts.pillar3;
+      clone.assets.thirdPillarValue = scenario.accounts.pillar3;
+      const referenceDate = iterationDate instanceof Date ? iterationDate : new Date(iterationDate);
+      const fiscalYear = Number.isNaN(referenceDate.getTime())
+        ? new Date().getFullYear()
+        : referenceDate.getFullYear();
+      const hasThirdPillarYTD = Boolean(scenario.accounts.hasThirdPillarYTD);
+      const trackedYtdYearRaw = toNumber(scenario.accounts.thirdPillarYTDYear);
+      const trackedYtdYear = Math.round(trackedYtdYearRaw) || fiscalYear;
+      if (hasThirdPillarYTD) {
+        clone.assets.thirdPillarPaidYTD = scenario.accounts.thirdPillarYTD || 0;
+        clone.assets.thirdPillarPaidYTDYear = trackedYtdYear;
+      } else {
+        delete clone.assets.thirdPillarPaidYTD;
+        delete clone.assets.thirdPillarPaidYTDYear;
+      }
       clone.referenceDate = iterationDate.toISOString();
       clone.taxes = clone.taxes || {};
+      if (hasThirdPillarYTD) {
+        clone.taxes.thirdPillarPaidYTD = scenario.accounts.thirdPillarYTD || 0;
+        clone.taxes.thirdPillarPaidYTDYear = trackedYtdYear;
+      } else {
+        delete clone.taxes.thirdPillarPaidYTD;
+        delete clone.taxes.thirdPillarPaidYTDYear;
+      }
       clone.taxes.overrideAnnualTax = scenario.fiscal.annualTax;
       clone.taxes.overrideMonthlyNeed = scenario.fiscal.monthlyNeed;
       clone.taxes.overrideRemaining = scenario.fiscal.remainingProvision;
@@ -1006,6 +1129,7 @@
       apply("pilier3a", (value) => {
         scenario.accounts.pillar3 += value;
         scenario.accounts.thirdPillarYTD += value;
+        scenario.accounts.hasThirdPillarYTD = true;
         scenario.contributions.pillar3 += value;
       });
       apply("investissements", (value) => {
@@ -1014,6 +1138,14 @@
       });
       apply("dettes", (value) => {
         scenario.contributions.debts += value;
+      });
+      apply("projetsCourtTerme", (value) => {
+        scenario.accounts.current += value;
+        scenario.contributions.goals += value;
+      });
+      apply("projetsLongTerme", (value) => {
+        scenario.accounts.current += value;
+        scenario.contributions.goals += value;
       });
       apply("projets", (value) => {
         scenario.accounts.current += value;
@@ -1132,6 +1264,7 @@ if (rest > 0) {
       } else if (key === "pillar3") {
         scenario.accounts.pillar3 += amount;
         scenario.accounts.thirdPillarYTD += amount;
+        scenario.accounts.hasThirdPillarYTD = true;
         scenario.contributions.pillar3 += amount;
         trackContribution(scenario, "pilier3a", amount);
       } else if (key === "investments") {
@@ -1223,9 +1356,8 @@ if (rest > 0) {
       scenario.fiscal.annualTax = scenario.fiscal.baseAnnualTax;
       scenario.fiscal.remainingProvision = scenario.fiscal.annualTax;
       scenario.fiscal.monthlyNeed = scenario.fiscal.remainingProvision / 12;
-      scenario.fiscal.nextPaymentDate = nextTaxDate(date);
+      scenario.fiscal.nextPaymentDate = nextTaxDate(date, scenario.fiscal.taxMonth);
       scenario.accounts.taxes = 0;
-      scenario.accounts.thirdPillarYTD = 0;
     }
 
     function recordHistory(scenario, date) {
@@ -1250,6 +1382,10 @@ if (rest > 0) {
         fiscal: {
           shortage: round2(scenario.fiscal.shortage),
           totalPaid: round2(scenario.fiscal.totalPaid),
+        },
+        shortTerm: {
+          paid: round2(scenario.shortTerm?.paid || 0),
+          shortage: round2(scenario.shortTerm?.shortage || 0),
         },
         history: keepHistory ? scenario.history : undefined,
         flows: scenario.flowHistory || undefined,
@@ -1339,17 +1475,97 @@ if (rest > 0) {
       return 0;
     }
 
-    function monthsUntilTaxDate(date) {
-      const target = nextTaxDate(date);
+    function buildShortTermPayoutPlan(context = {}, options = {}) {
+      const source =
+        context?.raw?.allocationPlan?.shortTerm &&
+        typeof context.raw.allocationPlan.shortTerm === "object"
+          ? context.raw.allocationPlan.shortTerm
+          : {};
+      const fallback =
+        context?.raw?.shortTermGoal && typeof context.raw.shortTermGoal === "object"
+          ? context.raw.shortTermGoal
+          : {};
+      const amount = Math.max(
+        0,
+        toNumber(
+          source.amount ||
+            source.targetAmount ||
+            source.target ||
+            source.goal ||
+            fallback.amount ||
+            fallback.targetAmount ||
+            fallback.target ||
+            fallback.goal ||
+            0
+        )
+      );
+      const horizonYearsRaw =
+        toNumber(source.horizonYears || source.horizon || source.years || 0) ||
+        toNumber(fallback.horizonYears || fallback.horizon || fallback.years || 0) ||
+        1;
+      const horizonYears = Math.min(3, Math.max(1, Math.round(horizonYearsRaw)));
+      const explicitEnabled =
+        source.enabled !== undefined
+          ? source.enabled
+          : fallback.enabled !== undefined
+          ? fallback.enabled
+          : null;
+      const enabled =
+        explicitEnabled === null ? amount > 0 : Boolean(explicitEnabled) && amount > 0;
+      return {
+        enabled,
+        amount,
+        horizonYears,
+        payoutMonth: sanitizeMonth(options.shortTermPayoutMonth, 8),
+      };
+    }
+
+    function shouldSettleShortTermGoal(plan = {}, monthNumber, projectionYearIndex) {
+      if (!plan?.enabled) return false;
+      if (Math.max(0, toNumber(plan.amount)) <= 0) return false;
+      const payoutMonth = sanitizeMonth(plan.payoutMonth, 8);
+      if (monthNumber !== payoutMonth) return false;
+      const horizonYears = Math.min(3, Math.max(1, Math.round(toNumber(plan.horizonYears || 1))));
+      return projectionYearIndex % horizonYears === 0;
+    }
+
+    function settleShortTermGoal(scenario, plan = {}) {
+      const target = Math.max(0, toNumber(plan.amount));
+      if (!target) return;
+      let remaining = target;
+      const payFrom = (accountKey) => {
+        const available = Math.max(0, toNumber(scenario.accounts[accountKey]));
+        const used = Math.min(available, remaining);
+        scenario.accounts[accountKey] -= used;
+        remaining -= used;
+      };
+
+      payFrom("current");
+      payFrom("savings");
+      payFrom("investments");
+      payFrom("blocked");
+
+      const paid = target - remaining;
+      scenario.shortTerm.paid += paid;
+      if (remaining > 0) {
+        scenario.shortTerm.shortage += remaining;
+      }
+      trackShortTermPayment(scenario, paid);
+    }
+
+    function monthsUntilTaxDate(date, taxMonth) {
+      const target = nextTaxDate(date, taxMonth);
       const years = target.getFullYear() - date.getFullYear();
       const months = years * 12 + (target.getMonth() - date.getMonth());
       const adjust = target.getDate() >= date.getDate() ? 1 : 0;
       return Math.max(1, months + adjust);
     }
 
-    function nextTaxDate(date) {
-      const year = date.getMonth() > 2 ? date.getFullYear() + 1 : date.getFullYear();
-      return new Date(year, 2, 31);
+    function nextTaxDate(date, taxMonth) {
+      const safeTaxMonth = sanitizeMonth(taxMonth, 3);
+      const monthIndex = safeTaxMonth - 1;
+      const year = date.getMonth() >= monthIndex ? date.getFullYear() + 1 : date.getFullYear();
+      return new Date(year, monthIndex + 1, 0);
     }
 
     function addMonths(date, count) {
@@ -1552,6 +1768,13 @@ if (rest > 0) {
       return numeric;
     }
 
+    function sanitizeMonth(value, fallback = 1) {
+      const month = Math.round(toNumber(value));
+      if (month >= 1 && month <= 12) return month;
+      const safeFallback = Math.round(toNumber(fallback));
+      return safeFallback >= 1 && safeFallback <= 12 ? safeFallback : 1;
+    }
+
     function toNumber(value) {
       if (typeof value === "number") return Number.isFinite(value) ? value : 0;
       if (typeof value === "string") {
@@ -1579,10 +1802,12 @@ if (rest > 0) {
       scenario.currentFlow = {
         date: date.toISOString(),
         available: 0,
+        leisureDeduction: 0,
         allocations: {},
         interest: {},
         taxesPaid: 0,
         taxProvisioned: 0,
+        shortTermPaid: 0,
         thirteenth: 0,
       };
     }
@@ -1613,6 +1838,8 @@ if (rest > 0) {
           return "bloque";
         case "dettes":
           return "dettes";
+        case "projetsCourtTerme":
+        case "projetsLongTerme":
         case "projets":
           return "projets";
         case "compteCourant":
@@ -1650,9 +1877,19 @@ if (rest > 0) {
       scenario.currentFlow.taxesPaid += amount;
     }
 
+    function trackShortTermPayment(scenario, amount) {
+      if (!scenario?.captureFlows || !scenario.currentFlow || amount <= 0) return;
+      scenario.currentFlow.shortTermPaid += amount;
+    }
+
     function noteMonthlyAvailable(scenario, amount) {
       if (!scenario?.captureFlows || !scenario.currentFlow) return;
       scenario.currentFlow.available = amount;
+    }
+
+    function trackLeisureDeduction(scenario, amount) {
+      if (!scenario?.captureFlows || !scenario.currentFlow || amount <= 0) return;
+      scenario.currentFlow.leisureDeduction += amount;
     }
 
     function snapshotAccounts(accounts = {}) {

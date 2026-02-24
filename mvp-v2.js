@@ -4,6 +4,7 @@ const SNAPSHOT_STORAGE_KEY = "smartsaveSnapshots";
 const PROFILE_UPDATE_KEY = "smartsaveProfileUpdated";
 const PROFILE_VERSION_KEY = "smartsaveProfileVersion";
 const SYNC_URL_OVERRIDE_KEY = "smartsaveProfileSyncUrl";
+const CENTRAL_FINANCE_STORAGE_KEY = "smartsaveCentralFinanceData";
 
 const SYNC_ENABLED = true;
 const SYNC_URL = "http://localhost:3000";
@@ -273,17 +274,35 @@ const EXCEPTIONAL_TYPE_LABELS = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  const managedByAppPages = new Set([
+    "smartsave",
+    "actions",
+    "future",
+    "depenses",
+    "score",
+    "mes-depenses",
+  ]);
+  const pageKey = String(document.body?.dataset?.page || "").trim().toLowerCase();
+  if (managedByAppPages.has(pageKey)) return;
+
   const activeUser = loadActiveUser();
   if (!activeUser) {
     showNoProfileMessage();
     return;
   }
-  const formData = loadUserForm(activeUser.id);
-  if (!formData) {
+  const rawFormData = loadUserForm(activeUser.id);
+  if (!rawFormData) {
     showNoProfileMessage();
     return;
   }
+  const centralData = buildCentralizedFinancialData(rawFormData, {
+    userId: activeUser.id,
+    persist: true,
+  });
+  const formData = deepCloneData(centralData.calculationData || rawFormData, {});
+  const taxData = deepCloneData(centralData.taxData || formData, {});
   normalizeExceptionalExpenses(formData);
+  normalizeExceptionalExpenses(taxData);
   hideNoProfileMessage();
   const snapshot = window.SmartSaveSnapshot?.buildSnapshot
     ? window.SmartSaveSnapshot.buildSnapshot(formData, { years: 20, userId: activeUser.id })
@@ -292,7 +311,11 @@ document.addEventListener("DOMContentLoaded", () => {
     saveSnapshot(activeUser.id, snapshot);
     window.__SMARTSAVE_LAST_SNAPSHOT__ = snapshot;
   }
-  const data = buildMvpData(formData, snapshot);
+  const data = buildMvpData(formData, snapshot, {
+    userId: activeUser.id,
+    taxData,
+    centralData,
+  });
   renderScore(data.score);
   renderSituation(data, formData);
   renderRecapSmartSaveAllocation(data);
@@ -309,15 +332,47 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAiCoach();
 });
 
-function buildMvpData(formData, snapshot) {
+function buildMvpData(formData, snapshot, options = {}) {
+  const centralData =
+    options.centralData ||
+    buildCentralizedFinancialData(formData, {
+      userId: options.userId || options.activeUserId || null,
+      monthId: options.monthId || null,
+      persist: options.persistCentralized !== false,
+    });
+  const calculationData = deepCloneData(
+    options.calculationData || centralData?.calculationData || formData || {},
+    {}
+  );
+  const taxData = deepCloneData(options.taxData || centralData?.taxData || calculationData, {});
+  const projectionEngine = window.ProjectionEngine;
+  normalizeExceptionalExpenses(calculationData);
+  normalizeExceptionalExpenses(taxData);
+
   let effectiveSnapshot = snapshot;
   if (!effectiveSnapshot && window.SmartSaveSnapshot?.buildSnapshot) {
-    effectiveSnapshot = window.SmartSaveSnapshot.buildSnapshot(formData, { years: 20 });
+    effectiveSnapshot = window.SmartSaveSnapshot.buildSnapshot(calculationData, { years: 20 });
   }
 
   if (effectiveSnapshot?.outputs) {
     const outputs = effectiveSnapshot.outputs || {};
     const keyMetrics = outputs.keyMetrics || {};
+    const snapshotProjection = outputs.projection || null;
+    const currentHistoryLen = ensureArray(snapshotProjection?.current?.history).length;
+    const smartHistoryLen = ensureArray(snapshotProjection?.smartSave?.history).length;
+    const hasProjectionHistory = currentHistoryLen > 0 || smartHistoryLen > 0;
+    const hasTwentyYearsHistory = Math.max(currentHistoryLen, smartHistoryLen) >= 240;
+    const projectionFromEngine =
+      projectionEngine?.calculateProjection && (!hasProjectionHistory || !hasTwentyYearsHistory)
+        ? projectionEngine.calculateProjection(prepareProjectionInput(calculationData), {
+            months: 240,
+            keepHistory: true,
+          })
+        : null;
+    const projection =
+      projectionFromEngine ||
+      snapshotProjection ||
+      { current: { finalAccounts: { netWorth: 0 } }, smartSave: { finalAccounts: { netWorth: 0 } } };
     const spendingTotals =
       outputs.spendingTotals ||
       keyMetrics.spendingTotals || {
@@ -330,11 +385,9 @@ function buildMvpData(formData, snapshot) {
     return {
       score: outputs.score || { score: 0, level: "SmartSave", pillars: {} },
       allocation: outputs.allocation || { allocations: {}, reste: 0 },
-      projection:
-        outputs.projection ||
-        { current: { finalAccounts: { netWorth: 0 } }, smartSave: { finalAccounts: { netWorth: 0 } } },
+      projection,
       spendingAnalysis: outputs.spendingAnalysis || null,
-      taxProvision: outputs.taxSummary || null,
+      taxProvision: outputs.taxSummary || getTaxProvisionInfo(taxData, outputs.allocation || null),
       metrics: {
         monthlyNetIncome: toNumber(keyMetrics.income),
       },
@@ -343,13 +396,16 @@ function buildMvpData(formData, snapshot) {
       securityMonths: toNumber(keyMetrics.safetyMonths),
       spendingTotals,
       debtMonthly: toNumber(keyMetrics.debtMonthly),
+      centralData: {
+        monthId: centralData?.monthId || null,
+        budget: deepCloneData(centralData?.budget || {}, {}),
+      },
     };
   }
 
-  const sanitized = JSON.parse(JSON.stringify(formData || {}));
+  const sanitized = deepCloneData(calculationData, {});
   const scoreEngine = window.FinancialScoreEngine;
   const allocationEngine = window.AllocationEngine;
-  const projectionEngine = window.ProjectionEngine;
 
   const score = scoreEngine?.calculateScore
     ? scoreEngine.calculateScore(sanitized)
@@ -421,7 +477,7 @@ function buildMvpData(formData, snapshot) {
     allocation,
     projection,
     spendingAnalysis,
-    taxProvision: getTaxProvisionInfo(formData, allocation),
+    taxProvision: getTaxProvisionInfo(taxData, allocation),
     metrics: {
       monthlyNetIncome: monthlyIncome,
     },
@@ -430,6 +486,10 @@ function buildMvpData(formData, snapshot) {
     securityMonths,
     spendingTotals: spendingTotalsFallback,
     debtMonthly,
+    centralData: {
+      monthId: centralData?.monthId || null,
+      budget: deepCloneData(centralData?.budget || {}, {}),
+    },
   };
 }
 
@@ -3665,7 +3725,7 @@ function pushToGoogleSheet(profileId, smartsaveFormData) {
     });
 }
 
-function computeSmartSaveLimitsForSync(formData = {}) {
+function computeSmartSaveLimitsForSync(formData = {}, options = {}) {
   const limits = {
     currentAccountLimit: 0,
     savingsAccountLimit: 0,
@@ -3675,7 +3735,13 @@ function computeSmartSaveLimitsForSync(formData = {}) {
     calculatedAt: new Date().toISOString(),
   };
   try {
-    const source = JSON.parse(JSON.stringify(formData || {}));
+    const centralData = buildCentralizedFinancialData(formData, {
+      userId: options.userId || options.profileId || formData?.profileId || formData?.id || null,
+      monthId: options.monthId || null,
+      persist: false,
+    });
+    const source = deepCloneData(centralData?.calculationData || formData || {}, {});
+    const taxSource = deepCloneData(centralData?.taxData || source, {});
     const allocationEngine = window.AllocationEngine;
     if (allocationEngine && typeof allocationEngine.calculateAllocation === "function") {
       const allocation = allocationEngine.calculateAllocation(source);
@@ -3686,7 +3752,7 @@ function computeSmartSaveLimitsForSync(formData = {}) {
     }
     const taxEngine = window.TaxEngine || window.SmartSaveTaxEngine;
     if (taxEngine && typeof taxEngine.calculateAnnualTax === "function") {
-      const taxData = taxEngine.calculateAnnualTax(source) || {};
+      const taxData = taxEngine.calculateAnnualTax(taxSource) || {};
       const monthlyProvision = taxData?.monthlyProvision || {};
       limits.taxProvisionLimit = Math.max(
         0,
@@ -3718,7 +3784,7 @@ function buildSyncProfilePayload(profileId, smartsaveFormData) {
   if (!payload.updatedAt) {
     payload.updatedAt = new Date().toISOString();
   }
-  const limits = computeSmartSaveLimitsForSync(payload);
+  const limits = computeSmartSaveLimitsForSync(payload, { userId: stableProfileId || null });
   payload.smartSaveLimits = limits;
   payload.smartSaveCurrentLimit = limits.currentAccountLimit;
   payload.smartSaveSavingsLimit = limits.savingsAccountLimit;
@@ -3808,6 +3874,7 @@ const ACCOUNT_PRIMARY_ASSET = {
   tax: "taxProvision",
   investments: "investments",
   pillar3a: "pillar3a",
+  projects: "projects",
 };
 
 const ACCOUNT_ASSET_ALIASES = {
@@ -3823,10 +3890,231 @@ const ACCOUNT_ASSET_ALIASES = {
   tax: ["taxProvision", "impotsProvision", "provisionImpots", "impots", "taxesProvision", "tax"],
   investments: ["investments", "investmentAccount", "portfolio", "portefeuille", "placements"],
   pillar3a: ["pillar3a", "pilier3a", "thirdPillarAmount", "thirdPillar", "pillar3", "thirdPillarValue"],
+  projects: [
+    "projects",
+    "projectAccount",
+    "shortTermAccount",
+    "shortTermGoal",
+    "projets",
+    "projetsLongTerme",
+    "projetsCourtTerme",
+    "compteCourtTerme",
+  ],
 };
 
+const GENERIC_PROJECT_LABELS = new Set(
+  [
+    "projets",
+    "projects",
+    "projet court terme",
+    "projets court terme",
+    "objectif court terme",
+    "compte court terme",
+    "objectif ct",
+    "compte projets",
+  ].map((item) => normalizeString(item).toLowerCase())
+);
+
+function normalizeAccountToken(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function resolveCanonicalAccountKey(accountKey) {
+  const raw = String(accountKey || "").trim();
+  if (!raw) return "";
+  if (ACCOUNT_PRIMARY_ASSET[raw]) return raw;
+
+  const token = normalizeAccountToken(raw);
+  if (!token) return raw;
+
+  if (
+    [
+      "current",
+      "comptecourant",
+      "checking",
+      "paymentaccount",
+      "paymentbalance",
+      "courant",
+    ].includes(token)
+  ) {
+    return "current";
+  }
+  if (
+    [
+      "security",
+      "securite",
+      "savings",
+      "savingsaccount",
+      "securitysavings",
+      "securitybalance",
+      "epargne",
+      "emergencyfund",
+      "blocked",
+      "securityblocked",
+      "blockedaccounts",
+      "blockedaccount",
+      "comptebloque",
+    ].includes(token)
+  ) {
+    return "security";
+  }
+  if (
+    [
+      "tax",
+      "taxprovision",
+      "impots",
+      "impotsprovision",
+      "provisionimpots",
+      "taxesprovision",
+    ].includes(token)
+  ) {
+    return "tax";
+  }
+  if (
+    [
+      "investments",
+      "investissement",
+      "investissements",
+      "investmentaccount",
+      "portfolio",
+      "portefeuille",
+      "placements",
+    ].includes(token)
+  ) {
+    return "investments";
+  }
+  if (
+    [
+      "pillar3a",
+      "pilier3a",
+      "thirdpillaramount",
+      "thirdpillar",
+      "pillar3",
+      "thirdpillarvalue",
+    ].includes(token)
+  ) {
+    return "pillar3a";
+  }
+  if (
+    [
+      "projects",
+      "projectaccount",
+      "shorttermaccount",
+      "shorttermgoal",
+      "projets",
+      "projetslongterme",
+      "projetscourtterme",
+      "comptecourtterme",
+    ].includes(token)
+  ) {
+    return "projects";
+  }
+
+  return raw;
+}
+
+function buildKnownAccountTokenSet() {
+  const tokens = new Set();
+  Object.keys(ACCOUNT_PRIMARY_ASSET).forEach((key) => {
+    const token = normalizeAccountToken(key);
+    if (token) tokens.add(token);
+  });
+  Object.keys(ACCOUNT_ASSET_ALIASES).forEach((key) => {
+    const keyToken = normalizeAccountToken(key);
+    if (keyToken) tokens.add(keyToken);
+    const aliases = ACCOUNT_ASSET_ALIASES[key];
+    if (!Array.isArray(aliases)) return;
+    aliases.forEach((alias) => {
+      const aliasToken = normalizeAccountToken(alias);
+      if (aliasToken) tokens.add(aliasToken);
+    });
+  });
+  return tokens;
+}
+
+const KNOWN_ACCOUNT_TOKENS = buildKnownAccountTokenSet();
+const PROJECT_ACCOUNT_TOKENS = new Set(
+  (ACCOUNT_ASSET_ALIASES.projects || ["projects"])
+    .map((value) => normalizeAccountToken(value))
+    .filter(Boolean)
+    .concat("projects")
+);
+
+function prettifyAccountLabelFromKey(accountKey) {
+  const raw = String(accountKey || "").trim();
+  if (!raw) return "";
+  const noPrefix = raw.replace(/^custom[-_:]?/i, "");
+  const cleaned = noPrefix.replace(/[_-]+/g, " ").trim();
+  if (!cleaned) return "";
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+function resolveCustomAccountLabel(accountKey, accountLabel) {
+  const canonicalAccountKey = resolveCanonicalAccountKey(accountKey);
+  const token = normalizeAccountToken(canonicalAccountKey);
+  const explicitLabel = String(accountLabel || "").trim();
+
+  if (token.startsWith("custom")) {
+    return explicitLabel || prettifyAccountLabelFromKey(accountKey);
+  }
+
+  const isKnown = KNOWN_ACCOUNT_TOKENS.has(token);
+  if (!isKnown) {
+    return explicitLabel || prettifyAccountLabelFromKey(accountKey);
+  }
+
+  if (PROJECT_ACCOUNT_TOKENS.has(token)) {
+    const normalizedLabel = normalizeString(explicitLabel).toLowerCase();
+    if (explicitLabel && !GENERIC_PROJECT_LABELS.has(normalizedLabel)) {
+      return explicitLabel;
+    }
+  }
+
+  return "";
+}
+
+function adjustCustomOtherAsset(formData, accountLabel, delta) {
+  if (!formData || !accountLabel) return;
+  const normalizedDelta = Number.isFinite(delta) ? delta : toNumber(delta);
+  if (!normalizedDelta) return;
+
+  formData.assets = formData.assets || {};
+  if (!Array.isArray(formData.assets.otherAssets)) {
+    formData.assets.otherAssets = [];
+  }
+
+  const safeLabel = String(accountLabel).trim();
+  if (!safeLabel) return;
+  const safeName = normalizeString(safeLabel).toLowerCase();
+  const entries = formData.assets.otherAssets;
+  let targetEntry = entries.find((entry) => {
+    const candidate = String(entry?.name || entry?.label || entry?.type || "").trim();
+    return normalizeString(candidate).toLowerCase() === safeName;
+  });
+
+  if (!targetEntry) {
+    targetEntry = {
+      name: safeLabel,
+      label: safeLabel,
+      amount: 0,
+      purpose: "anticipation",
+    };
+    entries.push(targetEntry);
+  }
+
+  targetEntry.name = safeLabel;
+  targetEntry.label = safeLabel;
+  targetEntry.amount = toNumber(targetEntry.amount ?? targetEntry.balance ?? targetEntry.value) + normalizedDelta;
+  formData.assets.hasOtherAccounts = "oui";
+}
+
 function resolveAccountAssetKeys(accountKey) {
-  const normalizedKey = String(accountKey || "").trim();
+  const normalizedKey = resolveCanonicalAccountKey(accountKey);
   if (!normalizedKey) return [];
   const aliases = ACCOUNT_ASSET_ALIASES[normalizedKey];
   if (Array.isArray(aliases) && aliases.length) return aliases;
@@ -3834,19 +4122,31 @@ function resolveAccountAssetKeys(accountKey) {
   return [primary];
 }
 
-function adjustProfileAsset(formData, accountKey, delta) {
+function adjustProfileAsset(formData, accountKey, delta, options = {}) {
   if (!formData) return;
   formData.assets = formData.assets || {};
   const normalized = Number.isFinite(delta) ? delta : toNumber(delta);
   if (!normalized) return;
+  const canonicalAccountKey = resolveCanonicalAccountKey(accountKey);
+  const customLabel = resolveCustomAccountLabel(canonicalAccountKey, options?.accountLabel);
 
-  const keys = resolveAccountAssetKeys(accountKey);
+  const keys = resolveAccountAssetKeys(canonicalAccountKey);
   if (!keys.length) return;
-  const primaryKey = ACCOUNT_PRIMARY_ASSET[accountKey] || keys[0];
+  const primaryKey = ACCOUNT_PRIMARY_ASSET[canonicalAccountKey] || keys[0];
 
   if (normalized > 0) {
     const current = toNumber(formData.assets[primaryKey]);
     formData.assets[primaryKey] = current + normalized;
+    if (canonicalAccountKey === "investments") {
+      formData.investments =
+        formData.investments && typeof formData.investments === "object"
+          ? formData.investments
+          : {};
+      formData.investments.hasInvestments = "oui";
+    }
+    if (customLabel) {
+      adjustCustomOtherAsset(formData, customLabel, normalized);
+    }
     return;
   }
 
@@ -3863,6 +4163,9 @@ function adjustProfileAsset(formData, accountKey, delta) {
   if (remaining > 0) {
     const current = toNumber(formData.assets[primaryKey]);
     formData.assets[primaryKey] = current - remaining;
+  }
+  if (customLabel) {
+    adjustCustomOtherAsset(formData, customLabel, normalized);
   }
 }
 
@@ -3911,12 +4214,46 @@ function upsertProfileIncomeFromTransaction(entry, profile, amount) {
   profile.incomes.entries = entries;
 }
 
+function resolveEntryFiscalYear(entry = {}) {
+  const raw = entry?.date || entry?.createdAt || new Date().toISOString();
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return new Date().getFullYear();
+  return parsed.getFullYear();
+}
+
+function adjustThirdPillarPaidYtd(profile, delta, entry = {}) {
+  if (!profile) return;
+  const normalizedDelta = toNumber(delta);
+  if (!normalizedDelta) return;
+
+  const fiscalYear = resolveEntryFiscalYear(entry);
+  profile.assets = profile.assets && typeof profile.assets === "object" ? profile.assets : {};
+  profile.taxes = profile.taxes && typeof profile.taxes === "object" ? profile.taxes : {};
+
+  const storedYearRaw =
+    profile.assets.thirdPillarPaidYTDYear ?? profile.taxes.thirdPillarPaidYTDYear ?? fiscalYear;
+  const storedYear = Math.round(toNumber(storedYearRaw)) || fiscalYear;
+  const currentYtd = Math.max(
+    0,
+    toNumber(profile.assets.thirdPillarPaidYTD ?? profile.taxes.thirdPillarPaidYTD ?? 0)
+  );
+  const baseYtd = storedYear === fiscalYear ? currentYtd : 0;
+  const nextYtd = Math.max(0, baseYtd + normalizedDelta);
+
+  profile.assets.thirdPillarPaidYTD = nextYtd;
+  profile.taxes.thirdPillarPaidYTD = nextYtd;
+  profile.assets.thirdPillarPaidYTDYear = fiscalYear;
+  profile.taxes.thirdPillarPaidYTDYear = fiscalYear;
+}
+
 function applyTransactionToProfile(entry, profile) {
   if (!entry || !profile) return;
   const amount = Math.max(0, toNumber(entry.amount));
   if (!amount) return;
   if (entry.type === "income") {
-    adjustProfileAsset(profile, entry.account || "current", amount);
+    adjustProfileAsset(profile, entry.account || "current", amount, {
+      accountLabel: entry.accountLabel || entry.account,
+    });
     // Keep form income baseline stable: auto-generated monthly apply entries
     // must not mutate recurring income settings.
     const isAutoGeneratedMonthlyIncome =
@@ -3925,12 +4262,30 @@ function applyTransactionToProfile(entry, profile) {
       upsertProfileIncomeFromTransaction(entry, profile, amount);
     }
   } else if (entry.type === "expense") {
-    adjustProfileAsset(profile, entry.account || "current", -amount);
+    adjustProfileAsset(profile, entry.account || "current", -amount, {
+      accountLabel: entry.accountLabel || entry.account,
+    });
   } else if (entry.type === "transfer") {
     const from = entry.from || "current";
     const to = entry.to || from;
-    if (from) adjustProfileAsset(profile, from, -amount);
-    if (to) adjustProfileAsset(profile, to, amount);
+    const fromKey = resolveCanonicalAccountKey(from);
+    const toKey = resolveCanonicalAccountKey(to);
+    if (from) {
+      adjustProfileAsset(profile, fromKey || from, -amount, {
+        accountLabel: entry.fromLabel || from,
+      });
+    }
+    if (to) {
+      adjustProfileAsset(profile, toKey || to, amount, {
+        accountLabel: entry.toLabel || to,
+      });
+    }
+    if (toKey === "pillar3a") {
+      adjustThirdPillarPaidYtd(profile, amount, entry);
+    }
+    if (fromKey === "pillar3a") {
+      adjustThirdPillarPaidYtd(profile, -amount, entry);
+    }
   }
 }
 
@@ -3964,6 +4319,497 @@ function loadUserForm(userId) {
   const data = store[userId] || store.__default;
   if (!data) return null;
   return JSON.parse(JSON.stringify(data));
+}
+
+function deepCloneData(value, fallback = null) {
+  try {
+    const cloned = JSON.parse(JSON.stringify(value));
+    if (cloned == null) return fallback;
+    return cloned;
+  } catch (_error) {
+    return fallback;
+  }
+}
+
+function getFallbackMonthId(reference = new Date()) {
+  const date = reference instanceof Date ? reference : new Date(reference);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function normalizeBudgetLineItems(items = [], labelPrefix = "Ligne") {
+  return ensureArray(items).map((item = {}, index) => {
+    const id = String(item.id || `${labelPrefix.toLowerCase()}-${index + 1}`).trim();
+    const fallbackLabel = `${labelPrefix} ${index + 1}`;
+    const label = String(item.label || item.name || fallbackLabel).trim() || fallbackLabel;
+    return {
+      id: id || `${labelPrefix.toLowerCase()}-${index + 1}`,
+      label,
+      amount: Math.max(0, toNumber(item.amount)),
+    };
+  });
+}
+
+function normalizeMonthlyBudgetSnapshot(budget = {}) {
+  const incomeItems = normalizeBudgetLineItems(budget.incomeItems, "Revenu").filter(
+    (item) => item.amount > 0 || item.label
+  );
+  const fixedItems = normalizeBudgetLineItems(budget.fixedItems, "Charge fixe").filter(
+    (item) => item.amount > 0 || item.label
+  );
+  const mandatoryItems = normalizeBudgetLineItems(
+    budget.mandatoryItems,
+    "Charge obligatoire"
+  ).filter((item) => item.amount > 0 || item.label);
+
+  const incomeFromItems = incomeItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0);
+  const fixedFromItems = fixedItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0);
+  const mandatoryFromItems = mandatoryItems.reduce(
+    (sum, item) => sum + Math.max(0, toNumber(item.amount)),
+    0
+  );
+  const variableFromCategories = ensureArray(budget.variableCategories).reduce((sum, item = {}) => {
+    const monthly = item.monthlyAmount != null ? item.monthlyAmount : item.amount;
+    return sum + Math.max(0, toNumber(monthly));
+  }, 0);
+
+  const totalIncome = Math.max(
+    0,
+    toNumber(budget.totalIncome != null ? budget.totalIncome : incomeFromItems)
+  );
+  const fixedTotal = Math.max(
+    0,
+    toNumber(budget.fixedTotal != null ? budget.fixedTotal : fixedFromItems)
+  );
+  const mandatoryTotal = Math.max(
+    0,
+    toNumber(budget.mandatoryTotal != null ? budget.mandatoryTotal : mandatoryFromItems)
+  );
+  const variablePlanned = Math.max(
+    0,
+    toNumber(
+      budget.variablePlanned != null ? budget.variablePlanned : variableFromCategories
+    )
+  );
+
+  return {
+    incomeItems,
+    totalIncome,
+    fixedItems,
+    fixedTotal,
+    mandatoryItems,
+    mandatoryTotal,
+    variablePlanned,
+    source: String(budget.source || "").trim() || null,
+    savedAt: budget.savedAt || null,
+    hasIncomeBudget: totalIncome > 0 || incomeItems.length > 0,
+    hasFixedBudget: fixedTotal > 0 || fixedItems.length > 0,
+    hasMandatoryBudget: mandatoryTotal > 0 || mandatoryItems.length > 0,
+    hasVariablePlanned:
+      budget.variablePlanned != null || variableFromCategories > 0 || variablePlanned > 0,
+  };
+}
+
+function buildBudgetIncomeEntries(budget = {}) {
+  const incomeItems = ensureArray(budget.incomeItems);
+  const entries = incomeItems
+    .map((item = {}, index) => {
+      const amount = Math.max(0, toNumber(item.amount));
+      if (!amount) return null;
+      const fallbackLabel = `Revenu ${index + 1}`;
+      const label = String(item.label || item.name || fallbackLabel).trim() || fallbackLabel;
+      return {
+        sourceType: "budget",
+        source: label,
+        label,
+        amount,
+        amountType: "net",
+        frequency: "mensuel",
+      };
+    })
+    .filter(Boolean);
+  if (entries.length) return entries;
+  const totalIncome = Math.max(0, toNumber(budget.totalIncome));
+  if (!totalIncome) return [];
+  return [
+    {
+      sourceType: "budget",
+      source: "Revenu budget mensuel",
+      label: "Revenu budget mensuel",
+      amount: totalIncome,
+      amountType: "net",
+      frequency: "mensuel",
+    },
+  ];
+}
+
+function buildBudgetExpenseEntries(items = [], fallbackLabel = "Charge") {
+  return ensureArray(items)
+    .map((item = {}, index) => {
+      const amount = Math.max(0, toNumber(item.amount));
+      if (!amount) return null;
+      const label = String(item.label || item.name || `${fallbackLabel} ${index + 1}`).trim();
+      return {
+        label: label || `${fallbackLabel} ${index + 1}`,
+        name: label || `${fallbackLabel} ${index + 1}`,
+        amount,
+        frequency: "mensuel",
+        sourceType: "budget",
+      };
+    })
+    .filter(Boolean);
+}
+
+function applyUserSettingsToFinancialData(target = {}, userSettings = {}) {
+  const safeTarget = target && typeof target === "object" ? target : {};
+  const safeSettings =
+    userSettings && typeof userSettings === "object" && !Array.isArray(userSettings)
+      ? userSettings
+      : {};
+  const smartSettings = deepCloneData(safeSettings.smartSaveSettings || {}, {}) || {};
+  const advancedSettings = deepCloneData(safeSettings.advancedSettings || {}, {}) || {};
+  if (!Object.keys(smartSettings).length && !Object.keys(advancedSettings).length) {
+    return safeTarget;
+  }
+
+  safeTarget.smartSaveSettings = smartSettings;
+  safeTarget.advancedSettings = advancedSettings;
+  safeTarget.userSettings =
+    safeTarget.userSettings && typeof safeTarget.userSettings === "object"
+      ? safeTarget.userSettings
+      : {};
+  safeTarget.userSettings.smartSaveSettings = smartSettings;
+  safeTarget.userSettings.advancedSettings = advancedSettings;
+
+  safeTarget.allocationPlan =
+    safeTarget.allocationPlan && typeof safeTarget.allocationPlan === "object"
+      ? safeTarget.allocationPlan
+      : {};
+  const priorityOrder = String(
+    smartSettings?.allocationPriority?.order || safeTarget.allocationPlan.smartSavePriorityOrder || ""
+  ).trim();
+  if (priorityOrder) {
+    safeTarget.allocationPlan.smartSavePriorityOrder = priorityOrder;
+  }
+
+  safeTarget.taxes =
+    safeTarget.taxes && typeof safeTarget.taxes === "object" ? safeTarget.taxes : {};
+  const taxesSettings =
+    smartSettings?.taxes && typeof smartSettings.taxes === "object" ? smartSettings.taxes : {};
+  const taxesEnabled = taxesSettings.enabled !== false;
+  const provisionMode = String(taxesSettings.provisionMode || "").toLowerCase();
+  if (!taxesEnabled || provisionMode === "recommendations") {
+    safeTarget.taxes.taxMode = "PAY_LATER";
+  } else if (!safeTarget.taxes.taxMode) {
+    safeTarget.taxes.taxMode = "AUTO_PROVISION";
+  }
+  if (taxesSettings.priority != null && taxesSettings.priority !== "") {
+    safeTarget.taxes.taxPriority = String(taxesSettings.priority).toLowerCase();
+  }
+  if (taxesSettings.provisionMode != null && taxesSettings.provisionMode !== "") {
+    safeTarget.taxes.taxProvisionMode = String(taxesSettings.provisionMode).toLowerCase();
+  }
+
+  const savingsUsage =
+    advancedSettings?.savingsUsage && typeof advancedSettings.savingsUsage === "object"
+      ? advancedSettings.savingsUsage
+      : {};
+  safeTarget.taxes.allowTaxBalanceTopUp = true;
+  if (savingsUsage.pullOrder != null && savingsUsage.pullOrder !== "") {
+    safeTarget.taxes.taxPullOrder = String(savingsUsage.pullOrder);
+  }
+  if (savingsUsage.savingsFloor != null && savingsUsage.savingsFloor !== "") {
+    const floor = Math.max(0, toNumber(savingsUsage.savingsFloor));
+    safeTarget.taxes.savingsFloor = floor;
+    safeTarget.taxes.taxSavingsFloor = floor;
+  }
+  const advancedExceptions =
+    advancedSettings?.exceptions && typeof advancedSettings.exceptions === "object"
+      ? advancedSettings.exceptions
+      : {};
+  if (advancedExceptions.urgentTaxBoostOneMonth != null) {
+    safeTarget.taxes.urgentTaxBoostOneMonth = Boolean(
+      advancedExceptions.urgentTaxBoostOneMonth
+    );
+  }
+  return safeTarget;
+}
+
+function mergeBudgetIntoCalculationData(baseFormData = {}, budget = {}, options = {}) {
+  const merged = deepCloneData(baseFormData, {}) || {};
+  const budgetSource = String(budget.source || "").trim().toLowerCase();
+  merged.incomes = merged.incomes && typeof merged.incomes === "object" ? merged.incomes : {};
+  merged.expenses = merged.expenses && typeof merged.expenses === "object" ? merged.expenses : {};
+  merged.allocationPlan =
+    merged.allocationPlan && typeof merged.allocationPlan === "object"
+      ? merged.allocationPlan
+      : {};
+
+  const budgetIncomeEntries = buildBudgetIncomeEntries(budget);
+  if (budgetIncomeEntries.length) {
+    // Budget income is the monthly envelope already shared across the household.
+    merged.incomes.entries = budgetIncomeEntries;
+    merged.incomes.spouseNetIncome = 0;
+    merged.incomes.spouseIncome = 0;
+    merged.spouseIncome = 0;
+  }
+
+  const fixedEntries = buildBudgetExpenseEntries(budget.fixedItems, "Charge fixe");
+  if (fixedEntries.length) {
+    merged.expenses.fixed = fixedEntries;
+  } else if (budgetSource === "manual-budget" && toNumber(budget.fixedTotal) > 0) {
+    merged.expenses.fixed = [
+      {
+        label: "Charges fixes (budget)",
+        name: "Charges fixes (budget)",
+        amount: Math.max(0, toNumber(budget.fixedTotal)),
+        frequency: "mensuel",
+        sourceType: "budget",
+      },
+    ];
+  } else if (budgetSource === "manual-budget") {
+    merged.expenses.fixed = [];
+  }
+
+  const mandatoryEntries = buildBudgetExpenseEntries(
+    budget.mandatoryItems,
+    "Charge obligatoire"
+  );
+  if (mandatoryEntries.length) {
+    merged.expenses.variable = mandatoryEntries;
+  } else if (budgetSource === "manual-budget" && toNumber(budget.mandatoryTotal) > 0) {
+    merged.expenses.variable = [
+      {
+        label: "Dépenses obligatoires (budget)",
+        name: "Dépenses obligatoires (budget)",
+        amount: Math.max(0, toNumber(budget.mandatoryTotal)),
+        frequency: "mensuel",
+        sourceType: "budget",
+      },
+    ];
+  } else if (budgetSource === "manual-budget") {
+    merged.expenses.variable = [];
+  }
+
+  if (budget.hasVariablePlanned) {
+    merged.allocationPlan.leisureMonthly = Math.max(0, toNumber(budget.variablePlanned));
+  } else if (
+    merged.allocationPlan.leisureMonthly == null &&
+    options.userSettings?.allocationPlan?.leisureMonthly != null
+  ) {
+    merged.allocationPlan.leisureMonthly = Math.max(
+      0,
+      toNumber(options.userSettings.allocationPlan.leisureMonthly)
+    );
+  }
+
+  applyUserSettingsToFinancialData(merged, options.userSettings || {});
+
+  merged.centralFinance =
+    merged.centralFinance && typeof merged.centralFinance === "object"
+      ? merged.centralFinance
+      : {};
+  merged.centralFinance.source = "form+budget";
+  merged.centralFinance.updatedAt = new Date().toISOString();
+  return merged;
+}
+
+function mergeBudgetIntoTaxData(baseFormData = {}, budget = {}, options = {}) {
+  const taxData = deepCloneData(baseFormData, {}) || {};
+  taxData.incomes = taxData.incomes && typeof taxData.incomes === "object" ? taxData.incomes : {};
+  taxData.expenses =
+    taxData.expenses && typeof taxData.expenses === "object" ? taxData.expenses : {};
+  taxData.allocationPlan =
+    taxData.allocationPlan && typeof taxData.allocationPlan === "object"
+      ? taxData.allocationPlan
+      : {};
+
+  const existingIncomeEntries = ensureArray(taxData.incomes.entries);
+  const existingIncomeTotal = existingIncomeEntries.reduce(
+    (sum, item = {}) => sum + Math.max(0, toNumber(item.amount)),
+    0
+  );
+  if (existingIncomeTotal <= 0) {
+    const budgetIncomeEntries = buildBudgetIncomeEntries(budget);
+    if (budgetIncomeEntries.length) {
+      taxData.incomes.entries = budgetIncomeEntries;
+    }
+  }
+
+  if (!ensureArray(taxData.expenses.fixed).length) {
+    const fixedEntries = buildBudgetExpenseEntries(budget.fixedItems, "Charge fixe");
+    if (fixedEntries.length) taxData.expenses.fixed = fixedEntries;
+  }
+  if (!ensureArray(taxData.expenses.variable).length) {
+    const mandatoryEntries = buildBudgetExpenseEntries(
+      budget.mandatoryItems,
+      "Charge obligatoire"
+    );
+    if (mandatoryEntries.length) taxData.expenses.variable = mandatoryEntries;
+  }
+  if (
+    taxData.allocationPlan.leisureMonthly == null &&
+    budget.hasVariablePlanned
+  ) {
+    taxData.allocationPlan.leisureMonthly = Math.max(0, toNumber(budget.variablePlanned));
+  } else if (
+    taxData.allocationPlan.leisureMonthly == null &&
+    options.userSettings?.allocationPlan?.leisureMonthly != null
+  ) {
+    taxData.allocationPlan.leisureMonthly = Math.max(
+      0,
+      toNumber(options.userSettings.allocationPlan.leisureMonthly)
+    );
+  }
+
+  applyUserSettingsToFinancialData(taxData, options.userSettings || {});
+
+  taxData.centralFinance =
+    taxData.centralFinance && typeof taxData.centralFinance === "object"
+      ? taxData.centralFinance
+      : {};
+  taxData.centralFinance.source = "form+budget";
+  taxData.centralFinance.updatedAt = new Date().toISOString();
+  return taxData;
+}
+
+function persistCentralizedFinancialData(userId, payload = {}) {
+  if (!userId) return;
+  try {
+    const raw = localStorage.getItem(CENTRAL_FINANCE_STORAGE_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    const base = store && typeof store === "object" ? store : {};
+    base[userId] = {
+      monthId: payload.monthId || null,
+      updatedAt: payload.updatedAt || new Date().toISOString(),
+      budget: deepCloneData(payload.budget || {}, {}),
+      userSettings: deepCloneData(payload.userSettings || {}, {}),
+      calculationData: deepCloneData(payload.calculationData || {}, {}),
+      taxData: deepCloneData(payload.taxData || {}, {}),
+    };
+    localStorage.setItem(CENTRAL_FINANCE_STORAGE_KEY, JSON.stringify(base));
+  } catch (_error) {
+    // ignore storage issues
+  }
+}
+
+function buildCentralizedFinancialData(formData = {}, options = {}) {
+  const baseFormData = deepCloneData(formData || {}, {}) || {};
+  const userId = options.userId || options.activeUserId || loadActiveUser()?.id || null;
+  const store = window.SmartSaveMonthlyStore;
+  let monthId = options.monthId || null;
+  let userSettings = {};
+  let budget = null;
+  let userState = null;
+
+  if (store && userId) {
+    userState =
+      typeof store.getStateForUser === "function" ? store.getStateForUser(userId) : null;
+    if (userState && typeof userState === "object") {
+      monthId = monthId || String(userState.currentMonthId || "").trim() || null;
+      userSettings = deepCloneData(userState.userSettings || {}, {}) || {};
+      if (monthId && typeof store.getMonthlyBudgetForMonth === "function") {
+        budget = deepCloneData(
+          store.getMonthlyBudgetForMonth({
+            userId,
+            monthId,
+            formData: baseFormData,
+          }) || null,
+          null
+        );
+      } else if (monthId) {
+        budget = deepCloneData(userState?.monthlyPlan?.[monthId]?.monthlyBudget || null, null);
+      }
+    }
+    if (!monthId) {
+      if (typeof store.getMonthId === "function") {
+        monthId = String(store.getMonthId(new Date()) || "").trim() || null;
+      } else {
+        monthId = getFallbackMonthId(new Date());
+      }
+    }
+    if (!budget && monthId && typeof store.getMonthlyBudgetForMonth === "function") {
+      budget = deepCloneData(
+        store.getMonthlyBudgetForMonth({
+          userId,
+          monthId,
+          formData: baseFormData,
+        }) || null,
+        null
+      );
+    }
+    if (!budget && monthId && typeof store.getStateForUser === "function") {
+      const refreshed = store.getStateForUser(userId);
+      if (refreshed && typeof refreshed === "object") {
+        userState = refreshed;
+      }
+      budget = deepCloneData(refreshed?.monthlyPlan?.[monthId]?.monthlyBudget || null, null);
+      if (!Object.keys(userSettings).length) {
+        userSettings = deepCloneData(refreshed?.userSettings || {}, {}) || {};
+      }
+    }
+  } else if (!monthId) {
+    monthId = getFallbackMonthId(new Date());
+  }
+
+  const settingsSnapshot =
+    userState && monthId
+      ? deepCloneData(userState?.monthlyPlan?.[monthId]?.settingsSnapshot || null, null)
+      : null;
+  const useSnapshotSettings = options.useSnapshotSettings === true;
+  const forceRecompute = Boolean(userSettings?.advancedSettings?.overrides?.forceRecompute);
+  const snapshotSmart =
+    settingsSnapshot?.smart && typeof settingsSnapshot.smart === "object"
+      ? settingsSnapshot.smart
+      : settingsSnapshot?.smartSave && typeof settingsSnapshot.smartSave === "object"
+      ? settingsSnapshot.smartSave
+      : null;
+  const snapshotAdvanced =
+    settingsSnapshot?.advanced && typeof settingsSnapshot.advanced === "object"
+      ? settingsSnapshot.advanced
+      : null;
+  if (useSnapshotSettings && settingsSnapshot && !forceRecompute) {
+    userSettings = {
+      ...userSettings,
+      ...(snapshotSmart ? { smartSaveSettings: deepCloneData(snapshotSmart, {}) || {} } : {}),
+      ...(snapshotAdvanced ? { advancedSettings: deepCloneData(snapshotAdvanced, {}) || {} } : {}),
+    };
+  }
+
+  const normalizedBudget = normalizeMonthlyBudgetSnapshot(budget || {});
+  const calculationData = mergeBudgetIntoCalculationData(baseFormData, normalizedBudget, {
+    userSettings,
+  });
+  const taxData = mergeBudgetIntoTaxData(baseFormData, normalizedBudget, {
+    userSettings,
+  });
+
+  calculationData.centralFinance = {
+    ...(calculationData.centralFinance || {}),
+    monthId,
+    userId,
+  };
+  taxData.centralFinance = {
+    ...(taxData.centralFinance || {}),
+    monthId,
+    userId,
+  };
+
+  const centralized = {
+    userId,
+    monthId,
+    budget: normalizedBudget,
+    userSettings,
+    calculationData,
+    taxData,
+    updatedAt: new Date().toISOString(),
+  };
+  if (options.persist !== false && userId) {
+    persistCentralizedFinancialData(userId, centralized);
+  }
+  return centralized;
 }
 
 function saveSnapshot(activeUserId, snapshot) {

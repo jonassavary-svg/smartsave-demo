@@ -1,0 +1,2512 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#eef2ff" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <title>SmartSave - Toutes les infos</title>
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
+    <link rel="stylesheet" href="theme-polish.css" />
+    <style>
+      .all-info-main {
+        width: min(1100px, 100% - 2rem);
+        margin: 0 auto;
+        padding: 1.25rem 0 5rem;
+        display: grid;
+        gap: 1rem;
+      }
+
+      .all-info-toolbar {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+      }
+
+      .all-info-toolbar .ghost-btn {
+        min-width: 140px;
+      }
+
+      .all-info-header h1 {
+        margin: 0;
+      }
+
+      .all-info-header p {
+        margin: 0.5rem 0 0;
+        color: rgba(30, 41, 59, 0.8);
+      }
+
+      .all-info-grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .all-info-kpi {
+        border: 1px solid rgba(37, 99, 235, 0.14);
+        border-radius: 0.9rem;
+        padding: 0.85rem;
+        background: rgba(255, 255, 255, 0.75);
+      }
+
+      .all-info-kpi__label {
+        display: block;
+        font-size: 0.82rem;
+        color: rgba(30, 41, 59, 0.74);
+        margin-bottom: 0.35rem;
+      }
+
+      .all-info-kpi__value {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .all-info-table-wrap {
+        overflow-x: auto;
+        border: 1px solid rgba(37, 99, 235, 0.14);
+        border-radius: 0.85rem;
+      }
+
+      .all-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 720px;
+      }
+
+      .all-info-table th,
+      .all-info-table td {
+        border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+        text-align: left;
+        padding: 0.62rem 0.72rem;
+        vertical-align: top;
+      }
+
+      .all-info-table th {
+        background: rgba(239, 246, 255, 0.9);
+        color: #0f172a;
+        font-size: 0.83rem;
+      }
+
+      .all-info-table td {
+        font-size: 0.89rem;
+        color: #172033;
+      }
+
+      .all-info-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .all-info-empty {
+        margin: 0;
+        padding: 0.82rem 0.9rem;
+        border: 1px dashed rgba(148, 163, 184, 0.7);
+        border-radius: 0.85rem;
+        color: rgba(30, 41, 59, 0.78);
+      }
+
+      .all-info-errors {
+        display: none;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 0.85rem;
+        background: rgba(254, 242, 242, 0.9);
+        color: #7f1d1d;
+        padding: 0.75rem 0.9rem;
+      }
+
+      .all-info-errors.is-visible {
+        display: block;
+      }
+    </style>
+  </head>
+  <body class="dashboard app-page profile-page" data-page="profile-all-info" data-mvp>
+    <div class="dashboard-shell app-shell">
+      <header class="dashboard-header app-header">
+        <div class="brand-block">
+          <a class="logo" href="profil.html">
+            <div class="logo-mark" aria-hidden="true">S</div>
+            <span class="logo-text">SmartSave</span>
+          </a>
+          <span class="logo-subtitle">Toutes les infos</span>
+        </div>
+      </header>
+
+      <main class="all-info-main">
+        <section class="card all-info-header">
+          <h1>Toutes les infos utilisees pour la repartition</h1>
+          <p id="all-info-subtitle">Chargement des donnees...</p>
+          <div class="all-info-toolbar">
+            <a class="ghost-btn profile-back" href="profil.html" id="all-info-back">Retour profil</a>
+            <button type="button" class="ghost-btn profile-back" id="all-info-refresh">Rafraichir</button>
+          </div>
+        </section>
+
+        <div id="all-info-errors" class="all-info-errors"></div>
+
+        <section class="card">
+          <h2>Resume rapide</h2>
+          <div id="all-info-kpis" class="all-info-grid"></div>
+        </section>
+
+        <section class="card">
+          <h2>1) Donnees stockees utilisees (chiffres)</h2>
+          <div id="table-inputs"></div>
+        </section>
+
+        <section class="card">
+          <h2>2) Detail des lignes de revenus et depenses utilisees</h2>
+          <div id="table-lines"></div>
+        </section>
+
+        <section class="card">
+          <h2>3) Detail des calculs des limites</h2>
+          <div id="table-targets"></div>
+        </section>
+
+        <section class="card">
+          <h2>4) Calcul du disponible a repartir (avec chiffres)</h2>
+          <div id="table-available"></div>
+        </section>
+
+        <section class="card">
+          <h2>5) Resultat final de la repartition</h2>
+          <div id="table-results"></div>
+        </section>
+
+        <section class="card">
+          <h2>6) Processus complet de repartition (pas a pas)</h2>
+          <div id="table-process"></div>
+        </section>
+
+        <section class="card">
+          <h2>7) Processus complet de rearrangement (pas a pas)</h2>
+          <div id="table-rebalance"></div>
+        </section>
+
+        <section class="card">
+          <h2>8) Effet concret des transferts sur les comptes (avant -> apres)</h2>
+          <div id="table-transfer-audit"></div>
+          <div id="table-transfer-diagnostic" style="margin-top: 0.75rem"></div>
+        </section>
+
+        <section class="card">
+          <h2>9) Projection: details moteur sur les 3 premiers mois</h2>
+          <div id="table-projection-flow"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="monthlyStore.js"></script>
+    <script src="taxEngine.js"></script>
+    <script src="allocationEngine.js"></script>
+    <script src="projectionEngine.js"></script>
+    <script>
+      (function () {
+        const STORAGE_KEYS = {
+          activeUser: "smartsaveActiveUser",
+          formData: "smartsaveFormData",
+          monthlyStore: "smartsaveMonthlyStore",
+          centralFinance: "smartsaveCentralFinanceData",
+        };
+        const MONTH_ID_RE = /^\d{4}-\d{2}$/;
+
+        const toNumber = (value) => {
+          if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+          if (typeof value === "boolean") return value ? 1 : 0;
+          if (typeof value === "string") {
+            const cleaned = value
+              .trim()
+              .replace(/\s+/g, "")
+              .replace(/'/g, "")
+              .replace(/,/g, ".");
+            const parsed = Number(cleaned);
+            if (Number.isFinite(parsed)) return parsed;
+            const fallback = Number(cleaned.replace(/[^0-9.-]/g, ""));
+            return Number.isFinite(fallback) ? fallback : 0;
+          }
+          return 0;
+        };
+
+        const round2 = (value) => Math.round((toNumber(value) + Number.EPSILON) * 100) / 100;
+
+        const ensureArray = (value) => {
+          if (!value) return [];
+          return Array.isArray(value) ? value : [value];
+        };
+
+        const deepClone = (value, fallback) => {
+          try {
+            return JSON.parse(JSON.stringify(value));
+          } catch (_error) {
+            return fallback;
+          }
+        };
+
+        const readStorage = (key, fallback = null) => {
+          try {
+            const raw = localStorage.getItem(key);
+            if (!raw) return fallback;
+            return JSON.parse(raw);
+          } catch (_error) {
+            return fallback;
+          }
+        };
+
+        const formatCurrency = (value) =>
+          new Intl.NumberFormat("fr-CH", {
+            style: "currency",
+            currency: "CHF",
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          }).format(toNumber(value));
+
+        const formatSignedCurrency = (value) => {
+          const amount = toNumber(value);
+          if (!amount) return formatCurrency(0);
+          return `${amount > 0 ? "+" : "-"}${formatCurrency(Math.abs(amount))}`;
+        };
+
+        const formatPercent = (ratio) => `${(toNumber(ratio) * 100).toFixed(1)}%`;
+
+        const formatMonthLabel = (monthId) => {
+          if (!MONTH_ID_RE.test(String(monthId || ""))) return "Mois en cours";
+          const [year, month] = String(monthId).split("-");
+          const date = new Date(Number(year), Number(month) - 1, 1);
+          if (Number.isNaN(date.getTime())) return "Mois en cours";
+          const label = new Intl.DateTimeFormat("fr-CH", {
+            month: "long",
+            year: "numeric",
+          }).format(date);
+          return `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
+        };
+
+        const getCurrentMonthId = (date = new Date()) => {
+          const target = date instanceof Date ? date : new Date(date);
+          if (Number.isNaN(target.getTime())) return "";
+          const month = String(target.getMonth() + 1).padStart(2, "0");
+          return `${target.getFullYear()}-${month}`;
+        };
+
+        const parseMonthId = (monthId) => {
+          if (!MONTH_ID_RE.test(String(monthId || ""))) return null;
+          const [year, month] = String(monthId).split("-");
+          const parsed = new Date(Number(year), Number(month) - 1, 1);
+          return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+
+        const pickMonthId = (userBucket = {}) => {
+          const current = String(userBucket?.currentMonthId || "").trim();
+          if (MONTH_ID_RE.test(current)) return current;
+          const plan = userBucket?.monthlyPlan && typeof userBucket.monthlyPlan === "object"
+            ? userBucket.monthlyPlan
+            : {};
+          const keys = Object.keys(plan).filter((key) => MONTH_ID_RE.test(key));
+          if (keys.length) {
+            keys.sort();
+            return keys[keys.length - 1];
+          }
+          return getCurrentMonthId();
+        };
+
+        const escapeHtml = (value) =>
+          String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+
+        const renderTable = (containerId, columns = [], rows = []) => {
+          const container = document.getElementById(containerId);
+          if (!container) return;
+          if (!rows.length) {
+            container.innerHTML = '<p class="all-info-empty">Aucune donnee disponible.</p>';
+            return;
+          }
+          const headerHtml = columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+          const bodyHtml = rows
+            .map((row) => {
+              const cells = row
+                .map((cell) => `<td>${escapeHtml(cell == null ? "" : cell)}</td>`)
+                .join("");
+              return `<tr>${cells}</tr>`;
+            })
+            .join("");
+          container.innerHTML = `
+            <div class="all-info-table-wrap">
+              <table class="all-info-table">
+                <thead><tr>${headerHtml}</tr></thead>
+                <tbody>${bodyHtml}</tbody>
+              </table>
+            </div>
+          `;
+        };
+
+        const renderKpis = (items = []) => {
+          const container = document.getElementById("all-info-kpis");
+          if (!container) return;
+          container.innerHTML = items
+            .map(
+              (item) => `
+                <article class="all-info-kpi">
+                  <span class="all-info-kpi__label">${escapeHtml(item.label)}</span>
+                  <p class="all-info-kpi__value">${escapeHtml(item.value)}</p>
+                </article>
+              `
+            )
+            .join("");
+        };
+
+        const renderError = (message) => {
+          const node = document.getElementById("all-info-errors");
+          if (!node) return;
+          if (!message) {
+            node.classList.remove("is-visible");
+            node.innerHTML = "";
+            return;
+          }
+          node.classList.add("is-visible");
+          node.innerHTML = escapeHtml(message);
+        };
+
+        function normalizeBudgetLineItems(items = [], labelPrefix = "Ligne") {
+          return ensureArray(items).map((item = {}, index) => {
+            const id = String(item.id || `${labelPrefix.toLowerCase()}-${index + 1}`).trim();
+            const fallbackLabel = `${labelPrefix} ${index + 1}`;
+            const label = String(item.label || item.name || fallbackLabel).trim() || fallbackLabel;
+            return {
+              id: id || `${labelPrefix.toLowerCase()}-${index + 1}`,
+              label,
+              amount: Math.max(0, toNumber(item.amount)),
+            };
+          });
+        }
+
+        function normalizeMonthlyBudgetSnapshot(budget = {}) {
+          const incomeItems = normalizeBudgetLineItems(budget.incomeItems, "Revenu").filter(
+            (item) => item.amount > 0 || item.label
+          );
+          const fixedItems = normalizeBudgetLineItems(budget.fixedItems, "Charge fixe").filter(
+            (item) => item.amount > 0 || item.label
+          );
+          const mandatoryItems = normalizeBudgetLineItems(
+            budget.mandatoryItems,
+            "Charge obligatoire"
+          ).filter((item) => item.amount > 0 || item.label);
+
+          const incomeFromItems = incomeItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0);
+          const fixedFromItems = fixedItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0);
+          const mandatoryFromItems = mandatoryItems.reduce(
+            (sum, item) => sum + Math.max(0, toNumber(item.amount)),
+            0
+          );
+          const variableFromCategories = ensureArray(budget.variableCategories).reduce((sum, item = {}) => {
+            const monthly = item.monthlyAmount != null ? item.monthlyAmount : item.amount;
+            return sum + Math.max(0, toNumber(monthly));
+          }, 0);
+
+          const totalIncome = Math.max(
+            0,
+            toNumber(budget.totalIncome != null ? budget.totalIncome : incomeFromItems)
+          );
+          const fixedTotal = Math.max(
+            0,
+            toNumber(budget.fixedTotal != null ? budget.fixedTotal : fixedFromItems)
+          );
+          const mandatoryTotal = Math.max(
+            0,
+            toNumber(budget.mandatoryTotal != null ? budget.mandatoryTotal : mandatoryFromItems)
+          );
+          const variablePlanned = Math.max(
+            0,
+            toNumber(
+              budget.variablePlanned != null ? budget.variablePlanned : variableFromCategories
+            )
+          );
+
+          return {
+            incomeItems,
+            totalIncome,
+            fixedItems,
+            fixedTotal,
+            mandatoryItems,
+            mandatoryTotal,
+            variablePlanned,
+            hasIncomeBudget: totalIncome > 0 || incomeItems.length > 0,
+            hasFixedBudget: fixedTotal > 0 || fixedItems.length > 0,
+            hasMandatoryBudget: mandatoryTotal > 0 || mandatoryItems.length > 0,
+            hasVariablePlanned:
+              budget.variablePlanned != null || variableFromCategories > 0 || variablePlanned > 0,
+          };
+        }
+
+        function buildBudgetIncomeEntries(budget = {}) {
+          const incomeItems = ensureArray(budget.incomeItems);
+          const entries = incomeItems
+            .map((item = {}, index) => {
+              const amount = Math.max(0, toNumber(item.amount));
+              if (!amount) return null;
+              const fallbackLabel = `Revenu ${index + 1}`;
+              const label = String(item.label || item.name || fallbackLabel).trim() || fallbackLabel;
+              return {
+                sourceType: "budget",
+                source: label,
+                label,
+                amount,
+                amountType: "net",
+                frequency: "mensuel",
+              };
+            })
+            .filter(Boolean);
+          if (entries.length) return entries;
+          const totalIncome = Math.max(0, toNumber(budget.totalIncome));
+          if (!totalIncome) return [];
+          return [
+            {
+              sourceType: "budget",
+              source: "Revenu budget mensuel",
+              label: "Revenu budget mensuel",
+              amount: totalIncome,
+              amountType: "net",
+              frequency: "mensuel",
+            },
+          ];
+        }
+
+        function buildBudgetExpenseEntries(items = [], fallbackLabel = "Charge") {
+          return ensureArray(items)
+            .map((item = {}, index) => {
+              const amount = Math.max(0, toNumber(item.amount));
+              if (!amount) return null;
+              const label = String(item.label || item.name || `${fallbackLabel} ${index + 1}`).trim();
+              return {
+                label: label || `${fallbackLabel} ${index + 1}`,
+                name: label || `${fallbackLabel} ${index + 1}`,
+                amount,
+                frequency: "mensuel",
+                sourceType: "budget",
+              };
+            })
+            .filter(Boolean);
+        }
+
+        function applyUserSettingsToFinancialData(target = {}, userSettings = {}) {
+          const safeTarget = target && typeof target === "object" ? target : {};
+          const safeSettings =
+            userSettings && typeof userSettings === "object" && !Array.isArray(userSettings)
+              ? userSettings
+              : {};
+          const smartSettings = deepClone(safeSettings.smartSaveSettings || {}, {}) || {};
+          const advancedSettings = deepClone(safeSettings.advancedSettings || {}, {}) || {};
+          if (!Object.keys(smartSettings).length && !Object.keys(advancedSettings).length) {
+            return safeTarget;
+          }
+
+          safeTarget.smartSaveSettings = smartSettings;
+          safeTarget.advancedSettings = advancedSettings;
+          safeTarget.userSettings =
+            safeTarget.userSettings && typeof safeTarget.userSettings === "object"
+              ? safeTarget.userSettings
+              : {};
+          safeTarget.userSettings.smartSaveSettings = smartSettings;
+          safeTarget.userSettings.advancedSettings = advancedSettings;
+
+          safeTarget.allocationPlan =
+            safeTarget.allocationPlan && typeof safeTarget.allocationPlan === "object"
+              ? safeTarget.allocationPlan
+              : {};
+          const priorityOrder = String(
+            smartSettings?.allocationPriority?.order || safeTarget.allocationPlan.smartSavePriorityOrder || ""
+          ).trim();
+          if (priorityOrder) {
+            safeTarget.allocationPlan.smartSavePriorityOrder = priorityOrder;
+          }
+
+          safeTarget.taxes =
+            safeTarget.taxes && typeof safeTarget.taxes === "object" ? safeTarget.taxes : {};
+          const taxesSettings =
+            smartSettings?.taxes && typeof smartSettings.taxes === "object" ? smartSettings.taxes : {};
+          const taxesEnabled = taxesSettings.enabled !== false;
+          const provisionMode = String(taxesSettings.provisionMode || "").toLowerCase();
+          if (!taxesEnabled || provisionMode === "recommendations") {
+            safeTarget.taxes.taxMode = "PAY_LATER";
+          } else if (!safeTarget.taxes.taxMode) {
+            safeTarget.taxes.taxMode = "AUTO_PROVISION";
+          }
+          if (taxesSettings.priority != null && taxesSettings.priority !== "") {
+            safeTarget.taxes.taxPriority = String(taxesSettings.priority).toLowerCase();
+          }
+          if (taxesSettings.provisionMode != null && taxesSettings.provisionMode !== "") {
+            safeTarget.taxes.taxProvisionMode = String(taxesSettings.provisionMode).toLowerCase();
+          }
+
+          const savingsUsage =
+            advancedSettings?.savingsUsage && typeof advancedSettings.savingsUsage === "object"
+              ? advancedSettings.savingsUsage
+              : {};
+          safeTarget.taxes.allowTaxBalanceTopUp = true;
+          if (savingsUsage.pullOrder != null && savingsUsage.pullOrder !== "") {
+            safeTarget.taxes.taxPullOrder = String(savingsUsage.pullOrder);
+          }
+          if (savingsUsage.savingsFloor != null && savingsUsage.savingsFloor !== "") {
+            const floor = Math.max(0, toNumber(savingsUsage.savingsFloor));
+            safeTarget.taxes.savingsFloor = floor;
+            safeTarget.taxes.taxSavingsFloor = floor;
+          }
+
+          const advancedExceptions =
+            advancedSettings?.exceptions && typeof advancedSettings.exceptions === "object"
+              ? advancedSettings.exceptions
+              : {};
+          if (advancedExceptions.urgentTaxBoostOneMonth != null) {
+            safeTarget.taxes.urgentTaxBoostOneMonth = Boolean(
+              advancedExceptions.urgentTaxBoostOneMonth
+            );
+          }
+
+          return safeTarget;
+        }
+
+        function mergeBudgetIntoCalculationData(baseFormData = {}, budget = {}, options = {}) {
+          const merged = deepClone(baseFormData, {}) || {};
+          merged.incomes = merged.incomes && typeof merged.incomes === "object" ? merged.incomes : {};
+          merged.expenses = merged.expenses && typeof merged.expenses === "object" ? merged.expenses : {};
+          merged.allocationPlan =
+            merged.allocationPlan && typeof merged.allocationPlan === "object"
+              ? merged.allocationPlan
+              : {};
+
+          const budgetIncomeEntries = buildBudgetIncomeEntries(budget);
+          if (budgetIncomeEntries.length) {
+            merged.incomes.entries = budgetIncomeEntries;
+            merged.incomes.spouseNetIncome = 0;
+            merged.incomes.spouseIncome = 0;
+            merged.spouseIncome = 0;
+          }
+
+          const fixedEntries = buildBudgetExpenseEntries(budget.fixedItems, "Charge fixe");
+          if (fixedEntries.length) {
+            merged.expenses.fixed = fixedEntries;
+          } else if (budget.hasFixedBudget && toNumber(budget.fixedTotal) > 0) {
+            merged.expenses.fixed = [
+              {
+                label: "Charges fixes (budget)",
+                name: "Charges fixes (budget)",
+                amount: Math.max(0, toNumber(budget.fixedTotal)),
+                frequency: "mensuel",
+                sourceType: "budget",
+              },
+            ];
+          }
+
+          const mandatoryEntries = buildBudgetExpenseEntries(
+            budget.mandatoryItems,
+            "Charge obligatoire"
+          );
+          if (mandatoryEntries.length) {
+            merged.expenses.variable = mandatoryEntries;
+          } else if (budget.hasMandatoryBudget && toNumber(budget.mandatoryTotal) > 0) {
+            merged.expenses.variable = [
+              {
+                label: "Depenses obligatoires (budget)",
+                name: "Depenses obligatoires (budget)",
+                amount: Math.max(0, toNumber(budget.mandatoryTotal)),
+                frequency: "mensuel",
+                sourceType: "budget",
+              },
+            ];
+          }
+
+          if (budget.hasVariablePlanned) {
+            merged.allocationPlan.leisureMonthly = Math.max(0, toNumber(budget.variablePlanned));
+          } else if (
+            merged.allocationPlan.leisureMonthly == null &&
+            options.userSettings?.allocationPlan?.leisureMonthly != null
+          ) {
+            merged.allocationPlan.leisureMonthly = Math.max(
+              0,
+              toNumber(options.userSettings.allocationPlan.leisureMonthly)
+            );
+          }
+
+          applyUserSettingsToFinancialData(merged, options.userSettings || {});
+
+          merged.centralFinance =
+            merged.centralFinance && typeof merged.centralFinance === "object"
+              ? merged.centralFinance
+              : {};
+          merged.centralFinance.source = "form+budget";
+          merged.centralFinance.updatedAt = new Date().toISOString();
+          return merged;
+        }
+
+        function mergeBudgetIntoTaxData(baseFormData = {}, budget = {}, options = {}) {
+          const taxData = deepClone(baseFormData, {}) || {};
+          taxData.incomes = taxData.incomes && typeof taxData.incomes === "object" ? taxData.incomes : {};
+          taxData.expenses = taxData.expenses && typeof taxData.expenses === "object" ? taxData.expenses : {};
+          taxData.allocationPlan =
+            taxData.allocationPlan && typeof taxData.allocationPlan === "object"
+              ? taxData.allocationPlan
+              : {};
+
+          const existingIncomeEntries = ensureArray(taxData.incomes.entries);
+          const existingIncomeTotal = existingIncomeEntries.reduce(
+            (sum, item = {}) => sum + Math.max(0, toNumber(item.amount)),
+            0
+          );
+          if (existingIncomeTotal <= 0) {
+            const budgetIncomeEntries = buildBudgetIncomeEntries(budget);
+            if (budgetIncomeEntries.length) {
+              taxData.incomes.entries = budgetIncomeEntries;
+            }
+          }
+
+          if (!ensureArray(taxData.expenses.fixed).length) {
+            const fixedEntries = buildBudgetExpenseEntries(budget.fixedItems, "Charge fixe");
+            if (fixedEntries.length) taxData.expenses.fixed = fixedEntries;
+          }
+
+          if (!ensureArray(taxData.expenses.variable).length) {
+            const mandatoryEntries = buildBudgetExpenseEntries(
+              budget.mandatoryItems,
+              "Charge obligatoire"
+            );
+            if (mandatoryEntries.length) taxData.expenses.variable = mandatoryEntries;
+          }
+
+          if (taxData.allocationPlan.leisureMonthly == null && budget.hasVariablePlanned) {
+            taxData.allocationPlan.leisureMonthly = Math.max(0, toNumber(budget.variablePlanned));
+          } else if (
+            taxData.allocationPlan.leisureMonthly == null &&
+            options.userSettings?.allocationPlan?.leisureMonthly != null
+          ) {
+            taxData.allocationPlan.leisureMonthly = Math.max(
+              0,
+              toNumber(options.userSettings.allocationPlan.leisureMonthly)
+            );
+          }
+
+          applyUserSettingsToFinancialData(taxData, options.userSettings || {});
+
+          taxData.centralFinance =
+            taxData.centralFinance && typeof taxData.centralFinance === "object"
+              ? taxData.centralFinance
+              : {};
+          taxData.centralFinance.source = "form+budget";
+          taxData.centralFinance.updatedAt = new Date().toISOString();
+          return taxData;
+        }
+
+        const sumMonthly = (items = []) =>
+          ensureArray(items).reduce((sum, item = {}) => {
+            const amount = Math.max(0, toNumber(item.amount || item.montant));
+            if (!amount) return sum;
+            const freq = String(item.frequency || item.frequence || "mensuel").toLowerCase();
+            if (freq.startsWith("annu")) return sum + amount / 12;
+            if (freq.startsWith("trim")) return sum + amount / 3;
+            if (freq.startsWith("hebdo") || freq.startsWith("week")) return sum + (amount * 52) / 12;
+            if (freq.startsWith("sem")) return sum + (amount * 52) / 12;
+            return sum + amount;
+          }, 0);
+
+        const resolveAssetBalances = (data = {}) => ({
+          paymentBalance: Math.max(
+            0,
+            toNumber(data.assets?.currentAccount || data.assets?.paymentAccount || data.assets?.checking || 0)
+          ),
+          securityBalance: Math.max(
+            0,
+            toNumber(
+              data.assets?.securitySavings ||
+                data.assets?.safetySavings ||
+                data.assets?.emergencyFund ||
+                data.assets?.savingsSecurity ||
+                data.assets?.savingsAccount ||
+                0
+            )
+          ),
+          taxProvision: Math.max(
+            0,
+            toNumber(data.assets?.taxProvision || data.taxes?.provision || data.taxes?.alreadySaved || 0)
+          ),
+          thirdPillarPaidYTD: Math.max(
+            0,
+            toNumber(data.assets?.thirdPillarPaidYTD || data.taxes?.thirdPillarPaidYTD || 0)
+          ),
+          hasThirdPillarPaidYTD:
+            data.assets?.thirdPillarPaidYTD != null || data.taxes?.thirdPillarPaidYTD != null,
+          thirdPillarPaidYTDYear: Math.round(
+            toNumber(data.assets?.thirdPillarPaidYTDYear || data.taxes?.thirdPillarPaidYTDYear || new Date().getFullYear())
+          ),
+          pillar3aBalance: Math.max(
+            0,
+            toNumber(
+              data.assets?.pillar3a ||
+                data.assets?.thirdPillarAmount ||
+                data.assets?.thirdPillar ||
+                data.assets?.thirdPillarValue ||
+                0
+            )
+          ),
+          investmentsBalance: Math.max(
+            0,
+            toNumber(data.assets?.investments || data.assets?.investmentAccount || data.assets?.portfolio || 0)
+          ),
+        });
+
+        const resolveTransferAuditBalances = (data = {}) => ({
+          current: round2(
+            toNumber(
+              data.assets?.currentAccount ||
+                data.assets?.paymentAccount ||
+                data.assets?.checking ||
+                data.assets?.paymentBalance ||
+                data.assets?.current ||
+                0
+            )
+          ),
+          security: round2(
+            toNumber(
+              data.assets?.securitySavings ||
+                data.assets?.securityBalance ||
+                data.assets?.safetySavings ||
+                data.assets?.emergencyFund ||
+                data.assets?.savingsSecurity ||
+                data.assets?.savingsAccount ||
+                data.assets?.savings ||
+                data.assets?.epargne ||
+                data.assets?.security ||
+                0
+            )
+          ),
+          tax: round2(
+            toNumber(
+              data.assets?.taxProvision ||
+                data.assets?.impotsProvision ||
+                data.assets?.provisionImpots ||
+                data.assets?.tax ||
+                0
+            )
+          ),
+          pillar3a: round2(
+            toNumber(
+              data.assets?.pillar3a ||
+                data.assets?.pilier3a ||
+                data.assets?.thirdPillarAmount ||
+                data.assets?.thirdPillar ||
+                data.assets?.pillar3 ||
+                data.assets?.thirdPillarValue ||
+                0
+            )
+          ),
+          investments: round2(
+            toNumber(
+              data.assets?.investments ||
+                data.assets?.investmentAccount ||
+                data.assets?.portfolio ||
+                data.assets?.portefeuille ||
+                data.assets?.placements ||
+                0
+            )
+          ),
+          projects: round2(
+            toNumber(
+              data.assets?.projects ||
+                data.assets?.projectAccount ||
+                data.assets?.shortTermAccount ||
+                data.assets?.shortTermGoal ||
+                data.assets?.projets ||
+                data.assets?.projetsLongTerme ||
+                data.assets?.projetsCourtTerme ||
+                data.assets?.compteCourtTerme ||
+                0
+            )
+          ),
+        });
+
+        const resolveSpouseMonthlyIncome = (data = {}) => {
+          const spouseIncome = Math.max(
+            0,
+            toNumber(
+              data.incomes?.spouseNetIncome ??
+                data.incomes?.spouseIncome ??
+                data.spouseIncome ??
+                0
+            )
+          );
+          if (!spouseIncome) return 0;
+          const frequency = String(
+            data.incomes?.spouseIncomeFrequency ??
+              data.incomes?.spouseNetIncomeFrequency ??
+              data.incomes?.spouseIncomePeriod ??
+              data.spouseIncomeFrequency ??
+              "mensuel"
+          )
+            .trim()
+            .toLowerCase();
+          if (frequency.startsWith("annu") || frequency.startsWith("year")) return spouseIncome / 12;
+          if (frequency.startsWith("trim")) return spouseIncome / 3;
+          if (frequency.startsWith("hebdo") || frequency.startsWith("week")) return (spouseIncome * 52) / 12;
+          return spouseIncome;
+        };
+
+        const computeIncomeProfile = (data = {}, monthId = "") => {
+          const entries = ensureArray(data.incomes?.entries);
+          const personalStatus = String(data.personal?.employmentStatus || "").toLowerCase();
+          const spouseMonthly = resolveSpouseMonthlyIncome(data);
+          const referenceMonth = MONTH_ID_RE.test(String(monthId || ""))
+            ? Number(String(monthId).split("-")[1])
+            : new Date().getMonth() + 1;
+
+          let monthlyNetBase = spouseMonthly;
+          let annualThirteenth = 0;
+          let thirteenthForMonth = 0;
+          let hasThirteenth = false;
+
+          entries.forEach((entry = {}) => {
+            const raw = Math.max(0, toNumber(entry.amount));
+            if (!raw) return;
+            const type = String(entry.amountType || "net").toLowerCase();
+            const status = String(entry.employmentStatus || personalStatus).toLowerCase();
+            const coefficient =
+              type === "brut"
+                ? status.includes("indep") || status.includes("independ") || status.includes("independant")
+                  ? 0.75
+                  : 0.86
+                : 1;
+            const netMonthly = raw * coefficient;
+            monthlyNetBase += netMonthly;
+
+            const has13 = entry.thirteenth === true || String(entry.thirteenth || "").toLowerCase() === "oui";
+            if (!has13) return;
+            hasThirteenth = true;
+            annualThirteenth += netMonthly;
+            const rawMonth =
+              entry.thirteenthMonth ??
+              entry.thirteenthSalaryMonth ??
+              entry.salary13Month ??
+              entry.month13 ??
+              12;
+            const month = Math.max(1, Math.min(12, Number(rawMonth) || 12));
+            if (month === referenceMonth) {
+              thirteenthForMonth += netMonthly;
+            }
+          });
+
+          return {
+            monthlyNetBase: round2(monthlyNetBase),
+            annualThirteenth: round2(annualThirteenth),
+            thirteenthForMonth: round2(thirteenthForMonth),
+            monthlyNetIncome: round2(monthlyNetBase + thirteenthForMonth),
+            taxReferenceMonthlyIncome: round2(monthlyNetBase + annualThirteenth / 12),
+            hasThirteenth,
+          };
+        };
+
+        const computeMonthlyExpenses = (data = {}) => {
+          const fixed = round2(sumMonthly(data.expenses?.fixed));
+          const mandatory = round2(sumMonthly(data.expenses?.variable));
+          const loans = ensureArray(Array.isArray(data.credits?.loans) ? data.credits.loans : data.loans);
+          const debts = round2(
+            loans.reduce((sum, loan = {}) => {
+              const monthly = toNumber(
+                loan.monthlyAmount || loan.monthlyPayment || loan.monthly || loan.mensualite || loan.payment
+              );
+              return sum + Math.max(0, monthly);
+            }, 0)
+          );
+          return { fixed, mandatory, debts, total: round2(fixed + mandatory + debts) };
+        };
+
+        const computeShortTermMonthly = (allocationPlan = {}) => {
+          const shortTerm = allocationPlan && typeof allocationPlan.shortTerm === "object"
+            ? allocationPlan.shortTerm
+            : {};
+          const enabled = Boolean(shortTerm.enabled);
+          if (!enabled) return 0;
+          const years = Math.max(1, Math.min(3, toNumber(shortTerm.horizonYears || 1)));
+          const amount = Math.max(0, toNumber(shortTerm.amount || 0));
+          if (!amount) return 0;
+          return round2(amount / (years * 12));
+        };
+
+        const computeThirdPillarCap = (data = {}, incomeProfile = {}) => {
+          const status = String(data.personal?.employmentStatus || "").toLowerCase();
+          const annualIncome = Math.max(0, toNumber(incomeProfile.taxReferenceMonthlyIncome) * 12);
+          const independent = status.includes("indep") || status.includes("independ");
+          const cap = independent ? Math.min(annualIncome * 0.2, 35280) : 7056;
+          return {
+            cap: round2(Math.max(0, cap)),
+            annualIncome: round2(annualIncome),
+            isIndependent: independent,
+          };
+        };
+
+        const translateTaxMode = (mode) => {
+          const value = String(mode || "AUTO_PROVISION").toUpperCase();
+          if (value === "PAY_LATER") return "Payer plus tard (provision mensuelle = 0 CHF)";
+          return "Provision automatique mensuelle";
+        };
+
+        const translateTaxReason = (reason) => {
+          const map = {
+            no_tax: "Pas d'impots a provisionner",
+            already_funded: "Provision deja suffisante",
+            pay_later_mode: "Mode payer plus tard",
+            no_capacity: "Pas de capacite ce mois",
+            capped_by_hard_limit: "Plafond mensuel impots atteint",
+            urgent_capped_by_hard_limit: "Urgent: plafond mensuel impots atteint",
+            capped_by_reste_pct: "Plafond % du surplus atteint",
+            urgent_capped_by_reste_pct: "Urgent: plafond % du surplus atteint",
+            partial_funding: "Provision partielle",
+            on_track: "Provision conforme",
+            urgent_on_track: "Provision conforme (urgent)",
+            on_track_with_preemptive_topup: "Provision conforme avec anticipation",
+          };
+          return map[reason] || (reason ? `Code: ${reason}` : "-");
+        };
+
+        const allocationKeyLabel = (key) => {
+          const map = {
+            compteCourant: "Compte courant",
+            impots: "Compte impots",
+            securite: "Compte epargne",
+            pilier3a: "3e pilier",
+            projetsLongTerme: "Projets long terme",
+            projetsCourtTerme: "Objectif court terme",
+            investissements: "Investissements",
+            dettes: "Remboursement dettes",
+          };
+          return map[key] || key;
+        };
+
+        const transferAccountLabel = (key) => {
+          const map = {
+            current: "Compte courant",
+            security: "Compte epargne",
+            tax: "Provision impots",
+            pillar3a: "3e pilier",
+            investments: "Investissements",
+            projects: "Projets",
+          };
+          return map[String(key || "").trim()] || key || "Compte";
+        };
+
+        const buildPlannedAllocationTransfers = (allocations = {}) => {
+          const rows = [];
+          const push = (allocationKey, to, reason) => {
+            const amount = Math.max(0, toNumber(allocations?.[allocationKey] || 0));
+            if (!amount) return;
+            rows.push({
+              from: "current",
+              to,
+              amount: round2(amount),
+              allocationKey,
+              reason,
+            });
+          };
+          push("impots", "tax", "Provision impots");
+          push("securite", "security", "Alimentation epargne");
+          push("pilier3a", "pillar3a", "Versement 3e pilier");
+          push("investissements", "investments", "Allocation investissements");
+          push("projetsCourtTerme", "projects", "Projet court terme");
+          push("projetsLongTerme", "projects", "Projet long terme");
+          return rows;
+        };
+
+        const buildTransferAudit = ({ startingBalances = {}, initialAvailable = 0, transfers = [] } = {}) => {
+          const toAmount = (value) => round2(toNumber(value));
+          const start = {
+            current: toAmount(startingBalances.current),
+            security: toAmount(startingBalances.security),
+            tax: toAmount(startingBalances.tax),
+            pillar3a: toAmount(startingBalances.pillar3a),
+            investments: toAmount(startingBalances.investments),
+            projects: toAmount(startingBalances.projects),
+          };
+          const accountKeys = ["current", "security", "tax", "pillar3a", "investments", "projects"];
+          const cloneState = (state) =>
+            accountKeys.reduce((acc, key) => {
+              acc[key] = toAmount(state[key]);
+              return acc;
+            }, {});
+          const formatTransition = (beforeState, afterState, key) =>
+            `${formatCurrency(beforeState[key])} -> ${formatCurrency(afterState[key])}`;
+
+          const rows = [];
+          let step = 0;
+          let live = cloneState(start);
+
+          rows.push([
+            String(step),
+            "Etat initial des comptes",
+            formatTransition(live, live, "current"),
+            formatTransition(live, live, "security"),
+            formatTransition(live, live, "tax"),
+            formatTransition(live, live, "pillar3a"),
+            formatTransition(live, live, "investments"),
+            formatTransition(live, live, "projects"),
+            "Photo des soldes avant mouvements",
+          ]);
+
+          const externalAvailable = Math.max(0, toAmount(initialAvailable));
+          if (externalAvailable > 0) {
+            const before = cloneState(live);
+            live.current = toAmount(live.current + externalAvailable);
+            const after = cloneState(live);
+            step += 1;
+            rows.push([
+              String(step),
+              `Injection source externe: +${formatCurrency(externalAvailable)} sur compte courant`,
+              formatTransition(before, after, "current"),
+              formatTransition(before, after, "security"),
+              formatTransition(before, after, "tax"),
+              formatTransition(before, after, "pillar3a"),
+              formatTransition(before, after, "investments"),
+              formatTransition(before, after, "projects"),
+              "Revenu disponible du mois (salaire net - charges - budget variable)",
+            ]);
+          }
+
+          ensureArray(transfers).forEach((transfer = {}, index) => {
+            const amount = Math.max(0, toAmount(transfer.amount));
+            const from = String(transfer.from || "").trim();
+            const to = String(transfer.to || "").trim();
+            if (!amount || !from || !to || from === to) return;
+            const before = cloneState(live);
+            if (!Object.prototype.hasOwnProperty.call(live, from)) live[from] = 0;
+            if (!Object.prototype.hasOwnProperty.call(live, to)) live[to] = 0;
+            live[from] = toAmount(toNumber(live[from]) - amount);
+            live[to] = toAmount(toNumber(live[to]) + amount);
+            const after = cloneState(live);
+            step += 1;
+            rows.push([
+              String(step),
+              `Transfert ${index + 1}: ${transferAccountLabel(from)} -> ${transferAccountLabel(to)} (${formatCurrency(amount)})`,
+              formatTransition(before, after, "current"),
+              formatTransition(before, after, "security"),
+              formatTransition(before, after, "tax"),
+              formatTransition(before, after, "pillar3a"),
+              formatTransition(before, after, "investments"),
+              formatTransition(before, after, "projects"),
+              String(transfer.reason || "Mouvement de repartition"),
+            ]);
+          });
+
+          const totalOutCurrent = round2(
+            ensureArray(transfers).reduce((sum, transfer = {}) => {
+              return sum + (String(transfer.from || "").trim() === "current" ? Math.max(0, toNumber(transfer.amount)) : 0);
+            }, 0)
+          );
+          const totalInCurrent = round2(
+            ensureArray(transfers).reduce((sum, transfer = {}) => {
+              return sum + (String(transfer.to || "").trim() === "current" ? Math.max(0, toNumber(transfer.amount)) : 0);
+            }, 0)
+          );
+          const currentWithoutFunding = round2(start.current - totalOutCurrent + totalInCurrent);
+          const currentWithFunding = round2(currentWithoutFunding + externalAvailable);
+          const minimumFundingNeeded = round2(Math.max(0, -currentWithoutFunding));
+          const negativeRiskWithoutFunding = currentWithoutFunding < -1e-6;
+
+          const diagnosticRows = [
+            [
+              "Total transferts sortants depuis compte courant",
+              formatCurrency(totalOutCurrent),
+              "Somme des virements planifies debites du compte courant",
+            ],
+            [
+              "Total transferts entrants vers compte courant",
+              formatCurrency(totalInCurrent),
+              "Somme des virements credites vers le compte courant",
+            ],
+            [
+              "Compte courant si on applique UNIQUEMENT les transferts",
+              formatCurrency(currentWithoutFunding),
+              `${formatCurrency(start.current)} - ${formatCurrency(totalOutCurrent)} + ${formatCurrency(totalInCurrent)}`,
+            ],
+            [
+              "Risque de negatif sans prefinancement externe",
+              negativeRiskWithoutFunding ? "OUI" : "NON",
+              negativeRiskWithoutFunding
+                ? `Minimum a injecter: ${formatCurrency(minimumFundingNeeded)}`
+                : "Pas de trou detecte",
+            ],
+            [
+              "Compte courant avec logique SmartSave (injection du disponible initial)",
+              formatCurrency(currentWithFunding),
+              `${formatCurrency(currentWithoutFunding)} + ${formatCurrency(externalAvailable)}`,
+            ],
+          ];
+
+          return {
+            rows,
+            diagnosticRows,
+          };
+        };
+
+        const resolveProjectionStartBalances = (data = {}) => ({
+          current: round2(
+            toNumber(
+              data.assets?.currentAccount ||
+                data.assets?.paymentAccount ||
+                data.assets?.checking ||
+                data.assets?.paymentBalance ||
+                data.assets?.current ||
+                0
+            )
+          ),
+          savings: round2(
+            toNumber(
+              data.assets?.savingsAccount ||
+                data.assets?.securitySavings ||
+                data.assets?.savings ||
+                data.assets?.epargne ||
+                data.assets?.securityBalance ||
+                0
+            )
+          ),
+          taxes: round2(
+            toNumber(
+              data.assets?.taxProvision ||
+                data.assets?.taxes ||
+                data.assets?.impotsProvision ||
+                data.assets?.provisionImpots ||
+                data.taxes?.provision ||
+                data.taxes?.alreadySaved ||
+                0
+            )
+          ),
+          pillar3: round2(
+            toNumber(
+              data.assets?.pillar3a ||
+                data.assets?.pilier3a ||
+                data.assets?.thirdPillarAmount ||
+                data.assets?.thirdPillar ||
+                data.assets?.pillar3 ||
+                data.assets?.thirdPillarValue ||
+                0
+            )
+          ),
+          investments: round2(
+            toNumber(
+              data.assets?.investments ||
+                data.assets?.investmentAccount ||
+                data.assets?.portfolio ||
+                data.assets?.portefeuille ||
+                0
+            )
+          ),
+          blocked: round2(
+            toNumber(
+              data.assets?.blockedAccount ||
+                data.assets?.blockedAccounts ||
+                data.assets?.securityBlocked ||
+                data.assets?.compteBloque ||
+                0
+            )
+          ),
+        });
+
+        const normalizeProjectionAccounts = (accounts = {}) => ({
+          current: round2(toNumber(accounts.current || 0)),
+          savings: round2(toNumber(accounts.savings || 0)),
+          taxes: round2(toNumber(accounts.taxes || 0)),
+          pillar3: round2(toNumber(accounts.pillar3 || 0)),
+          investments: round2(toNumber(accounts.investments || 0)),
+          blocked: round2(toNumber(accounts.blocked || 0)),
+        });
+
+        const formatProjectionAccounts = (accounts = {}) =>
+          `Courant ${formatCurrency(accounts.current)} | Epargne ${formatCurrency(accounts.savings)} | Impots ${formatCurrency(
+            accounts.taxes
+          )} | 3e pilier ${formatCurrency(accounts.pillar3)} | Investissements ${formatCurrency(
+            accounts.investments
+          )} | Bloque ${formatCurrency(accounts.blocked)}`;
+
+        const projectionFlowKeyLabel = (key) => {
+          const map = {
+            impots: "Provision impots",
+            securite: "Compte epargne",
+            pilier3a: "3e pilier",
+            investissements: "Investissements",
+            bloque: "Epargne bloquee",
+            dettes: "Remboursement dettes",
+            projets: "Projets",
+            compteCourant: "Compte courant",
+            savings: "Compte epargne",
+            blocked: "Epargne bloquee",
+            pillar3: "3e pilier",
+            investments: "Investissements",
+          };
+          return map[String(key || "").trim()] || allocationKeyLabel(key);
+        };
+
+        const applyProjectionAllocationToState = (state = {}, key = "", amount = 0) => {
+          const value = Math.max(0, round2(amount));
+          if (!value) return;
+          const normalizedKey = String(key || "").trim();
+          if (normalizedKey === "impots") state.taxes = round2(state.taxes + value);
+          else if (normalizedKey === "securite") state.savings = round2(state.savings + value);
+          else if (normalizedKey === "pilier3a") state.pillar3 = round2(state.pillar3 + value);
+          else if (normalizedKey === "investissements") state.investments = round2(state.investments + value);
+          else if (normalizedKey === "bloque") state.blocked = round2(state.blocked + value);
+          else if (normalizedKey === "compteCourant" || normalizedKey === "projets") {
+            state.current = round2(state.current + value);
+          }
+        };
+
+        const payFromProjectionAccounts = (state = {}, amount = 0, order = []) => {
+          let remaining = Math.max(0, round2(amount));
+          ensureArray(order).forEach((accountKey) => {
+            if (remaining <= 0) return;
+            const available = Math.max(0, round2(state[accountKey]));
+            if (!available) return;
+            const used = Math.min(available, remaining);
+            state[accountKey] = round2(available - used);
+            remaining = round2(remaining - used);
+          });
+          return {
+            paid: round2(Math.max(0, toNumber(amount)) - remaining),
+            unpaid: round2(remaining),
+          };
+        };
+
+        const formatFlowMonthLabel = (isoDate) => {
+          const parsed = new Date(isoDate);
+          if (Number.isNaN(parsed.getTime())) return "Mois inconnu";
+          const label = new Intl.DateTimeFormat("fr-CH", {
+            month: "long",
+            year: "numeric",
+          }).format(parsed);
+          return `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
+        };
+
+        const buildProjectionFlowRows = ({ projectionResult = {}, startingBalances = {}, maxMonths = 3 } = {}) => {
+          const flows = ensureArray(projectionResult?.smartSave?.flows).slice(0, Math.max(1, Math.round(maxMonths || 3)));
+          if (!flows.length) {
+            return [
+              [
+                "Projection",
+                "Aucun flux detaille disponible",
+                "Relance la projection avec captureFlows=true pour obtenir le detail pas-a-pas.",
+                "-",
+                "-",
+              ],
+            ];
+          }
+
+          const rows = [];
+          let openingState = normalizeProjectionAccounts(startingBalances);
+
+          flows.forEach((flow = {}, monthIndex) => {
+            const monthLabel = formatFlowMonthLabel(flow.date);
+            const live = normalizeProjectionAccounts(openingState);
+            const pushRow = (stepLabel, action, details, impact) => {
+              rows.push([
+                `${monthLabel} · ${stepLabel}`,
+                action,
+                details,
+                impact,
+                formatProjectionAccounts(live),
+              ]);
+            };
+
+            pushRow(
+              "Etape 0",
+              "Ouverture du mois",
+              monthIndex === 0
+                ? "Le moteur reprend les soldes de depart du profil pour initialiser la projection."
+                : "Le moteur reprend les soldes de fin du mois precedent.",
+              "Aucun mouvement applique a cette etape."
+            );
+
+            const interestEntries = Object.entries(flow.interest || {})
+              .map(([key, value]) => [String(key || "").trim(), Math.max(0, round2(value))])
+              .filter(([, value]) => value > 0);
+            if (interestEntries.length) {
+              interestEntries.forEach(([key, value]) => {
+                if (key === "savings") live.savings = round2(live.savings + value);
+                else if (key === "blocked") live.blocked = round2(live.blocked + value);
+                else if (key === "pillar3") live.pillar3 = round2(live.pillar3 + value);
+                else if (key === "investments") live.investments = round2(live.investments + value);
+              });
+              const interestImpact = interestEntries
+                .map(([key, value]) => `${projectionFlowKeyLabel(key)} +${formatCurrency(value)}`)
+                .join(" | ");
+              pushRow(
+                "Etape 1",
+                "Interets mensuels",
+                "Le moteur applique d'abord les interets des comptes de rendement (epargne, bloque, 3e pilier, investissements).",
+                interestImpact
+              );
+            } else {
+              pushRow(
+                "Etape 1",
+                "Interets mensuels",
+                "Aucun interet credite sur ce mois (ou montant arrondi a 0).",
+                "Pas de mouvement."
+              );
+            }
+
+            const available = round2(toNumber(flow.available || 0));
+            const leisureDeduction = round2(toNumber(flow.leisureDeduction || 0));
+            const grossAvailable = round2(available + leisureDeduction);
+            const thirteenth = round2(toNumber(flow.thirteenth || 0));
+            if (available < 0) {
+              live.current = round2(live.current + available);
+            }
+            pushRow(
+              "Etape 2",
+              "Calcul du disponible mensuel",
+              `Base mensuelle ${formatCurrency(grossAvailable)} (revenus + eventuel 13e - charges)${
+                leisureDeduction > 0 ? ` puis deduction budget variable ${formatSignedCurrency(-leisureDeduction)}` : ""
+              } = disponible a repartir ${formatCurrency(available)}.`,
+              available < 0
+                ? `Disponible negatif: debit direct du compte courant ${formatSignedCurrency(available)}.${
+                    thirteenth > 0 ? ` 13e inclus: ${formatCurrency(thirteenth)}.` : ""
+                  }`
+                : `Disponible a repartir: ${formatCurrency(available)}.${
+                    leisureDeduction > 0 ? ` Budget variable deduit: ${formatCurrency(leisureDeduction)}.` : ""
+                  }${thirteenth > 0 ? ` 13e inclus: ${formatCurrency(thirteenth)}.` : ""}`
+            );
+
+            const allocationEntries = Object.entries(flow.allocations || {})
+              .map(([key, value]) => [String(key || "").trim(), Math.max(0, round2(value))])
+              .filter(([, value]) => value > 0);
+            if (allocationEntries.length) {
+              allocationEntries.forEach(([key, value]) => {
+                applyProjectionAllocationToState(live, key, value);
+              });
+              const allocationImpact = allocationEntries
+                .map(([key, value]) => `${projectionFlowKeyLabel(key)} +${formatCurrency(value)}`)
+                .join(" | ");
+              pushRow(
+                "Etape 3",
+                "Repartition SmartSave du disponible",
+                "Le moteur alloue ensuite le disponible du mois selon les priorites SmartSave (impots, epargne, 3e pilier, investissements, etc.).",
+                allocationImpact
+              );
+            } else {
+              pushRow(
+                "Etape 3",
+                "Repartition SmartSave du disponible",
+                "Aucune allocation ce mois (ex: disponible <= 0 ou contraintes bloquantes).",
+                "Pas de mouvement."
+              );
+            }
+
+            const taxesPaid = Math.max(0, round2(toNumber(flow.taxesPaid || 0)));
+            if (taxesPaid > 0) {
+              const taxSettlement = payFromProjectionAccounts(live, taxesPaid, ["taxes", "current", "savings"]);
+              pushRow(
+                "Etape 4",
+                "Paiement annuel des impots",
+                "Si l'echeance fiscale tombe sur ce mois, le moteur paie dans cet ordre: provision impots -> courant -> epargne.",
+                `Paiement effectue: ${formatCurrency(taxSettlement.paid)}${
+                  taxSettlement.unpaid > 0 ? ` (reste non couvert: ${formatCurrency(taxSettlement.unpaid)})` : ""
+                }`
+              );
+            } else {
+              pushRow(
+                "Etape 4",
+                "Paiement annuel des impots",
+                "Aucune echeance fiscale sur ce mois.",
+                "Pas de mouvement."
+              );
+            }
+
+            const shortTermPaid = Math.max(0, round2(toNumber(flow.shortTermPaid || 0)));
+            if (shortTermPaid > 0) {
+              const shortTermSettlement = payFromProjectionAccounts(live, shortTermPaid, [
+                "current",
+                "savings",
+                "investments",
+                "blocked",
+              ]);
+              pushRow(
+                "Etape 5",
+                "Decaissement objectif court terme",
+                "Si un objectif court terme arrive a echeance, le moteur decaisse dans l'ordre: courant -> epargne -> investissements -> bloque.",
+                `Decaissement effectue: ${formatCurrency(shortTermSettlement.paid)}${
+                  shortTermSettlement.unpaid > 0 ? ` (manque: ${formatCurrency(shortTermSettlement.unpaid)})` : ""
+                }`
+              );
+            } else {
+              pushRow(
+                "Etape 5",
+                "Decaissement objectif court terme",
+                "Pas d'objectif court terme a regler sur ce mois.",
+                "Pas de mouvement."
+              );
+            }
+
+            const finalSnapshot = normalizeProjectionAccounts(flow.accounts || {});
+            const coherenceGap = round2(
+              Math.abs(finalSnapshot.current - live.current) +
+                Math.abs(finalSnapshot.savings - live.savings) +
+                Math.abs(finalSnapshot.taxes - live.taxes) +
+                Math.abs(finalSnapshot.pillar3 - live.pillar3) +
+                Math.abs(finalSnapshot.investments - live.investments) +
+                Math.abs(finalSnapshot.blocked - live.blocked)
+            );
+            live.current = finalSnapshot.current;
+            live.savings = finalSnapshot.savings;
+            live.taxes = finalSnapshot.taxes;
+            live.pillar3 = finalSnapshot.pillar3;
+            live.investments = finalSnapshot.investments;
+            live.blocked = finalSnapshot.blocked;
+            pushRow(
+              "Etape finale",
+              "Cloture du mois",
+              "Snapshot final renvoye par le moteur de projection (base du mois suivant).",
+              coherenceGap > 0.5
+                ? `Ajustement de coherence applique: ${formatCurrency(coherenceGap)}.`
+                : "Coherence OK entre etapes et snapshot final."
+            );
+
+            openingState = normalizeProjectionAccounts(finalSnapshot);
+          });
+
+          return rows;
+        };
+
+        const resolveUserSettings = (bucket = {}, monthId = "", central = null) => {
+          let userSettings = deepClone(bucket?.userSettings || {}, {}) || {};
+          if (!Object.keys(userSettings).length && central?.userSettings) {
+            userSettings = deepClone(central.userSettings, {}) || {};
+          }
+          const settingsSnapshot = bucket?.monthlyPlan?.[monthId]?.settingsSnapshot;
+          const forceRecompute = Boolean(userSettings?.advancedSettings?.overrides?.forceRecompute);
+          if (settingsSnapshot && !forceRecompute) {
+            const snapshotSmart =
+              settingsSnapshot.smart && typeof settingsSnapshot.smart === "object"
+                ? settingsSnapshot.smart
+                : settingsSnapshot.smartSave && typeof settingsSnapshot.smartSave === "object"
+                ? settingsSnapshot.smartSave
+                : null;
+            const snapshotAdvanced =
+              settingsSnapshot.advanced && typeof settingsSnapshot.advanced === "object"
+                ? settingsSnapshot.advanced
+                : null;
+            if (snapshotSmart) {
+              userSettings.smartSaveSettings = deepClone(snapshotSmart, {}) || {};
+            }
+            if (snapshotAdvanced) {
+              userSettings.advancedSettings = deepClone(snapshotAdvanced, {}) || {};
+            }
+          }
+          return userSettings;
+        };
+
+        const buildIncomeRows = (calculationData = {}) => {
+          const entries = ensureArray(calculationData.incomes?.entries);
+          const personalStatus = String(calculationData.personal?.employmentStatus || "").toLowerCase();
+          const rows = entries
+            .map((entry = {}, index) => {
+              const raw = Math.max(0, toNumber(entry.amount));
+              if (!raw) return null;
+              const label = String(entry.label || entry.name || entry.source || `Revenu ${index + 1}`).trim();
+              const type = String(entry.amountType || "net").toLowerCase();
+              const status = String(entry.employmentStatus || personalStatus).toLowerCase();
+              const coefficient =
+                type === "brut"
+                  ? status.includes("indep") || status.includes("independ") || status.includes("independant")
+                    ? 0.75
+                    : 0.86
+                  : 1;
+              const monthlyNet = raw * coefficient;
+              const has13 = entry.thirteenth === true || String(entry.thirteenth || "").toLowerCase() === "oui";
+              return [
+                "Revenu",
+                label,
+                formatCurrency(monthlyNet),
+                type === "brut"
+                  ? `Brut ${formatCurrency(raw)} x ${coefficient} = ${formatCurrency(monthlyNet)}${
+                      has13 ? " (13e actif)" : ""
+                    }`
+                  : `${has13 ? "13e actif. " : ""}Montant net mensuel pris tel quel`,
+              ];
+            })
+            .filter(Boolean);
+
+          const spouse = Math.max(
+            0,
+            toNumber(
+              calculationData.incomes?.spouseNetIncome ??
+                calculationData.incomes?.spouseIncome ??
+                calculationData.spouseIncome ??
+                0
+            )
+          );
+          if (spouse > 0) {
+            const frequency = String(
+              calculationData.incomes?.spouseIncomeFrequency ??
+                calculationData.incomes?.spouseNetIncomeFrequency ??
+                calculationData.incomes?.spouseIncomePeriod ??
+                calculationData.spouseIncomeFrequency ??
+                "mensuel"
+            ).toLowerCase();
+            const monthly = resolveSpouseMonthlyIncome(calculationData);
+            rows.push([
+              "Revenu",
+              "Revenu conjoint(e)",
+              formatCurrency(monthly),
+              `Frequence ${frequency || "mensuel"}. Montant saisi ${formatCurrency(spouse)} -> mensuel ${formatCurrency(
+                monthly
+              )}`,
+            ]);
+          }
+
+          return rows;
+        };
+
+        const buildExpenseRows = (calculationData = {}) => {
+          const fixedRows = ensureArray(calculationData.expenses?.fixed)
+            .map((entry = {}, index) => {
+              const label = String(entry.label || entry.name || `Charge fixe ${index + 1}`).trim();
+              const monthly = Math.max(0, toNumber(sumMonthly([entry])));
+              if (!monthly) return null;
+              return ["Charge fixe", label, formatCurrency(monthly), "Converti en equivalent mensuel"];
+            })
+            .filter(Boolean);
+
+          const mandatoryRows = ensureArray(calculationData.expenses?.variable)
+            .map((entry = {}, index) => {
+              const label = String(entry.label || entry.name || `Charge obligatoire ${index + 1}`).trim();
+              const monthly = Math.max(0, toNumber(sumMonthly([entry])));
+              if (!monthly) return null;
+              return ["Charge obligatoire", label, formatCurrency(monthly), "Converti en equivalent mensuel"];
+            })
+            .filter(Boolean);
+
+          const loanRows = ensureArray(Array.isArray(calculationData.credits?.loans) ? calculationData.credits.loans : calculationData.loans)
+            .map((loan = {}, index) => {
+              const label = String(loan.label || loan.name || loan.type || `Dette ${index + 1}`).trim();
+              const monthly = Math.max(
+                0,
+                toNumber(loan.monthlyAmount || loan.monthlyPayment || loan.monthly || loan.mensualite || loan.payment)
+              );
+              if (!monthly) return null;
+              return ["Dette", label, formatCurrency(monthly), "Mensualite de dette"];
+            })
+            .filter(Boolean);
+
+          return fixedRows.concat(mandatoryRows, loanRows);
+        };
+
+        const buildProcessRows = (allocationResult = {}) => {
+          const rows = [];
+          let remaining = toNumber(allocationResult.disponibleInitial);
+          rows.push([
+            "0",
+            "Point de depart",
+            "-",
+            formatCurrency(remaining),
+            `Disponible initial = ${formatCurrency(remaining)}`,
+          ]);
+
+          ensureArray(allocationResult.allocationTrace).forEach((entry = {}, index) => {
+            const amount = Math.max(0, toNumber(entry.amount));
+            if (!amount) return;
+            const previous = remaining;
+            remaining = round2(previous - amount);
+            rows.push([
+              String(index + 1),
+              allocationKeyLabel(entry.key),
+              formatCurrency(amount),
+              formatCurrency(remaining),
+              `${formatCurrency(previous)} - ${formatCurrency(amount)} = ${formatCurrency(remaining)}`,
+            ]);
+          });
+
+          const finalReste = Math.max(0, toNumber(allocationResult.reste));
+          rows.push([
+            "Final",
+            "Reste non alloue",
+            "-",
+            formatCurrency(finalReste),
+            `Reste final annonce par le moteur = ${formatCurrency(finalReste)}`,
+          ]);
+          return rows;
+        };
+
+        const buildRebalanceRows = ({
+          balances = {},
+          limits = {},
+          taxFunding = {},
+          monthInputs = {},
+          userSettings = {},
+          pillarRoom = 0,
+        } = {}) => {
+          const roundMoney = (value) => Math.max(0, Math.round(toNumber(value)));
+          const advancedSettings =
+            userSettings?.advancedSettings && typeof userSettings.advancedSettings === "object"
+              ? userSettings.advancedSettings
+              : {};
+          const savingsUsage =
+            advancedSettings?.savingsUsage && typeof advancedSettings.savingsUsage === "object"
+              ? advancedSettings.savingsUsage
+              : {};
+          const transferControls =
+            advancedSettings?.transferControls && typeof advancedSettings.transferControls === "object"
+              ? advancedSettings.transferControls
+              : {};
+
+          const pullOrder =
+            String(savingsUsage.pullOrder || "current_first").toLowerCase() === "savings_first"
+              ? ["security", "current"]
+              : ["current", "security"];
+
+          const state = {
+            current: roundMoney(balances.current),
+            security: roundMoney(balances.security),
+            tax: roundMoney(balances.tax),
+            pillar3a: roundMoney(balances.pillar3a),
+            investments: roundMoney(balances.investments),
+          };
+          const currentLimit = roundMoney(limits.current || 0);
+          const savingsTarget = roundMoney(limits.savings || 0);
+
+          const surplusCurrent = Math.max(0, state.current - currentLimit);
+          const surplusSavingsRaw = Math.max(0, state.security - savingsTarget);
+          const savingsComfortCeiling = roundMoney(savingsTarget * 1.5);
+          let savingsZone = "Securite (0% reallocation)";
+          let savingsRate = 0;
+          if (state.security > savingsComfortCeiling) {
+            savingsZone = "Sur-epargne (>150%, 35%)";
+            savingsRate = 0.35;
+          } else if (state.security > savingsTarget) {
+            savingsZone = "Confort (100-150%, 20%)";
+            savingsRate = 0.2;
+          }
+          const configuredMonthlyCap = Math.max(0, toNumber(transferControls.maxMonthlyTotal || 0));
+          const monthlyCap = configuredMonthlyCap > 0 ? roundMoney(configuredMonthlyCap) : Number.POSITIVE_INFINITY;
+          const rawSavingsMovable = roundMoney(surplusSavingsRaw * savingsRate);
+          const cappedSavingsMovable = Math.max(0, Math.min(rawSavingsMovable, monthlyCap));
+
+          const savingsMovableEnabled = roundMoney(cappedSavingsMovable);
+
+          let movableFromCurrent = roundMoney(surplusCurrent);
+          let movableFromSavings = savingsMovableEnabled;
+          let keepOnSavings = 0;
+
+          const rows = [];
+          const getPool = () => roundMoney(movableFromCurrent + movableFromSavings);
+          const savingsRatePct = Math.round(savingsRate * 100);
+          const savingsMovableBeforeToggle = roundMoney(cappedSavingsMovable);
+          const monthlyCapLabel = Number.isFinite(monthlyCap) ? formatCurrency(monthlyCap) : "Aucun plafond";
+
+          rows.push([
+            "0.1",
+            "Calcul surplus compte courant",
+            formatCurrency(surplusCurrent),
+            "-",
+            `Surplus courant = max(0, solde courant ${formatCurrency(state.current)} - limite courant ${formatCurrency(
+              currentLimit
+            )}) = ${formatCurrency(surplusCurrent)}`,
+          ]);
+          rows.push([
+            "0.2",
+            "Calcul surplus compte epargne (brut)",
+            formatCurrency(surplusSavingsRaw),
+            "-",
+            `Surplus epargne brut = max(0, solde epargne ${formatCurrency(state.security)} - cible epargne ${formatCurrency(
+              savingsTarget
+            )}) = ${formatCurrency(surplusSavingsRaw)}`,
+          ]);
+          rows.push([
+            "0.3",
+            "Calcul surplus compte epargne mobilisable",
+            formatCurrency(savingsMovableEnabled),
+            "-",
+            `Zone ${savingsZone}; mobilisable brut = ${formatCurrency(surplusSavingsRaw)} x ${savingsRatePct}% = ${formatCurrency(
+              rawSavingsMovable
+            )}; plafond mensuel = ${monthlyCapLabel}; retenu = ${formatCurrency(
+              savingsMovableBeforeToggle
+            )}`,
+          ]);
+          rows.push([
+            "0.4",
+            "Point de depart (surplus re-arrangeable)",
+            formatCurrency(getPool()),
+            formatCurrency(getPool()),
+            `Pool = surplus courant ${formatCurrency(surplusCurrent)} + surplus epargne mobilisable ${formatCurrency(
+              savingsMovableEnabled
+            )}`,
+          ]);
+
+          const pullFromSource = (sourceKey, destinationKey, requestedAmount) => {
+            const wanted = Math.max(0, roundMoney(requestedAmount));
+            if (!wanted) return 0;
+            if (sourceKey === "current") {
+              const part = Math.min(wanted, movableFromCurrent);
+              if (!part) return 0;
+              movableFromCurrent = roundMoney(movableFromCurrent - part);
+              state.current = roundMoney(state.current - part);
+              if (destinationKey === "security") state.security = roundMoney(state.security + part);
+              if (destinationKey === "tax") state.tax = roundMoney(state.tax + part);
+              if (destinationKey === "pillar3a") state.pillar3a = roundMoney(state.pillar3a + part);
+              if (destinationKey === "investments") state.investments = roundMoney(state.investments + part);
+              return part;
+            }
+            if (sourceKey === "security") {
+              const part = Math.min(wanted, movableFromSavings);
+              if (!part) return 0;
+              movableFromSavings = roundMoney(movableFromSavings - part);
+              state.security = roundMoney(state.security - part);
+              if (destinationKey === "current") state.current = roundMoney(state.current + part);
+              if (destinationKey === "tax") state.tax = roundMoney(state.tax + part);
+              if (destinationKey === "pillar3a") state.pillar3a = roundMoney(state.pillar3a + part);
+              if (destinationKey === "investments") state.investments = roundMoney(state.investments + part);
+              return part;
+            }
+            return 0;
+          };
+
+          const pullFromPool = (destinationKey, requestedAmount) => {
+            let remaining = Math.max(0, roundMoney(requestedAmount));
+            if (!remaining) return 0;
+            let applied = 0;
+            pullOrder.forEach((sourceKey) => {
+              if (remaining <= 0) return;
+              const taken = pullFromSource(sourceKey, destinationKey, remaining);
+              if (!taken) return;
+              applied += taken;
+              remaining = roundMoney(remaining - taken);
+            });
+            return applied;
+          };
+
+          const reserveOnSavings = (requestedAmount) => {
+            const wanted = Math.max(0, roundMoney(requestedAmount));
+            if (!wanted) return 0;
+            const reserved = Math.min(wanted, movableFromSavings);
+            if (!reserved) return 0;
+            movableFromSavings = roundMoney(movableFromSavings - reserved);
+            keepOnSavings = roundMoney(keepOnSavings + reserved);
+            return reserved;
+          };
+
+          const allocateToSavings = (requestedAmount) => {
+            let remaining = Math.max(0, roundMoney(requestedAmount));
+            if (!remaining) return 0;
+            let applied = 0;
+            const kept = reserveOnSavings(remaining);
+            if (kept > 0) {
+              applied += kept;
+              remaining = roundMoney(remaining - kept);
+            }
+            if (remaining > 0) {
+              applied += pullFromSource("current", "security", remaining);
+            }
+            return applied;
+          };
+
+          const currentGap = Math.max(0, roundMoney(currentLimit - state.current));
+          const currentTopup = currentGap > 0 && movableFromSavings > 0
+            ? pullFromSource("security", "current", currentGap)
+            : 0;
+          rows.push([
+            "1",
+            "Compte courant: combler le trou jusqu'a la cible",
+            formatCurrency(currentTopup),
+            formatCurrency(getPool()),
+            `Trou courant = max(0, ${formatCurrency(currentLimit)} - ${formatCurrency(
+              state.current - currentTopup
+            )}) = ${formatCurrency(currentGap)}; applique = ${formatCurrency(currentTopup)}`,
+          ]);
+
+          const totalTaxEstimate = Math.max(0, toNumber(taxFunding.totalEstimate || 0));
+          const remainingTaxEstimate = Math.max(0, toNumber(taxFunding.remainingEstimate || 0));
+          const fallbackTaxTotal = roundMoney(state.tax + remainingTaxEstimate);
+          const totalTaxes = Math.max(totalTaxEstimate, fallbackTaxTotal);
+          const provisionExisting = Math.max(0, roundMoney(state.tax));
+          const monthsRemaining = Math.max(1, Math.round(toNumber(taxFunding.monthsRemaining || 1)));
+          const taxOutstanding = Math.max(0, roundMoney(totalTaxes - provisionExisting));
+          const effortMensuel = taxOutstanding / monthsRemaining;
+          const revenuNetMensuel = Math.max(0, toNumber(monthInputs.revenuNetMensuel || 0));
+          const ratioImpots = revenuNetMensuel > 0 ? effortMensuel / revenuNetMensuel : taxOutstanding > 0 ? 1 : 0;
+
+          let reductionRate = 0;
+          let surplusCapRate = 0;
+          if (ratioImpots > 0.2) {
+            reductionRate = 0.3;
+            surplusCapRate = 0.4;
+          } else if (ratioImpots > 0.1) {
+            reductionRate = 0.15;
+            surplusCapRate = 0.25;
+          }
+          const effortCible = effortMensuel * (1 - reductionRate);
+          const reductionMensuelle = Math.max(0, effortMensuel - effortCible);
+          const montantAProvisionner = roundMoney(reductionMensuelle * monthsRemaining);
+          const poolBeforeTax = getPool();
+          const montantFinalTax = Math.max(
+            0,
+            Math.min(montantAProvisionner, roundMoney(poolBeforeTax * surplusCapRate), poolBeforeTax)
+          );
+          const movedTax = montantFinalTax > 0 ? pullFromPool("tax", montantFinalTax) : 0;
+          rows.push([
+            "2",
+            "Impots: reduction de pression par ratio",
+            formatCurrency(movedTax),
+            formatCurrency(getPool()),
+            `Ratio = ${formatCurrency(effortMensuel)} / ${formatCurrency(revenuNetMensuel)} = ${formatPercent(
+              ratioImpots
+            )}; reduction ${Math.round(reductionRate * 100)}%; garde-fous min(${formatCurrency(
+              montantAProvisionner
+            )}, ${formatCurrency(roundMoney(poolBeforeTax * surplusCapRate))}, ${formatCurrency(
+              poolBeforeTax
+            )})`,
+          ]);
+
+          const fillRatio = savingsTarget > 0 ? state.security / savingsTarget : 1;
+          let savingsPct = 0;
+          if (fillRatio < 0.5) savingsPct = 0.6;
+          else if (fillRatio < 0.9) savingsPct = 0.3;
+          else if (fillRatio < 1) savingsPct = 0.2;
+          else savingsPct = 0;
+          const poolBeforeSavings = getPool();
+          const savingsWanted = roundMoney(poolBeforeSavings * savingsPct);
+          const movedSavings = savingsWanted > 0 ? allocateToSavings(savingsWanted) : 0;
+          rows.push([
+            "3",
+            "Epargne: allocation progressive selon remplissage",
+            formatCurrency(movedSavings),
+            formatCurrency(getPool()),
+            `Remplissage epargne = ${formatPercent(fillRatio)}; palier applique ${Math.round(
+              savingsPct * 100
+            )}% du pool (${formatCurrency(poolBeforeSavings)}) = ${formatCurrency(savingsWanted)}`,
+          ]);
+
+          const poolBeforePillar = getPool();
+          const pillarTarget = Math.max(0, Math.min(poolBeforePillar, roundMoney(pillarRoom || 0)));
+          const movedPillar = pillarTarget > 0 ? pullFromPool("pillar3a", pillarTarget) : 0;
+          rows.push([
+            "4",
+            "3e pilier: priorite jusqu'au plafond annuel",
+            formatCurrency(movedPillar),
+            formatCurrency(getPool()),
+            `Plafond restant 3e pilier = ${formatCurrency(roundMoney(pillarRoom || 0))}; allocation = min(${formatCurrency(
+              poolBeforePillar
+            )}, ${formatCurrency(roundMoney(pillarRoom || 0))})`,
+          ]);
+
+          const poolBeforeInvest = getPool();
+          const movedInvest = poolBeforeInvest > 0 ? pullFromPool("investments", poolBeforeInvest) : 0;
+          rows.push([
+            "5",
+            "Investissements: tout le surplus residuel",
+            formatCurrency(movedInvest),
+            formatCurrency(getPool()),
+            `Si 3e pilier plein (ou apres remplissage), 100% du residuel va en investissements (${formatCurrency(
+              poolBeforeInvest
+            )})`,
+          ]);
+
+          rows.push([
+            "Final",
+            "Pool de rearrangement restant",
+            "-",
+            formatCurrency(getPool()),
+            `Reste final non redistribue = ${formatCurrency(getPool())}; conserve sur comptes source`,
+          ]);
+
+          return rows;
+        };
+
+        const resolveInvestmentRate = (safetyIndex) => {
+          const safe = toNumber(safetyIndex);
+          if (safe >= 0.7) return 0.4;
+          if (safe >= 0.5) return 0.3;
+          if (safe >= 0.3) return 0.17;
+          return 0;
+        };
+
+        const renderAllInfo = () => {
+          renderError("");
+
+          const activeUser = readStorage(STORAGE_KEYS.activeUser, {}) || {};
+          const userId = String(activeUser?.id || "").trim();
+          const forms = readStorage(STORAGE_KEYS.formData, {}) || {};
+          const formData =
+            userId && forms[userId] && typeof forms[userId] === "object"
+              ? deepClone(forms[userId], {})
+              : forms.__default && typeof forms.__default === "object"
+              ? deepClone(forms.__default, {})
+              : deepClone(forms, {});
+
+          const monthlyStore = readStorage(STORAGE_KEYS.monthlyStore, {}) || {};
+          const bucket =
+            userId && monthlyStore[userId] && typeof monthlyStore[userId] === "object"
+              ? monthlyStore[userId]
+              : {};
+          const monthId = pickMonthId(bucket);
+
+          const centralStore = readStorage(STORAGE_KEYS.centralFinance, {}) || {};
+          const central =
+            userId && centralStore[userId] && typeof centralStore[userId] === "object"
+              ? centralStore[userId]
+              : null;
+
+          let rawBudget = deepClone(bucket?.monthlyPlan?.[monthId]?.monthlyBudget || {}, {});
+          if (!Object.keys(rawBudget || {}).length && central?.budget && typeof central.budget === "object") {
+            rawBudget = deepClone(central.budget, {});
+          }
+          const budget = normalizeMonthlyBudgetSnapshot(rawBudget || {});
+          const userSettings = resolveUserSettings(bucket, monthId, central);
+
+          const calculationData = mergeBudgetIntoCalculationData(formData || {}, budget, { userSettings });
+          const taxData = mergeBudgetIntoTaxData(formData || {}, budget, { userSettings });
+
+          calculationData.centralFinance = {
+            ...(calculationData.centralFinance || {}),
+            monthId,
+            userId,
+          };
+          taxData.centralFinance = {
+            ...(taxData.centralFinance || {}),
+            monthId,
+            userId,
+          };
+
+          const taxEngine = window.TaxEngine || window.SmartSaveTaxEngine;
+          const allocationEngine = window.AllocationEngine;
+          const projectionEngine = window.ProjectionEngine;
+
+          if (!allocationEngine || typeof allocationEngine.calculateAllocation !== "function") {
+            renderError("AllocationEngine est indisponible sur cette page.");
+            return;
+          }
+
+          let taxResult = {};
+          if (taxEngine && typeof taxEngine.calculateAnnualTax === "function") {
+            try {
+              taxResult = taxEngine.calculateAnnualTax(taxData) || {};
+            } catch (_error) {
+              taxResult = {};
+            }
+          }
+
+          let allocationResult = {};
+          try {
+            allocationResult = allocationEngine.calculateAllocation(calculationData) || {};
+          } catch (_error) {
+            renderError("Erreur pendant le calcul de la repartition. Verifie les donnees du profil.");
+            return;
+          }
+
+          const debug = allocationResult.debug && typeof allocationResult.debug === "object"
+            ? allocationResult.debug
+            : {};
+          const taxFunding = debug.taxFunding && typeof debug.taxFunding === "object"
+            ? debug.taxFunding
+            : {};
+          const savingsTargets = debug.savingsTargets && typeof debug.savingsTargets === "object"
+            ? debug.savingsTargets
+            : {};
+
+          const assets = resolveAssetBalances(calculationData);
+          const auditBalances = resolveTransferAuditBalances(calculationData);
+          const incomeProfile = computeIncomeProfile(calculationData, monthId);
+          const expenses = computeMonthlyExpenses(calculationData);
+          const shortTermMonthly = computeShortTermMonthly(calculationData.allocationPlan || {});
+          const currentTarget = Math.max(0, toNumber(debug.currentTarget));
+          const savingsTarget = Math.max(0, toNumber(savingsTargets.targetAmount));
+          const monthInputs = bucket?.monthlyPlan?.[monthId]?.inputsSnapshot && typeof bucket.monthlyPlan[monthId].inputsSnapshot === "object"
+            ? deepClone(bucket.monthlyPlan[monthId].inputsSnapshot, {}) || {}
+            : {};
+
+          const annualTax = Math.max(0, toNumber(taxFunding.totalEstimate || taxResult.total || 0));
+          const remainingTax = Math.max(
+            0,
+            toNumber(
+              taxFunding.remainingEstimate ||
+                (annualTax > 0 ? annualTax - assets.taxProvision : 0)
+            )
+          );
+          const taxMonthsRemaining = Math.max(
+            0,
+            toNumber(
+              taxFunding.monthsRemaining ||
+                taxResult?.monthlyProvision?.remainingMonths ||
+                0
+            )
+          );
+          const taxMonthlyNeed = Math.max(
+            0,
+            toNumber(
+              taxFunding.monthlyNeed ||
+                taxResult?.monthlyProvision?.requiredAmount ||
+                0
+            )
+          );
+          const taxMonthlyTarget = Math.max(0, toNumber(taxFunding.monthlyTarget || 0));
+
+          const availableBeforePlan =
+            debug.monthlyAvailableBeforePlan != null
+              ? toNumber(debug.monthlyAvailableBeforePlan)
+              : incomeProfile.monthlyNetIncome - (expenses.fixed + expenses.mandatory + expenses.debts);
+          const leisureDeduction =
+            debug.leisureDeduction != null
+              ? Math.max(0, toNumber(debug.leisureDeduction))
+              : Math.min(Math.max(0, availableBeforePlan), Math.max(0, toNumber(calculationData.allocationPlan?.leisureMonthly || 0)));
+          const shortTermPlanned = Math.max(
+            0,
+            toNumber(
+              debug.shortTermPlanned != null
+                ? debug.shortTermPlanned
+                : shortTermMonthly
+            )
+          );
+          const initialAvailable = toNumber(
+            allocationResult.disponibleInitial != null
+              ? allocationResult.disponibleInitial
+              : availableBeforePlan - leisureDeduction
+          );
+
+          const currentCoverage = currentTarget > 0 ? assets.paymentBalance / currentTarget : 1;
+          const savingsCoverage = savingsTarget > 0 ? assets.securityBalance / savingsTarget : 1;
+          const taxCoverage = annualTax > 0 ? assets.taxProvision / annualTax : 1;
+          const safetyIndex =
+            (Math.min(1, currentCoverage) + Math.min(1, savingsCoverage) + Math.min(1, taxCoverage)) / 3;
+
+          const savingsMonths = Math.max(0, toNumber(savingsTargets.targetMonths || 0));
+          const addIndependent = savingsTargets.isIndependent ? 0.5 : 0;
+          const addNoThirteenth = savingsTargets.hasThirteenth === false ? 0.5 : 0;
+          const addLowSavings = savingsTargets.lowSavings ? 0.5 : 0;
+          const debtRatio = toNumber(savingsTargets.debtRatio || 0);
+          const addDebtRatio = debtRatio > 0.15 ? 0.5 : 0;
+
+          const thirdPillar = computeThirdPillarCap(calculationData, incomeProfile);
+          const fiscalYear = (parseMonthId(monthId) || new Date()).getFullYear();
+          const pillarYtdYear = Math.round(toNumber(assets.thirdPillarPaidYTDYear || fiscalYear)) || fiscalYear;
+          const hasExplicitPillarYtd = Boolean(assets.hasThirdPillarPaidYTD);
+          const pillarStoredYtd = Math.max(0, toNumber(assets.thirdPillarPaidYTD));
+          const pillarContributedForLimit = (() => {
+            if (hasExplicitPillarYtd) {
+              return pillarYtdYear === fiscalYear ? pillarStoredYtd : 0;
+            }
+            if (Math.max(0, toNumber(assets.pillar3aBalance)) >= Math.max(0, toNumber(thirdPillar.cap)) - 0.5) {
+              return Math.max(0, toNumber(thirdPillar.cap));
+            }
+            return pillarStoredYtd;
+          })();
+          const pillarRoom = Math.max(
+            0,
+            toNumber(thirdPillar.cap) - pillarContributedForLimit
+          );
+          const pillarCoverage = thirdPillar.cap > 0 ? pillarContributedForLimit / toNumber(thirdPillar.cap) : 1;
+
+          const allocations = allocationResult.allocations && typeof allocationResult.allocations === "object"
+            ? allocationResult.allocations
+            : {};
+          const shortTermAllocated = Math.max(0, toNumber(allocations.projetsCourtTerme || 0));
+
+          const subtitle = document.getElementById("all-info-subtitle");
+          if (subtitle) {
+            const name =
+              String(formData?.personal?.firstName || "").trim() ||
+              String(formData?.personal?.prenom || "").trim() ||
+              String(activeUser?.displayName || activeUser?.name || "Utilisateur").trim();
+            subtitle.textContent = `${name} - ${formatMonthLabel(monthId)}`;
+          }
+
+          renderKpis([
+            { label: "Disponible initial a repartir", value: formatCurrency(initialAvailable) },
+            { label: "Provision impots du mois", value: formatCurrency(allocations.impots || 0) },
+            { label: "Ajout compte courant", value: formatCurrency(allocations.compteCourant || 0) },
+            { label: "Ajout compte epargne", value: formatCurrency(allocations.securite || 0) },
+            { label: "3e pilier", value: formatCurrency(allocations.pilier3a || 0) },
+            { label: "Investissements", value: formatCurrency(allocations.investissements || 0) },
+            { label: "Reste final", value: formatCurrency(allocationResult.reste || 0) },
+          ]);
+
+          const inputRows = [
+            [
+              "Revenu net mensuel (hors 13e)",
+              formatCurrency(incomeProfile.monthlyNetBase),
+              "Somme des revenus nets mensuels + revenu conjoint (si present)",
+              budget.hasIncomeBudget ? "Budget du mois > Revenus" : "Profil > Revenus",
+            ],
+            [
+              "13e salaire ajoute ce mois",
+              formatCurrency(incomeProfile.thirteenthForMonth),
+              "Ajoute seulement sur le mois du 13e (souvent decembre)",
+              "Profil > Revenus (case 13e salaire)",
+            ],
+            [
+              "Revenu net utilise ce mois",
+              formatCurrency(incomeProfile.monthlyNetIncome),
+              `${formatCurrency(incomeProfile.monthlyNetBase)} + ${formatCurrency(
+                incomeProfile.thirteenthForMonth
+              )}`,
+              "Calcule automatique",
+            ],
+            [
+              "Charges fixes mensuelles",
+              formatCurrency(expenses.fixed),
+              "Somme mensuelle de toutes les charges fixes",
+              budget.hasFixedBudget ? "Budget du mois > Charges fixes" : "Profil > Depenses fixes",
+            ],
+            [
+              "Charges obligatoires mensuelles",
+              formatCurrency(expenses.mandatory),
+              "Somme mensuelle de toutes les charges obligatoires",
+              budget.hasMandatoryBudget ? "Budget du mois > Charges obligatoires" : "Profil > Depenses obligatoires",
+            ],
+            [
+              "Mensualites de dettes",
+              formatCurrency(expenses.debts),
+              "Somme des mensualites de credits/dettes",
+              "Profil > Credits et dettes",
+            ],
+            [
+              "Budget variable deduit (loisirs)",
+              formatCurrency(leisureDeduction),
+              "Deduction appliquee avant repartition",
+              budget.hasVariablePlanned ? "Budget du mois > Budget variable" : "Profil > Parametres SmartSave",
+            ],
+            [
+              "Objectif court terme planifie",
+              formatCurrency(shortTermPlanned),
+              "Ce montant n'est pas deduit du disponible: il est alloue pendant la repartition (apres compte courant)",
+              "Profil > Parametres SmartSave > Objectif court terme",
+            ],
+            [
+              "Solde compte courant (debut mois)",
+              formatCurrency(assets.paymentBalance),
+              "Montant deja disponible avant repartition",
+              "Profil > Comptes SmartSave",
+            ],
+            [
+              "Solde compte epargne (debut mois)",
+              formatCurrency(assets.securityBalance),
+              "Montant deja disponible avant repartition",
+              "Profil > Comptes SmartSave",
+            ],
+            [
+              "Solde provision impots (debut mois)",
+              formatCurrency(assets.taxProvision),
+              "Provision deja existante",
+              "Profil > Comptes SmartSave",
+            ],
+            [
+              "3e pilier deja verse cette annee",
+              formatCurrency(hasExplicitPillarYtd ? assets.thirdPillarPaidYTD : pillarContributedForLimit),
+              hasExplicitPillarYtd
+                ? "Pris en compte pour le plafond fiscal annuel"
+                : `YTD non saisi: estimation via solde 3e pilier (${formatCurrency(assets.pillar3aBalance)})`,
+              "Profil > Comptes SmartSave",
+            ],
+            [
+              "Impot annuel estime",
+              formatCurrency(annualTax),
+              "Estimation annuelle des impots",
+              "Moteur impots",
+            ],
+            [
+              "Impot restant a couvrir",
+              formatCurrency(remainingTax),
+              `${formatCurrency(annualTax)} - ${formatCurrency(assets.taxProvision)}`,
+              "Moteur impots + solde impots",
+            ],
+            [
+              "Mois fiscaux restants",
+              String(Math.round(taxMonthsRemaining)),
+              "Nombre de mois pour lisser la provision",
+              "Moteur impots",
+            ],
+            [
+              "Besoin impot mensuel theorique",
+              formatCurrency(taxMonthlyNeed),
+              "Besoin mensuel ideal avant plafonds",
+              "Moteur de repartition",
+            ],
+            [
+              "Cible impot mensuelle appliquee",
+              formatCurrency(taxMonthlyTarget),
+              "Cible apres regles (plafond %, urgence, etc.)",
+              "Moteur de repartition",
+            ],
+            [
+              "Mode impots actif",
+              translateTaxMode(taxFunding.mode || calculationData.taxes?.taxMode || "AUTO_PROVISION"),
+              translateTaxReason(taxFunding.reason || ""),
+              "Profil > Parametres SmartSave",
+            ],
+          ];
+
+          renderTable(
+            "table-inputs",
+            ["Donnee", "Valeur", "Detail du calcul", "Ou tu la saisis"],
+            inputRows
+          );
+
+          const lineRows = buildIncomeRows(calculationData).concat(buildExpenseRows(calculationData));
+          renderTable(
+            "table-lines",
+            ["Type", "Libelle", "Montant mensuel utilise", "Detail"],
+            lineRows
+          );
+
+          const targetRows = [
+            [
+              "Cible compte courant",
+              formatCurrency(currentTarget),
+              `${formatCurrency(expenses.mandatory)} x 1 mois = ${formatCurrency(currentTarget)}`,
+              "Regle SmartSave: 1 mois de depenses obligatoires",
+            ],
+            [
+              "Mois cible epargne",
+              `${savingsMonths.toFixed(1)} mois`,
+              `3 + ${addIndependent} (independant) + ${addNoThirteenth} (pas de 13e) + ${addLowSavings} (epargne faible) + ${addDebtRatio} (ratio dettes > 15%) = ${savingsMonths.toFixed(
+                1
+              )}`,
+              "Regle SmartSave dynamique",
+            ],
+            [
+              "Depenses de reference pour epargne",
+              formatCurrency(expenses.total),
+              `${formatCurrency(expenses.fixed)} + ${formatCurrency(expenses.mandatory)} + ${formatCurrency(
+                expenses.debts
+              )}`,
+              "Regle SmartSave",
+            ],
+            [
+              "Cible compte epargne",
+              formatCurrency(savingsTarget),
+              `${formatCurrency(expenses.total)} x ${savingsMonths.toFixed(1)} = ${formatCurrency(savingsTarget)}`,
+              "Regle SmartSave",
+            ],
+            [
+              "Plafond 3e pilier annuel",
+              formatCurrency(thirdPillar.cap),
+              thirdPillar.isIndependent
+                ? `min(20% x ${formatCurrency(thirdPillar.annualIncome)}, ${formatCurrency(35280)})`
+                : "Salarie: plafond fixe 7056 CHF/an",
+              "Regle fiscale 3e pilier",
+            ],
+            [
+              "Limite restante compte 3e pilier",
+              formatCurrency(pillarRoom),
+              `${formatCurrency(thirdPillar.cap)} - ${formatCurrency(pillarContributedForLimit)} (YTD ${fiscalYear})`,
+              "Plafond fiscal restant sur l'annee en cours",
+            ],
+            [
+              "Remplissage compte 3e pilier",
+              formatPercent(Math.min(1, pillarCoverage)),
+              thirdPillar.cap > 0
+                ? `${formatCurrency(pillarContributedForLimit)} / ${formatCurrency(thirdPillar.cap)}`
+                : "Plafond = 0 CHF (considere 100%)",
+              hasExplicitPillarYtd
+                ? "Etat fiscal du 3e pilier (versements YTD uniquement)"
+                : "Etat fiscal du 3e pilier (YTD estime depuis le solde si non renseigne)",
+            ],
+            [
+              "Remplissage compte courant",
+              formatPercent(currentCoverage),
+              currentTarget > 0
+                ? `${formatCurrency(assets.paymentBalance)} / ${formatCurrency(currentTarget)}`
+                : "Cible = 0 CHF (considere 100%)",
+              "Etat actuel des comptes",
+            ],
+            [
+              "Remplissage compte epargne",
+              formatPercent(savingsCoverage),
+              savingsTarget > 0
+                ? `${formatCurrency(assets.securityBalance)} / ${formatCurrency(savingsTarget)}`
+                : "Cible = 0 CHF (considere 100%)",
+              "Etat actuel des comptes",
+            ],
+            [
+              "Remplissage compte impots",
+              formatPercent(taxCoverage),
+              annualTax > 0
+                ? `${formatCurrency(assets.taxProvision)} / ${formatCurrency(annualTax)}`
+                : "Impot annuel = 0 CHF (considere 100%)",
+              "Etat actuel des comptes",
+            ],
+            [
+              "Indice global de securite",
+              formatPercent(safetyIndex),
+              "Moyenne de: courant, epargne, impots (chacun limite a 100%)",
+              "Regle SmartSave investissements",
+            ],
+            [
+              "Taux investissement theorique",
+              formatPercent(resolveInvestmentRate(safetyIndex)),
+              currentCoverage < 0.5
+                ? "Bloque car compte courant < 50% de sa cible"
+                : "Applique sur le surplus restant selon l'indice global",
+              "Regle SmartSave investissements",
+            ],
+          ];
+
+          renderTable(
+            "table-targets",
+            ["Calcul de limite", "Valeur", "Detail chiffre", "Regle"],
+            targetRows
+          );
+
+          const availableRows = [
+            ["Revenu net du mois (incl. 13e si ce mois)", formatSignedCurrency(incomeProfile.monthlyNetIncome), `${formatCurrency(incomeProfile.monthlyNetBase)} + ${formatCurrency(incomeProfile.thirteenthForMonth)}`],
+            ["Charges fixes", formatSignedCurrency(-expenses.fixed), `-${formatCurrency(expenses.fixed)}`],
+            ["Charges obligatoires", formatSignedCurrency(-expenses.mandatory), `-${formatCurrency(expenses.mandatory)}`],
+            ["Mensualites de dettes", formatSignedCurrency(-expenses.debts), `-${formatCurrency(expenses.debts)}`],
+            ["Disponible avant plan", formatCurrency(availableBeforePlan), `${formatCurrency(incomeProfile.monthlyNetIncome)} - (${formatCurrency(expenses.fixed)} + ${formatCurrency(expenses.mandatory)} + ${formatCurrency(expenses.debts)})`],
+            ["Budget variable deduit", formatSignedCurrency(-leisureDeduction), `-${formatCurrency(leisureDeduction)}`],
+            ["Disponible initial a repartir", formatCurrency(initialAvailable), `${formatCurrency(availableBeforePlan)} - ${formatCurrency(leisureDeduction)}`],
+            ["Objectif court terme alloue dans la repartition", formatSignedCurrency(-shortTermAllocated), `Alloue plus tard: ${formatCurrency(shortTermAllocated)}`],
+          ];
+
+          renderTable(
+            "table-available",
+            ["Etape de calcul", "Montant", "Detail chiffre"],
+            availableRows
+          );
+
+          const resultRows = [
+            ["Provision impots", formatCurrency(allocations.impots || 0), initialAvailable > 0 ? formatPercent((allocations.impots || 0) / initialAvailable) : "-"],
+            ["Compte courant", formatCurrency(allocations.compteCourant || 0), initialAvailable > 0 ? formatPercent((allocations.compteCourant || 0) / initialAvailable) : "-"],
+            ["Compte epargne", formatCurrency(allocations.securite || 0), initialAvailable > 0 ? formatPercent((allocations.securite || 0) / initialAvailable) : "-"],
+            ["3e pilier", formatCurrency(allocations.pilier3a || 0), initialAvailable > 0 ? formatPercent((allocations.pilier3a || 0) / initialAvailable) : "-"],
+            ["Investissements", formatCurrency(allocations.investissements || 0), initialAvailable > 0 ? formatPercent((allocations.investissements || 0) / initialAvailable) : "-"],
+            ["Objectif court terme", formatCurrency(allocations.projetsCourtTerme || 0), initialAvailable > 0 ? formatPercent((allocations.projetsCourtTerme || 0) / initialAvailable) : "-"],
+            ["Projets long terme", formatCurrency(allocations.projetsLongTerme || 0), initialAvailable > 0 ? formatPercent((allocations.projetsLongTerme || 0) / initialAvailable) : "-"],
+            ["Remboursement dettes", formatCurrency(allocations.dettes || 0), initialAvailable > 0 ? formatPercent((allocations.dettes || 0) / initialAvailable) : "-"],
+            ["Reste final", formatCurrency(allocationResult.reste || 0), initialAvailable > 0 ? formatPercent((allocationResult.reste || 0) / initialAvailable) : "-"],
+          ];
+
+          renderTable(
+            "table-results",
+            ["Compte", "Montant alloue", "% du disponible initial"],
+            resultRows
+          );
+
+          renderTable(
+            "table-process",
+            ["Etape", "Action", "Montant de l'etape", "Reste apres etape", "Calcul"],
+            buildProcessRows(allocationResult)
+          );
+
+          const rebalanceRows = buildRebalanceRows({
+            balances: {
+              current: assets.paymentBalance,
+              security: assets.securityBalance,
+              tax: assets.taxProvision,
+              pillar3a: assets.pillar3aBalance,
+              investments: assets.investmentsBalance,
+            },
+            limits: {
+              current: currentTarget,
+              savings: savingsTarget,
+            },
+            taxFunding,
+            monthInputs: {
+              ...monthInputs,
+              revenuNetMensuel:
+                toNumber(monthInputs.revenuNetMensuel) ||
+                toNumber(incomeProfile.monthlyNetIncome) ||
+                0,
+            },
+            userSettings,
+            pillarRoom,
+          });
+          renderTable(
+            "table-rebalance",
+            ["Etape", "Action", "Montant de l'etape", "Reste apres etape", "Calcul"],
+            rebalanceRows
+          );
+
+          const plannedTransfers = buildPlannedAllocationTransfers(allocations);
+          const transferAudit = buildTransferAudit({
+            startingBalances: auditBalances,
+            initialAvailable,
+            transfers: plannedTransfers,
+          });
+          renderTable(
+            "table-transfer-audit",
+            [
+              "Etape",
+              "Mouvement",
+              "Compte courant (avant -> apres)",
+              "Compte epargne (avant -> apres)",
+              "Provision impots (avant -> apres)",
+              "3e pilier (avant -> apres)",
+              "Investissements (avant -> apres)",
+              "Projets (avant -> apres)",
+              "Commentaire",
+            ],
+            transferAudit.rows
+          );
+          renderTable(
+            "table-transfer-diagnostic",
+            ["Controle", "Valeur", "Lecture"],
+            transferAudit.diagnosticRows
+          );
+
+          let projectionFlowRows = [];
+          if (projectionEngine && typeof projectionEngine.calculateProjection === "function") {
+            try {
+              const projectionResult = projectionEngine.calculateProjection(calculationData, {
+                months: 3,
+                keepHistory: true,
+                captureFlows: true,
+                startDate: parseMonthId(monthId) || new Date(),
+              }) || {};
+              projectionFlowRows = buildProjectionFlowRows({
+                projectionResult,
+                startingBalances: resolveProjectionStartBalances(calculationData),
+                maxMonths: 3,
+              });
+            } catch (_error) {
+              projectionFlowRows = [
+                [
+                  "Projection",
+                  "Erreur de calcul",
+                  "Le moteur de projection a retourne une erreur sur cette simulation.",
+                  "Verifie les donnees de profil (revenus, depenses, comptes).",
+                  "-",
+                ],
+              ];
+            }
+          } else {
+            projectionFlowRows = [
+              [
+                "Projection",
+                "Moteur indisponible",
+                "projectionEngine.js n'est pas charge sur cette page.",
+                "Ajoute le script moteur pour afficher le detail.",
+                "-",
+              ],
+            ];
+          }
+          renderTable(
+            "table-projection-flow",
+            [
+              "Mois / etape",
+              "Action moteur",
+              "Ce que fait le moteur",
+              "Impact chiffre",
+              "Soldes apres etape",
+            ],
+            projectionFlowRows
+          );
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+          const backLink = document.getElementById("all-info-back");
+          const refreshBtn = document.getElementById("all-info-refresh");
+          backLink?.addEventListener("click", (event) => {
+            if (window.history.length <= 1) return;
+            event.preventDefault();
+            window.history.back();
+          });
+          refreshBtn?.addEventListener("click", renderAllInfo);
+          renderAllInfo();
+        });
+      })();
+    </script>
+    <script src="/dev-reload.js" defer></script>
+  </body>
+</html>

@@ -251,11 +251,11 @@
     };
     const rates = formData?.rates || {};
     const monthlyRates = {
-      security: toRateDecimal(rates.savings, 0.012) / 12,
-      tax: toRateDecimal(rates.savings, 0.012) / 12,
-      projects: toRateDecimal(rates.blocked, 0.015) / 12,
-      pillar3a: toRateDecimal(rates.pillar3, 0.02) / 12,
-      investments: toRateDecimal(rates.investments, 0.04) / 12,
+      security: toRateDecimal(rates.savings, 0.018) / 12,
+      tax: toRateDecimal(rates.savings, 0.018) / 12,
+      projects: toRateDecimal(rates.blocked, 0.02) / 12,
+      pillar3a: toRateDecimal(rates.pillar3, 0.03) / 12,
+      investments: toRateDecimal(rates.investments, 0.05) / 12,
     };
     const starting = plan?.flags?.startingBalances || {};
     const closing = plan?.flags?.closingBalances || {};

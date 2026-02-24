@@ -7,6 +7,9 @@
   const MONTH_STATE_KEY = "smartsaveMonthState";
   const SNAPSHOT_STORAGE_KEY = "smartsaveSnapshots";
   const PENDING_MON_ARGENT_ACTION_KEY = "smartsavePendingMonArgentAction";
+  const SMARTSAVE_PENDING_ACTIONS_KEY = "smartsavePendingBankActions";
+  const MAX_TRANSACTIONS_RAW_BYTES = 2_500_000;
+  const MAX_TRANSACTIONS_SORT_COUNT = 5_000;
   let futureRangeYears = 10;
   let lastRenderContext = null;
   let lastMonthlyContext = null;
@@ -48,6 +51,398 @@
   };
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  const deepCloneJson = (value, fallback = null) => {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (_error) {
+      return fallback;
+    }
+  };
+  const mergePlainObjects = (base = {}, patch = {}) => {
+    const safeBase = base && typeof base === "object" && !Array.isArray(base) ? base : {};
+    const safePatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+    const output = { ...safeBase };
+    Object.keys(safePatch).forEach((key) => {
+      const patchValue = safePatch[key];
+      if (Array.isArray(patchValue)) {
+        output[key] = patchValue.slice();
+        return;
+      }
+      if (patchValue && typeof patchValue === "object") {
+        const baseValue =
+          output[key] && typeof output[key] === "object" && !Array.isArray(output[key])
+            ? output[key]
+            : {};
+        output[key] = mergePlainObjects(baseValue, patchValue);
+        return;
+      }
+      output[key] = patchValue;
+    });
+    return output;
+  };
+
+  const SMARTSAVE_SETTINGS_DEFAULTS = Object.freeze({
+    cycle: {
+      monthId: (() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      })(),
+      closingDay: "eom",
+      applyMode: "manual",
+    },
+    allocationPriority: {
+      order: "security_tax_invest",
+    },
+    taxes: {
+      enabled: true,
+      provisionMode: "smoothed",
+      priority: "normal",
+    },
+    goals: {
+      smoothingEnabled: true,
+      autoRecalculateMonthly: true,
+    },
+    limits: {
+      minCurrentMonths: 1,
+      precautionIncomeMonths: 3,
+      investMaxSurplusPct: 25,
+      scoreInfluenceEnabled: true,
+    },
+    savings: {
+      strategy: "equilibre",
+    },
+    investments: {
+      strategy: "equilibre",
+    },
+  });
+
+  const ADVANCED_SETTINGS_DEFAULTS = Object.freeze({
+    transferControls: {
+      maxPerTransfer: 0,
+      maxMonthlyTotal: 0,
+      maxTransfersPerMonth: 0,
+      requireConfirmation: true,
+    },
+    savingsUsage: {
+      savingsFloor: 0,
+      pullOrder: "current_first",
+    },
+    investmentAdvanced: {
+      progressiveInvest: false,
+      maxInvestPerMonth: 0,
+      maxInvestPct: 40,
+      stopOnHardMonth: true,
+    },
+    overrides: {
+      skipCurrentMonth: false,
+      freezeAccount: "",
+      freezeMonths: 0,
+      forceRecompute: false,
+    },
+    exceptions: {
+      negativeSurplusMode: "no_transfer",
+      urgentTaxBoostOneMonth: false,
+    },
+  });
+
+  const normalizeSmartSaveSettings = (raw = {}) => {
+    const merged = mergePlainObjects(deepCloneJson(SMARTSAVE_SETTINGS_DEFAULTS, {}) || {}, raw || {});
+    merged.cycle.monthId = String(merged?.cycle?.monthId || SMARTSAVE_SETTINGS_DEFAULTS.cycle.monthId);
+    merged.cycle.closingDay = String(merged?.cycle?.closingDay || "eom");
+    merged.cycle.applyMode = String(merged?.cycle?.applyMode || "manual");
+    merged.allocationPriority.order = String(
+      merged?.allocationPriority?.order || "security_tax_invest"
+    );
+    if (!["security_tax_invest", "security_invest_tax"].includes(merged.allocationPriority.order)) {
+      merged.allocationPriority.order = "security_tax_invest";
+    }
+    merged.taxes.enabled = Boolean(merged?.taxes?.enabled);
+    merged.taxes.provisionMode = String(merged?.taxes?.provisionMode || "smoothed");
+    if (!["smoothed", "recommendations"].includes(merged.taxes.provisionMode)) {
+      merged.taxes.provisionMode = "smoothed";
+    }
+    merged.taxes.priority = String(merged?.taxes?.priority || "normal").toLowerCase();
+    if (!["normal", "high", "critical"].includes(merged.taxes.priority)) {
+      merged.taxes.priority = "normal";
+    }
+    merged.goals.smoothingEnabled = Boolean(merged?.goals?.smoothingEnabled);
+    merged.goals.autoRecalculateMonthly = Boolean(merged?.goals?.autoRecalculateMonthly);
+    merged.limits.minCurrentMonths = Math.max(
+      1,
+      Math.min(3, Math.round(toNumber(merged?.limits?.minCurrentMonths || 1)))
+    );
+    merged.limits.precautionIncomeMonths = Math.max(
+      1,
+      Math.min(12, Math.round(toNumber(merged?.limits?.precautionIncomeMonths || 3)))
+    );
+    merged.limits.investMaxSurplusPct = Math.max(
+      0,
+      Math.min(100, Math.round(toNumber(merged?.limits?.investMaxSurplusPct || 25)))
+    );
+    merged.limits.scoreInfluenceEnabled = Boolean(merged?.limits?.scoreInfluenceEnabled);
+    merged.savings = merged.savings || {};
+    merged.savings.strategy = String(merged?.savings?.strategy || "equilibre").toLowerCase();
+    if (!["prudent", "equilibre", "agressif", "aggressif"].includes(merged.savings.strategy)) {
+      merged.savings.strategy = "equilibre";
+    }
+    merged.investments = merged.investments || {};
+    merged.investments.strategy = String(merged?.investments?.strategy || "equilibre").toLowerCase();
+    if (!["securite", "equilibre", "agressif", "aggressif"].includes(merged.investments.strategy)) {
+      merged.investments.strategy = "equilibre";
+    }
+    return merged;
+  };
+
+  const normalizeAdvancedSettings = (raw = {}) => {
+    const merged = mergePlainObjects(deepCloneJson(ADVANCED_SETTINGS_DEFAULTS, {}) || {}, raw || {});
+    merged.transferControls.maxPerTransfer = Math.max(
+      0,
+      toNumber(merged?.transferControls?.maxPerTransfer || 0)
+    );
+    merged.transferControls.maxMonthlyTotal = Math.max(
+      0,
+      toNumber(merged?.transferControls?.maxMonthlyTotal || 0)
+    );
+    merged.transferControls.maxTransfersPerMonth = Math.max(
+      0,
+      Math.round(toNumber(merged?.transferControls?.maxTransfersPerMonth || 0))
+    );
+    merged.transferControls.requireConfirmation = Boolean(
+      merged?.transferControls?.requireConfirmation
+    );
+    merged.savingsUsage = merged.savingsUsage && typeof merged.savingsUsage === "object"
+      ? merged.savingsUsage
+      : {};
+    if (Object.prototype.hasOwnProperty.call(merged.savingsUsage, "allowUseExistingSavings")) {
+      delete merged.savingsUsage.allowUseExistingSavings;
+    }
+    merged.savingsUsage.savingsFloor = Math.max(0, toNumber(merged?.savingsUsage?.savingsFloor || 0));
+    merged.savingsUsage.pullOrder =
+      String(merged?.savingsUsage?.pullOrder || "current_first") === "savings_first"
+        ? "savings_first"
+        : "current_first";
+    merged.investmentAdvanced.progressiveInvest = Boolean(
+      merged?.investmentAdvanced?.progressiveInvest
+    );
+    merged.investmentAdvanced.maxInvestPerMonth = Math.max(
+      0,
+      toNumber(merged?.investmentAdvanced?.maxInvestPerMonth || 0)
+    );
+    merged.investmentAdvanced.maxInvestPct = Math.max(
+      0,
+      Math.min(100, Math.round(toNumber(merged?.investmentAdvanced?.maxInvestPct || 0)))
+    );
+    merged.investmentAdvanced.stopOnHardMonth = Boolean(
+      merged?.investmentAdvanced?.stopOnHardMonth
+    );
+    merged.overrides.skipCurrentMonth = Boolean(merged?.overrides?.skipCurrentMonth);
+    merged.overrides.freezeAccount = String(merged?.overrides?.freezeAccount || "").trim();
+    merged.overrides.freezeMonths = Math.max(
+      0,
+      Math.min(24, Math.round(toNumber(merged?.overrides?.freezeMonths || 0)))
+    );
+    merged.overrides.forceRecompute = Boolean(merged?.overrides?.forceRecompute);
+    merged.exceptions.negativeSurplusMode =
+      String(merged?.exceptions?.negativeSurplusMode || "no_transfer") === "warn_only"
+        ? "warn_only"
+        : "no_transfer";
+    merged.exceptions.urgentTaxBoostOneMonth = Boolean(
+      merged?.exceptions?.urgentTaxBoostOneMonth
+    );
+    return merged;
+  };
+
+  const normalizeTransferAccountKey = (value) => {
+    const key = String(value || "").trim().toLowerCase();
+    if (!key) return "";
+    if (["current", "comptecourant", "comptecourant", "checking"].includes(key)) return "current";
+    if (["security", "securite", "savings", "epargne"].includes(key)) return "security";
+    if (["tax", "impots", "provisionimpots"].includes(key)) return "tax";
+    if (["investments", "investissement", "investissements"].includes(key)) return "investments";
+    if (["pillar3a", "pilier3a", "thirdpillar", "pillar3"].includes(key)) return "pillar3a";
+    if (
+      ["projects", "projets", "projetslongterme", "projetscourtterme", "shortterm", "longterm"].includes(
+        key
+      )
+    ) {
+      return "projects";
+    }
+    return key;
+  };
+
+  const resolveActiveFrozenAccount = (advancedSettings = {}) => {
+    const freezeMonths = Math.max(
+      0,
+      Math.round(toNumber(advancedSettings?.overrides?.freezeMonths || 0))
+    );
+    if (freezeMonths <= 0) return "";
+    return normalizeTransferAccountKey(advancedSettings?.overrides?.freezeAccount || "");
+  };
+
+  const isGrowthDestination = (value) => {
+    const key = normalizeTransferAccountKey(value);
+    return key === "investments" || key === "pillar3a";
+  };
+
+  const resolveTaxPriority = ({ smartSaveSettings = {}, advancedSettings = {} } = {}) => {
+    let priority = String(smartSaveSettings?.taxes?.priority || "normal").toLowerCase();
+    if (!["normal", "high", "critical"].includes(priority)) priority = "normal";
+    if (advancedSettings?.exceptions?.urgentTaxBoostOneMonth) return "critical";
+    return priority;
+  };
+
+  const resolveTaxCapPct = ({ smartSaveSettings = {}, advancedSettings = {} } = {}) => {
+    const priority = resolveTaxPriority({ smartSaveSettings, advancedSettings });
+    if (priority === "critical") return 0.65;
+    if (priority === "high") return 0.45;
+    return 0.35;
+  };
+
+  const mapTaxPriorityToChoice = (priority = "normal") => {
+    const safe = String(priority || "normal").toLowerCase();
+    if (safe === "critical") return "USE_SAVINGS";
+    if (safe === "high") return "MIX";
+    return "SPREAD";
+  };
+
+  const resolveGrowthCapFromSettings = ({
+    availableSurplus = 0,
+    smartSaveSettings = {},
+    advancedSettings = {},
+  } = {}) => {
+    const safeAvailable = Math.max(0, toNumber(availableSurplus));
+    const smartPct = Math.max(
+      0,
+      Math.min(100, toNumber(smartSaveSettings?.limits?.investMaxSurplusPct || 0))
+    );
+    const advancedPctRaw = Math.max(
+      0,
+      Math.min(100, toNumber(advancedSettings?.investmentAdvanced?.maxInvestPct || 0))
+    );
+    const effectivePct = advancedPctRaw > 0 ? Math.min(smartPct, advancedPctRaw) : smartPct;
+    const capByPct = safeAvailable * (effectivePct / 100);
+    const capByAbsolute =
+      toNumber(advancedSettings?.investmentAdvanced?.maxInvestPerMonth || 0) > 0
+        ? toNumber(advancedSettings.investmentAdvanced.maxInvestPerMonth)
+        : Number.POSITIVE_INFINITY;
+    let cap = Math.max(0, Math.min(capByPct, capByAbsolute));
+    if (advancedSettings?.investmentAdvanced?.progressiveInvest) cap *= 0.7;
+    if (advancedSettings?.investmentAdvanced?.stopOnHardMonth && safeAvailable <= 0) cap = 0;
+    return Math.max(0, roundMoney(cap));
+  };
+
+  const resolveEffectiveMonthSettings = (monthContext = {}) => {
+    const liveUserSettings =
+      monthContext?.userSettings && typeof monthContext.userSettings === "object"
+        ? monthContext.userSettings
+        : {};
+    const liveSmartSaveSettings = normalizeSmartSaveSettings(
+      liveUserSettings.smartSaveSettings || {}
+    );
+    const liveAdvancedSettings = normalizeAdvancedSettings(
+      liveUserSettings.advancedSettings || {}
+    );
+    const snapshot =
+      monthContext?.monthlyPlan?.settingsSnapshot &&
+      typeof monthContext.monthlyPlan.settingsSnapshot === "object"
+        ? monthContext.monthlyPlan.settingsSnapshot
+        : null;
+    const snapshotSmart =
+      snapshot?.smart && typeof snapshot.smart === "object"
+        ? snapshot.smart
+        : snapshot?.smartSave && typeof snapshot.smartSave === "object"
+        ? snapshot.smartSave
+        : {};
+    const snapshotAdvanced =
+      snapshot?.advanced && typeof snapshot.advanced === "object" ? snapshot.advanced : {};
+    const hasSnapshot = Boolean(
+      snapshot &&
+        (Object.keys(snapshotSmart).length > 0 || Object.keys(snapshotAdvanced).length > 0)
+    );
+    const monthStatus = String(monthContext?.monthlyPlan?.flags?.monthStatus || "active");
+    const useSnapshot =
+      hasSnapshot &&
+      monthStatus === "closed" &&
+      !liveAdvancedSettings.overrides.forceRecompute;
+    const smartSaveSettings = useSnapshot
+      ? normalizeSmartSaveSettings(snapshotSmart)
+      : liveSmartSaveSettings;
+    const advancedSettings = useSnapshot
+      ? normalizeAdvancedSettings(snapshotAdvanced)
+      : liveAdvancedSettings;
+    return {
+      source: useSnapshot ? "snapshot" : "live",
+      userSettings: {
+        ...liveUserSettings,
+        smartSaveSettings,
+        advancedSettings,
+      },
+      smartSaveSettings,
+      advancedSettings,
+      liveSmartSaveSettings,
+      liveAdvancedSettings,
+    };
+  };
+
+  const getProjectionHistoryLength = (projection = {}) =>
+    Math.max(
+      ensureArray(projection?.current?.history).length,
+      ensureArray(projection?.smartSave?.history).length
+    );
+
+  const buildProjectionSourceData = (formData = {}) => {
+    const centralBuilder =
+      typeof window.buildCentralizedFinancialData === "function"
+        ? window.buildCentralizedFinancialData
+        : null;
+    if (centralBuilder) {
+      try {
+        const activeUser =
+          typeof window.loadActiveUser === "function" ? window.loadActiveUser() : null;
+        const centralData = centralBuilder(formData, {
+          userId: activeUser?.id || null,
+          monthId: lastMonthlyContext?.monthId || null,
+          persist: false,
+        });
+        if (
+          centralData?.calculationData &&
+          typeof centralData.calculationData === "object"
+        ) {
+          return deepCloneJson(centralData.calculationData, formData) || formData;
+        }
+      } catch (_error) {
+        // fallback to raw form data
+      }
+    }
+    return formData;
+  };
+
+  const resolveProjectionForApp = ({ data = {}, formData = {}, months = 240 } = {}) => {
+    const projectionFromData =
+      data?.projection && typeof data.projection === "object" ? data.projection : null;
+    const requiredMonths = Math.max(1, Math.round(toNumber(months || 240)));
+    const historyLength = getProjectionHistoryLength(projectionFromData || {});
+    if (projectionFromData && historyLength >= requiredMonths) return projectionFromData;
+
+    const projectionEngine = window.ProjectionEngine;
+    if (!projectionEngine || typeof projectionEngine.calculateProjection !== "function") {
+      return projectionFromData || {};
+    }
+
+    try {
+      const sourceData = buildProjectionSourceData(formData || {});
+      return (
+        projectionEngine.calculateProjection(sourceData, {
+          months: Math.max(240, requiredMonths),
+          keepHistory: true,
+        }) ||
+        projectionFromData ||
+        {}
+      );
+    } catch (_error) {
+      return projectionFromData || {};
+    }
+  };
 
   const toISODate = (date) => {
     const target = date instanceof Date ? date : new Date(date);
@@ -101,17 +496,24 @@
     return day >= 25 || day <= 5;
   };
 
-  const loadTransactions = (activeUser) => {
+  const loadTransactions = (activeUser, options = {}) => {
     try {
-      const stored = JSON.parse(localStorage.getItem(TRANSACTIONS_KEY) || "[]");
+      const raw = localStorage.getItem(TRANSACTIONS_KEY) || "[]";
+      if (raw.length > MAX_TRANSACTIONS_RAW_BYTES) return [];
+      const stored = JSON.parse(raw);
       const list = Array.isArray(stored) ? stored : [];
       const activeUserId = String(activeUser?.id || "").trim();
-      const filtered = activeUser?.id
+      let filtered = activeUser?.id
         ? list.filter((item) => {
             const entryUserId = String(item?.userId || "").trim();
             return !entryUserId || entryUserId === activeUserId;
           })
         : list;
+      if (filtered.length > MAX_TRANSACTIONS_SORT_COUNT) {
+        filtered = filtered.slice(filtered.length - MAX_TRANSACTIONS_SORT_COUNT);
+      }
+      const shouldSort = options?.sort !== false;
+      if (!shouldSort) return filtered;
       return filtered.sort((a, b) => {
         const aTime = new Date(a.date || a.createdAt || 0).getTime();
         const bTime = new Date(b.date || b.createdAt || 0).getTime();
@@ -494,12 +896,15 @@
     if (activeDate >= currentDate) return;
 
     while (activeDate && activeDate < currentDate) {
-      closeActiveMonth(activeUser, formData, transactions);
+      const closed = closeActiveMonth(activeUser, formData, transactions);
+      if (!closed) break;
       const state = loadMonthState();
       const userState = state?.[activeUser?.id];
       if (!userState?.activeMonthKey) break;
-      activeDate = parseMonthKey(userState.activeMonthKey);
-      if (!activeDate) break;
+      const nextActiveDate = parseMonthKey(userState.activeMonthKey);
+      if (!nextActiveDate) break;
+      if (nextActiveDate.getTime() === activeDate.getTime()) break;
+      activeDate = nextActiveDate;
     }
   };
 
@@ -524,14 +929,20 @@
     const extras = {};
 
     const applyDelta = (accountKey, accountLabel, delta) => {
-      if (accountKey && Object.prototype.hasOwnProperty.call(updated, accountKey)) {
-        updated[accountKey] += delta;
+      const rawKey = String(accountKey || "").trim();
+      const normalizedKey = normalizeTransferAccountKey(rawKey);
+      if (normalizedKey && Object.prototype.hasOwnProperty.call(updated, normalizedKey)) {
+        updated[normalizedKey] += delta;
+        return;
+      }
+      if (rawKey && Object.prototype.hasOwnProperty.call(updated, rawKey)) {
+        updated[rawKey] += delta;
         return;
       }
       const derivedLabel =
         accountLabel ||
-        (typeof accountKey === "string" && accountKey.startsWith("custom-")
-          ? accountKey.slice("custom-".length)
+        (rawKey.toLowerCase().startsWith("custom-")
+          ? rawKey.slice("custom-".length)
           : "");
       if (derivedLabel) {
         extras[derivedLabel] = (extras[derivedLabel] || 0) + delta;
@@ -652,6 +1063,94 @@
     }
     state[userId][monthKey] = { ...(monthState || {}) };
     saveActionState(state);
+  };
+
+  const readPendingBankActionsState = () => {
+    try {
+      const raw = localStorage.getItem(SMARTSAVE_PENDING_ACTIONS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_error) {
+      return {};
+    }
+  };
+
+  const savePendingBankActionsState = (state) => {
+    try {
+      localStorage.setItem(SMARTSAVE_PENDING_ACTIONS_KEY, JSON.stringify(state || {}));
+    } catch (_error) {
+      // ignore storage issues
+    }
+  };
+
+  const sanitizePendingPart = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "item";
+
+  const getPendingBankActionsByMonth = (userId, monthId) => {
+    const state = readPendingBankActionsState();
+    const items = ensureArray(state?.[userId]?.[monthId]);
+    return items
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({
+        id: String(item.id || "").trim(),
+        kind: String(item.kind || "plan").trim(),
+        from: String(item.from || "").trim(),
+        to: String(item.to || "").trim(),
+        fromLabel: String(item.fromLabel || formatTransferAccountLabel(item.from)).trim(),
+        toLabel: String(item.toLabel || formatTransferAccountLabel(item.to)).trim(),
+        amount: Math.max(0, toNumber(item.amount)),
+        why: String(item.why || item.reason || "").trim(),
+        done: Boolean(item.done),
+        createdAt: item.createdAt || null,
+      }))
+      .filter((item) => item.id && item.amount > 0 && item.from && item.to);
+  };
+
+  const savePendingBankActionsByMonth = (userId, monthId, items = []) => {
+    if (!userId || !monthId) return;
+    const state = readPendingBankActionsState();
+    const userState = state[userId] && typeof state[userId] === "object" ? state[userId] : {};
+    userState[monthId] = ensureArray(items);
+    state[userId] = userState;
+    savePendingBankActionsState(state);
+  };
+
+  const upsertPendingBankActionsByMonth = (userId, monthId, rows = [], kind = "plan") => {
+    if (!userId || !monthId || !ensureArray(rows).length) return [];
+    const existing = getPendingBankActionsByMonth(userId, monthId);
+    const byId = new Map(existing.map((item) => [item.id, item]));
+    const nowIso = new Date().toISOString();
+    ensureArray(rows).forEach((row, index) => {
+      const amount = Math.max(0, toNumber(row?.amount));
+      const from = String(row?.from || "").trim();
+      const to = String(row?.to || "").trim();
+      if (!amount || !from || !to || from === to) return;
+      const id =
+        String(row?.id || "").trim() ||
+        `${monthId}-${sanitizePendingPart(kind)}-${index + 1}-${sanitizePendingPart(from)}-${sanitizePendingPart(
+          to
+        )}-${Math.round(amount)}`;
+      const prev = byId.get(id);
+      byId.set(id, {
+        id,
+        kind,
+        from,
+        to,
+        fromLabel: row?.fromLabel || formatTransferAccountLabel(from),
+        toLabel: row?.toLabel || formatTransferAccountLabel(to),
+        amount,
+        why: String(row?.reason || row?.why || "").trim(),
+        done: Boolean(prev?.done),
+        createdAt: prev?.createdAt || nowIso,
+      });
+    });
+    const next = Array.from(byId.values());
+    savePendingBankActionsByMonth(userId, monthId, next);
+    return next;
   };
 
   const setText = (selector, value) => {
@@ -856,37 +1355,34 @@
   const ALLOCATION_DETAILS_TEMPLATES = {
     compteCourant: {
       title: "Compte courant",
-      objective: "Gérer ton quotidien sans stress (factures, imprévus, dépenses du mois).",
+      objective: "SmartSave protège ton quotidien en gardant ton compte courant dans une zone confortable.",
       placement: [
         "Sur ton compte courant bancaire habituel.",
       ],
       rules: [
-        "SmartSave maintient un montant cible sur le compte courant pour couvrir les dépenses mensuelles.",
-        "Quand le solde est sous la cible, ce compte est réalimenté en priorité opérationnelle.",
-        "Quand il dépasse la cible, le surplus est redirigé vers sécurité, impôts, projets ou investissement.",
+        "Le compte courant est renforcé en priorité quand il est trop bas.",
+        "S'il est déjà au bon niveau, aucun virement n'est ajouté.",
+        "Le reste part ensuite vers les autres priorités du mois.",
       ],
       nextActions: [
-        "Vérifie que tes prélèvements fixes partent bien de ce compte.",
-        "Programme un virement mensuel vers ce compte à date fixe.",
+        "Vérifie simplement que tes dépenses courantes passent bien par ce compte.",
       ],
-      more: "À savoir: ce compte n'est pas fait pour accumuler de l'argent sur le long terme.",
+      more: "Le détail des règles internes reste masqué sur la carte principale pour garder une lecture simple.",
     },
     securite: {
       title: "Sécurité",
-      objective: "Te protéger en cas d’imprévu (santé, perte de revenu, grosse facture).",
+      objective: "SmartSave alimente ton épargne sécurité pour absorber les imprévus.",
       placement: [
         "Compte épargne séparé, sans risque et facilement accessible.",
       ],
       rules: [
-        "SmartSave alimente ce compte en priorité jusqu'à atteindre le niveau de sécurité cible.",
-        "Tant que l'écart de sécurité existe, les montants sont orientés ici avant les objectifs de croissance.",
-        "Une fois l'objectif atteint, les nouveaux flux sont réalloués vers les autres priorités.",
+        "L'épargne sécurité progresse mois après mois tant que l'objectif n'est pas atteint.",
+        "Si la sécurité est déjà suffisante, les virements passent vers d'autres comptes.",
       ],
       nextActions: [
-        "Créer un virement automatique vers ton compte épargne.",
-        "Vérifier le montant cible (3 à 6 mois de dépenses).",
+        "Aucune action manuelle requise si ton virement automatique est actif.",
       ],
-      more: "À savoir: cet argent n'est pas là pour rapporter, mais pour sécuriser.",
+      more: "Le calcul détaillé de la cible reste visible uniquement ici, pas sur la carte principale.",
     },
     projetsLongTerme: {
       title: "Objectif long terme",
@@ -925,57 +1421,51 @@
     },
     investissements: {
       title: "Investissements",
-      objective: "Faire croître ton argent sur le long terme plutôt que de le laisser perdre de la valeur.",
+      objective: "SmartSave active les investissements uniquement quand les bases sont suffisamment solides.",
       placement: [
         "Supports diversifiés de type ETF, simples et à faible coût.",
-        "Pas besoin de choisir des actions une par une: SmartSave privilégie une logique globale.",
       ],
       rules: [
-        "SmartSave investit seulement le montant restant après avoir sécurisé le quotidien, la sécurité et les impôts.",
-        "La logique est diversifiée (pays, secteurs, grand nombre d'entreprises) pour réduire le risque spécifique.",
-        "Les montants peuvent varier d'un mois à l'autre selon la capacité réelle de répartition.",
+        "Quand le mois est solide, une partie du surplus est investie.",
+        "Quand le mois est tendu, SmartSave peut bloquer temporairement les investissements.",
       ],
       nextActions: [
-        "Définir ton support d'investissement principal.",
-        "Mettre en place un ordre récurrent mensuel.",
+        "Aucune modification requise depuis cette page.",
       ],
-      more: "À savoir: la valeur peut varier à court terme. Ce compte est réservé à l'argent dont tu n'as pas besoin rapidement.",
+      more: "Le détail des conditions d'activation est volontairement gardé dans ce panneau.",
     },
     pilier3a: {
       title: "3e pilier",
       objective:
-        "Préparer ta retraite tout en réduisant tes impôts aujourd'hui, avec une épargne de long terme.",
+        "SmartSave poursuit les versements 3e pilier tant que le plafond annuel n'est pas atteint.",
       placement: [
         "3a bancaire: plus prudent.",
         "3a en fonds: plus orienté long terme.",
       ],
       rules: [
-        "SmartSave propose un versement régulier vers le 3e pilier si ce pilier est activé dans ton plan.",
-        "Le montant est ajusté selon la capacité mensuelle réelle après les priorités de base.",
-        "Les versements sont limités par le cadre légal annuel du 3a.",
+        "Le 3e pilier reste actif tant qu'il reste de la place sur l'année.",
+        "Quand le plafond est atteint, SmartSave met automatiquement le montant à CHF 0.",
       ],
       nextActions: [
-        "Vérifier ton versement cumulé de l'année.",
-        "Planifier un versement automatique mensuel.",
+        "Aucune action requise: la reprise est automatique au début d'une nouvelle année fiscale.",
       ],
-      more: "À savoir: l'argent est bloqué jusqu'à la retraite (sauf conditions légales).",
+      more: "Les détails fiscaux complets restent dans cette fiche, pas dans la carte principale.",
     },
     impots: {
       title: "Impôts",
-      objective: "Éviter une grosse facture d'impôts en fin d'année.",
+      objective: "SmartSave provisionne les impôts pour éviter un choc au moment du paiement.",
       placement: [
         'Compte dédié "Impôts" (épargne ou sous-compte séparé).',
       ],
       rules: [
-        "SmartSave calcule une provision mensuelle pour lisser la charge fiscale sur l'année.",
-        "Ce montant est traité comme une priorité pour éviter un rattrapage de dernière minute.",
-        "La provision est ajustée si l'estimation d'impôts évolue.",
+        "En mode normal, SmartSave met une provision de côté chaque mois.",
+        "En mode 'Gérer plus tard', le montant du mois peut rester à CHF 0.",
+        "L'objectif est d'éviter un gros paiement d'un seul coup.",
       ],
       nextActions: [
-        "Vérifier le montant d'impôts restant estimé.",
-        "Créer un virement automatique vers le compte impôts.",
+        "Tu peux consulter les détails fiscaux complets dans cette fiche.",
       ],
-      more: "À savoir: cet argent doit rester disponible et sans risque.",
+      more: "La date d'échéance exacte peut apparaître ici sans surcharger la carte principale.",
     },
     dettes: {
       title: "Dettes",
@@ -1016,14 +1506,17 @@
     const modal = document.querySelector("[data-allocation-details-modal]");
     const list = document.querySelector("[data-allocation-list]");
     if (!modal || !list || modal.dataset.bound === "true") return;
+    if (modal.hidden || modal.getAttribute("aria-hidden") === "true") {
+      modal.setAttribute("inert", "");
+    }
 
     const titleNode = modal.querySelector("[data-allocation-details-title]");
     const objectiveNode = modal.querySelector("[data-allocation-details-objective]");
-    const placementNode = modal.querySelector("[data-allocation-details-placement]");
     const rulesNode = modal.querySelector("[data-allocation-details-rules]");
-    const nextNode = modal.querySelector("[data-allocation-details-next]");
     const moreNode = modal.querySelector("[data-allocation-details-more]");
-    const moreToggle = modal.querySelector("[data-allocation-details-more-toggle]");
+    const monthlyNode = modal.querySelector("[data-allocation-details-monthly]");
+    const goalNode = modal.querySelector("[data-allocation-details-goal]");
+    let lastTrigger = null;
 
     const renderSimpleList = (node, entries) => {
       if (!node) return;
@@ -1032,25 +1525,118 @@
         .join("");
     };
 
-    const renderChecklist = (node, entries) => {
-      if (!node) return;
-      node.innerHTML = ensureArray(entries)
-        .map(
-          (entry, index) => `
-            <li>
-              <label>
-                <input type="checkbox" data-allocation-details-checkbox="${index}">
-                <span>${entry}</span>
-              </label>
-            </li>
-          `
+    const readTaxBreakdown = () => {
+      const monthlyPlan = lastMonthlyContext?.monthlyPlan || {};
+      const snapshot = monthlyPlan?.allocationResultSnapshot || {};
+      const taxFunding =
+        snapshot?.debug?.taxFunding ||
+        lastRenderContext?.data?.allocation?.debug?.taxFunding ||
+        {};
+      const allocationDebug =
+        snapshot?.debug ||
+        lastRenderContext?.data?.allocation?.debug ||
+        {};
+      const taxProvision = lastRenderContext?.data?.taxProvision || {};
+
+      const totalEstimate = Math.max(
+        0,
+        toNumber(taxFunding.totalEstimate || taxProvision.totalTax || 0)
+      );
+      const remainingEstimate = Math.max(
+        0,
+        toNumber(
+          taxFunding.remainingEstimate != null
+            ? taxFunding.remainingEstimate
+            : taxProvision.remaining != null
+            ? taxProvision.remaining
+            : taxProvision.outstanding || 0
         )
-        .join("");
+      );
+      const monthsRemaining = Math.max(
+        0,
+        Math.round(
+          toNumber(
+            taxFunding.monthsRemaining != null
+              ? taxFunding.monthsRemaining
+              : taxProvision.monthsRemaining || 0
+          )
+        )
+      );
+      const monthlyNeed = Math.max(0, toNumber(taxFunding.monthlyNeed || taxProvision.monthlyNeed || 0));
+      const monthlyTarget = Math.max(0, toNumber(taxFunding.monthlyTarget || taxProvision.monthlyAmount || 0));
+      const shortfall = Math.max(0, toNumber(taxFunding.shortfall || 0));
+      const gapToNeed = Math.max(0, toNumber(taxFunding.gapToNeed || 0));
+      const topUpFromCurrent = Math.max(0, toNumber(taxFunding.topUpFromCurrent || 0));
+      const topUpFromSecurity = Math.max(0, toNumber(taxFunding.topUpFromSecurity || 0));
+      const eligibleFromCurrent = Math.max(0, toNumber(taxFunding.eligibleFromCurrent || 0));
+      const eligibleFromSecurity = Math.max(0, toNumber(taxFunding.eligibleFromSecurity || 0));
+      const mode = String(taxFunding.mode || "AUTO_PROVISION").toUpperCase();
+      const currentExcessRecycled = Math.max(0, toNumber(allocationDebug.currentExcessRecycled || 0));
+      const pressureRatioPct = Math.max(0, toNumber(taxFunding.pressureRatio || 0));
+      const softTrigger = !!taxFunding.softTrigger;
+      const preTopUpNeeded = Math.max(0, toNumber(taxFunding.preTopUpNeeded || 0));
+      const preTopUpApplied = Math.max(0, toNumber(taxFunding.preTopUpApplied || 0));
+      const planTaxMonthlyTarget = Math.max(0, toNumber(monthlyPlan?.taxMonthlyTarget || 0));
+      const planTaxMonthlyActual = Math.max(0, toNumber(monthlyPlan?.taxMonthlyActual || 0));
+      const planTaxTopUp = Math.max(0, toNumber(monthlyPlan?.taxTopUpFromSurplus || 0));
+      const planTaxShortfall = Math.max(0, toNumber(monthlyPlan?.taxShortfallThisMonth || 0));
+      const planTaxNotProvisioned = Math.max(0, toNumber(monthlyPlan?.taxNotProvisionedAmount || 0));
+      const planTaxMode = String(monthlyPlan?.taxMode || taxFunding.mode || "AUTO_PROVISION").toUpperCase();
+      const planTaxChoice = String(monthlyPlan?.taxOnboardingChoice || "").toUpperCase() || null;
+      const strategy = getTaxStrategyInfo({ mode: planTaxMode, choice: planTaxChoice });
+      const rebalanceTopupToTax = ensureArray(monthlyPlan?.rebalanceTransfers)
+        .filter((entry) => String(entry?.to || "").trim().toLowerCase() === "tax")
+        .reduce((sum, entry) => sum + Math.max(0, toNumber(entry?.amount || 0)), 0);
+
+      return {
+        totalEstimate,
+        remainingEstimate,
+        monthsRemaining,
+        monthlyNeed: planTaxMonthlyTarget > 0 ? planTaxMonthlyTarget : monthlyNeed,
+        monthlyTarget: planTaxMonthlyActual > 0 ? planTaxMonthlyActual : monthlyTarget,
+        monthlyTopUp: planTaxTopUp,
+        shortfall: planTaxShortfall > 0 ? planTaxShortfall : shortfall,
+        notProvisioned: planTaxNotProvisioned,
+        strategyKey: strategy.key,
+        strategyLabel: strategy.label,
+        strategyRules: strategy.rules,
+        strategyMore: strategy.more,
+        gapToNeed,
+        topUpFromCurrent,
+        topUpFromSecurity,
+        eligibleFromCurrent,
+        eligibleFromSecurity,
+        mode,
+        currentExcessRecycled,
+        pressureRatioPct,
+        softTrigger,
+        preTopUpNeeded,
+        preTopUpApplied,
+        rebalanceTopupToTax,
+      };
     };
 
     const closeModal = () => {
+      const activeEl = document.activeElement;
+      if (activeEl && modal.contains(activeEl)) {
+        const fallbackFocus =
+          (lastTrigger && document.contains(lastTrigger) ? lastTrigger : null) ||
+          list.querySelector("[data-allocation-details-trigger]") ||
+          document.querySelector("[data-smartsave-main-cta]") ||
+          document.body;
+        if (fallbackFocus && typeof fallbackFocus.focus === "function") {
+          try {
+            fallbackFocus.focus({ preventScroll: true });
+          } catch (_error) {
+            fallbackFocus.focus();
+          }
+        } else if (typeof activeEl.blur === "function") {
+          activeEl.blur();
+        }
+      }
       modal.classList.remove("is-open");
       modal.setAttribute("aria-hidden", "true");
+      modal.setAttribute("inert", "");
       document.body.classList.remove("allocation-details-open");
       window.setTimeout(() => {
         if (!modal.classList.contains("is-open")) modal.hidden = true;
@@ -1059,28 +1645,30 @@
 
     const openForCard = (card) => {
       if (!card) return;
+      lastTrigger = card;
       const key = String(card.dataset.allocationDetailKey || "").trim();
       const amount = Math.max(0, toNumber(card.dataset.allocationDetailAmount || 0));
-      const fallbackLabel = card.querySelector(".allocation-card__title p")?.textContent?.trim() || "Compte";
+      const fallbackLabel =
+        card.querySelector("[data-allocation-card-label]")?.textContent?.trim() ||
+        card.querySelector(".allocation-card__title p")?.textContent?.trim() ||
+        "Compte";
       const template = getAllocationDetailsTemplate(key, fallbackLabel);
+      const goalLabel = String(card.dataset.allocationDetailGoal || "").trim();
 
       if (titleNode) {
-        titleNode.textContent = `${template.title} — ${formatCurrency(amount)}/mois`;
+        titleNode.textContent = `${template.title} — ${formatCurrency(amount)}`;
       }
       if (objectiveNode) objectiveNode.textContent = template.objective;
-      renderSimpleList(placementNode, template.placement);
       renderSimpleList(rulesNode, template.rules);
-      renderChecklist(nextNode, template.nextActions);
-
-      if (moreNode && moreToggle) {
-        const hasMore = Boolean(String(template.more || "").trim());
-        moreNode.hidden = true;
-        moreNode.textContent = template.more || "";
-        moreToggle.hidden = !hasMore;
-        moreToggle.setAttribute("aria-expanded", "false");
+      if (moreNode) moreNode.textContent = String(template.more || "").trim() || "Reste cohérent chaque mois.";
+      if (monthlyNode) monthlyNode.textContent = `Ce mois-ci : ${formatCurrency(amount)}`;
+      if (goalNode) {
+        goalNode.hidden = !goalLabel;
+        goalNode.textContent = goalLabel || "";
       }
 
       modal.hidden = false;
+      modal.removeAttribute("inert");
       modal.setAttribute("aria-hidden", "false");
       document.body.classList.add("allocation-details-open");
       window.requestAnimationFrame(() => modal.classList.add("is-open"));
@@ -1097,20 +1685,6 @@
       if (closeTrigger) {
         closeModal();
         return;
-      }
-
-      const toggle = event.target.closest("[data-allocation-details-more-toggle]");
-      if (toggle && moreNode) {
-        const expanded = toggle.getAttribute("aria-expanded") === "true";
-        toggle.setAttribute("aria-expanded", expanded ? "false" : "true");
-        moreNode.hidden = expanded;
-        return;
-      }
-
-      if (event.target.closest("[data-allocation-details-secondary]")) {
-        modal.querySelectorAll("[data-allocation-details-checkbox]").forEach((checkbox) => {
-          checkbox.checked = true;
-        });
       }
     });
 
@@ -1134,252 +1708,2232 @@
     modal.dataset.bound = "true";
   };
 
-  const renderSmartSave = (data, formData, activeUser, monthContext) => {
-    if (!document.querySelector("[data-allocation-total]")) return;
+  const formatTransferAccountLabel = (value) => {
+    const key = String(value || "").trim().toLowerCase();
+    const labels = {
+      current: "Compte courant",
+      security: "Compte épargne",
+      tax: "Provision impôts",
+      pillar3a: "3e pilier",
+      investments: "Investissements",
+      projects: "Projets",
+      projets: "Projets",
+      projetslongterme: "Projets long terme",
+      projetscourtterme: "Projets court terme",
+      comptecourant: "Compte courant",
+      securite: "Compte épargne",
+      impots: "Provision impôts",
+      pilier3a: "3e pilier",
+      investissements: "Investissements",
+      projetsLongTerme: "Projets long terme",
+      projetsCourtTerme: "Projets court terme",
+    };
+    return labels[key] || String(value || "Compte");
+  };
 
-    const context = monthContext || lastMonthlyContext || null;
-    const planSnapshot = context?.monthlyPlan?.allocationResultSnapshot || null;
-    const allocations = planSnapshot?.allocations || data.allocation?.allocations || {};
-    const shortTermAccount = data.allocation?.shortTermAccount || data.allocation?.debug?.shortTermAccount || null;
-    const shortTermKey = String(shortTermAccount?.key || "projetsCourtTerme").trim();
-    const shortTermAmount = Math.max(
-      0,
-      toNumber(planSnapshot?.shortTermDeduction || shortTermAccount?.amount || allocations[shortTermKey] || 0)
+  const roundMoney = (value) => Math.max(0, Math.round(toNumber(value)));
+
+  const buildTransferTable = (rows = [], options = {}) => {
+    const showAfter = Boolean(options.showAfter);
+    if (!rows.length) {
+      return '<p class="smartsave-inline-state">Aucun mouvement requis.</p>';
+    }
+    const headerAfter = showAfter ? "<th>Après transfert</th>" : "";
+    const body = rows
+      .map((row) => {
+        const afterCell = showAfter ? `<td>${row.after || "—"}</td>` : "";
+        return `
+          <tr>
+            <td>${row.fromLabel || "—"}</td>
+            <td>${row.toLabel || "—"}</td>
+            <td>${formatCurrency(roundMoney(row.amount))}</td>
+            <td>${row.reason || "—"}</td>
+            ${afterCell}
+          </tr>
+        `;
+      })
+      .join("");
+    return `
+      <div class="table-wrap">
+        <table class="table" aria-label="Détails des mouvements">
+          <thead>
+            <tr>
+              <th>De</th>
+              <th>Vers</th>
+              <th>Montant</th>
+              <th>Pourquoi</th>
+              ${headerAfter}
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const computeThirdPillarRoomForRebalance = (formData = {}, inputs = {}, balances = {}, monthId = "") => {
+    const employmentStatus = String(formData?.personal?.employmentStatus || "").toLowerCase();
+    const annualNetIncome = Math.max(0, toNumber(inputs.revenuNetMensuel || inputs.totalIncome || 0) * 12);
+    const pillarCap = employmentStatus.includes("indep")
+      ? Math.min(annualNetIncome * 0.2, 35280)
+      : 7056;
+    const monthDate = parseMonthKey(monthId) || new Date();
+    const fiscalYear = monthDate.getFullYear();
+    const pillarPaidYtdYearRaw = toNumber(
+      formData?.assets?.thirdPillarPaidYTDYear || formData?.taxes?.thirdPillarPaidYTDYear || fiscalYear
     );
-    const longTermDiagnostic =
-      data.allocation?.longTermDiagnostic || data.allocation?.debug?.longTermDiagnostic || {};
-    const longTermType = String(
-      longTermDiagnostic?.type || formData?.allocationPlan?.longTerm?.type || "security"
+    const pillarPaidYtdYear = Math.round(pillarPaidYtdYearRaw) || fiscalYear;
+    const pillarPaidYtdStored = Math.max(
+      0,
+      toNumber(formData?.assets?.thirdPillarPaidYTD || formData?.taxes?.thirdPillarPaidYTD || 0)
+    );
+    const pillarPaidYtd = pillarPaidYtdYear === fiscalYear ? pillarPaidYtdStored : 0;
+    const hasExplicitYtd =
+      formData?.assets?.thirdPillarPaidYTD != null || formData?.taxes?.thirdPillarPaidYTD != null;
+    if (!hasExplicitYtd) {
+      const pillarBalance = Math.max(
+        0,
+        toNumber(
+          balances?.pillar3a ??
+            formData?.assets?.pillar3a ??
+            formData?.assets?.thirdPillarAmount ??
+            formData?.assets?.thirdPillar ??
+            formData?.assets?.thirdPillarValue ??
+            0
+        )
+      );
+      if (pillarBalance >= Math.max(0, roundMoney(pillarCap) - 0.5)) {
+        return 0;
+      }
+    }
+    return Math.max(0, pillarCap - pillarPaidYtd);
+  };
+
+  const monthsUntilDate = (dueDate, fromDate = new Date()) => {
+    const now = fromDate instanceof Date ? fromDate : new Date(fromDate);
+    const due = new Date(dueDate);
+    if (Number.isNaN(now.getTime()) || Number.isNaN(due.getTime())) return 1;
+    const years = due.getFullYear() - now.getFullYear();
+    let months = years * 12 + (due.getMonth() - now.getMonth());
+    if (due.getDate() >= now.getDate()) months += 1;
+    return Math.max(1, months);
+  };
+
+  const defaultTaxDueDate = (fromDate = new Date()) => {
+    const now = fromDate instanceof Date ? fromDate : new Date(fromDate);
+    const dueYear = now.getFullYear() + 1;
+    return `${dueYear}-03-31`;
+  };
+
+  const getTaxStrategyInfo = ({ mode = "AUTO_PROVISION", choice = null } = {}) => {
+    const safeMode = String(mode || "AUTO_PROVISION").toUpperCase();
+    const safeChoice = String(choice || "").toUpperCase();
+    if (safeMode === "PAY_LATER" || safeChoice === "PAY_LATER") {
+      return {
+        key: "PAY_LATER",
+        label: "Gérer plus tard",
+        rules: [
+          "Aucune provision impôts n'est faite ce mois.",
+          "Le montant restant est reporté et peut créer un rattrapage plus tard.",
+        ],
+        more: "Option à risque: elle maximise le cash court terme mais augmente le risque d'un gros paiement.",
+      };
+    }
+    if (safeChoice === "USE_SAVINGS") {
+      return {
+        key: "USE_SAVINGS",
+        label: "Utiliser mon épargne",
+        rules: [
+          "SmartSave top-up d'abord la réserve impôts via réarrangement interne (courant puis épargne excédentaire).",
+          "Ensuite, la mensualité impôts est recalculée sur le besoin restant.",
+        ],
+        more: "Cette option réduit vite la pression mensuelle, en respectant un plancher de sécurité.",
+      };
+    }
+    if (safeChoice === "MIX") {
+      return {
+        key: "MIX",
+        label: "Équilibré (MIX)",
+        rules: [
+          "Un top-up exceptionnel est prélevé sur le surplus du mois.",
+          "Le reste est couvert par une mensualité impôts plafonnée.",
+        ],
+        more: "Compromis entre effort immédiat et lissage des prochains mois.",
+      };
+    }
+    if (safeChoice === "SPREAD") {
+      return {
+        key: "SPREAD",
+        label: "Mensualités légères (SPREAD)",
+        rules: [
+          "Aucun top-up exceptionnel.",
+          "SmartSave verse le maximum mensuel raisonnable selon le cap.",
+        ],
+        more: "L'effort est lissé au maximum, avec report éventuel si le cap bloque.",
+      };
+    }
+    return {
+      key: "AUTO",
+      label: "Provision automatique",
+      rules: [
+        "SmartSave calcule une mensualité impôts selon le besoin restant et le cap du mois.",
+      ],
+      more: "Mode standard: provision régulière sans action spéciale.",
+    };
+  };
+
+  const getEffectiveTaxPlanAmount = ({ monthlyPlan = null, fallbackAllocationTax = 0 } = {}) => {
+    const plan = monthlyPlan && typeof monthlyPlan === "object" ? monthlyPlan : {};
+    const hasExplicitTaxPlan =
+      Object.prototype.hasOwnProperty.call(plan, "taxMonthlyActual") ||
+      Object.prototype.hasOwnProperty.call(plan, "taxTopUpFromSurplus") ||
+      Object.prototype.hasOwnProperty.call(plan, "taxMode") ||
+      Object.prototype.hasOwnProperty.call(plan, "taxOnboardingChoice");
+    if (!hasExplicitTaxPlan) return Math.max(0, toNumber(fallbackAllocationTax || 0));
+    const mode = String(plan.taxMode || "AUTO_PROVISION").toUpperCase();
+    const choice = String(plan.taxOnboardingChoice || "").toUpperCase();
+    if (mode === "PAY_LATER" || choice === "PAY_LATER") return 0;
+    const monthly = Math.max(0, toNumber(plan.taxMonthlyActual || 0));
+    const topup = Math.max(0, toNumber(plan.taxTopUpFromSurplus || 0));
+    const topupIncluded = choice === "MIX" ? topup : 0;
+    return Math.max(0, roundMoney(monthly + topupIncluded));
+  };
+
+  const computeTaxOnboardingTrigger = ({
+    annualTaxEstimate = 0,
+    taxReserveBalance = 0,
+    taxDueDate = null,
+    surplus = 0,
+    capPct = 0.35,
+    now = new Date(),
+  }) => {
+    const safeCapPct = clamp(toNumber(capPct || 0.35), 0, 1);
+    const dueDate = String(taxDueDate || defaultTaxDueDate(now)).trim();
+    const remainingNeed = Math.max(0, toNumber(annualTaxEstimate) - toNumber(taxReserveBalance));
+    const monthsRemaining = Math.max(1, monthsUntilDate(dueDate, now));
+    const theoreticalNeed = remainingNeed / Math.max(1, monthsRemaining);
+    const capMonthlyFromSurplus = Math.max(0, toNumber(surplus) * safeCapPct);
+    const pressureRatio = theoreticalNeed / Math.max(1, capMonthlyFromSurplus);
+    const shouldTrigger = remainingNeed > 0 && (monthsRemaining <= 3 || pressureRatio > 1);
+    return {
+      dueDate,
+      remainingNeed: roundMoney(remainingNeed),
+      monthsRemaining,
+      theoreticalNeed: roundMoney(theoreticalNeed),
+      capPct: safeCapPct,
+      capMonthlyFromSurplus: roundMoney(capMonthlyFromSurplus),
+      pressureRatio,
+      shouldTrigger,
+    };
+  };
+
+  const computeMonthlyTaxContributionFromSurplus = ({
+    taxMetrics = {},
+    userSettings = {},
+    smartSaveSettings = {},
+    advancedSettings = {},
+    surplus = 0,
+    now = new Date(),
+  }) => {
+    const safeSmartSaveSettings = normalizeSmartSaveSettings(smartSaveSettings);
+    const safeAdvancedSettings = normalizeAdvancedSettings(advancedSettings);
+    const smartTaxDisabled =
+      !safeSmartSaveSettings.taxes.enabled ||
+      String(safeSmartSaveSettings.taxes.provisionMode || "").toLowerCase() === "recommendations";
+    const priority = resolveTaxPriority({
+      smartSaveSettings: safeSmartSaveSettings,
+      advancedSettings: safeAdvancedSettings,
+    });
+    const defaultChoice = mapTaxPriorityToChoice(priority);
+    const rawMode = smartTaxDisabled
+      ? "PAY_LATER"
+      : String(userSettings?.taxMode || "AUTO_PROVISION").toUpperCase();
+    const choiceRaw = String(userSettings?.taxOnboardingChoice || "").toUpperCase();
+    let onboardingChoice = choiceRaw || defaultChoice || null;
+    if (priority === "critical") onboardingChoice = "USE_SAVINGS";
+    if (smartTaxDisabled) onboardingChoice = "PAY_LATER";
+    if (onboardingChoice === "PAY_LATER" && !smartTaxDisabled) {
+      onboardingChoice = defaultChoice || "SPREAD";
+    }
+    const mode = onboardingChoice === "PAY_LATER" ? "PAY_LATER" : rawMode || "AUTO_PROVISION";
+    const capPct = resolveTaxCapPct({
+      smartSaveSettings: safeSmartSaveSettings,
+      advancedSettings: safeAdvancedSettings,
+    });
+    let remainingNeed = Math.max(0, toNumber(taxMetrics.remainingNeed || 0));
+    const monthsRemaining = Math.max(1, toNumber(taxMetrics.monthsRemaining || 1));
+    const initialSurplus = Math.max(0, toNumber(surplus));
+    const capMonthlyFromSurplus = Math.max(0, initialSurplus * capPct);
+    const computeMonthlyLayer = (need, availableSurplus) => {
+      const safeNeed = Math.max(0, toNumber(need));
+      const theoretical = safeNeed / monthsRemaining;
+      const capMonthly = Math.max(0, toNumber(availableSurplus) * capPct);
+      const monthlyActual = Math.max(0, Math.min(theoretical, safeNeed, capMonthly));
+      const shortfall = Math.max(0, theoretical - monthlyActual);
+      return {
+        theoretical,
+        capMonthly,
+        monthlyActual,
+        shortfall,
+      };
+    };
+
+    if (mode === "MIXED_WITH_13TH") {
+      const expectedAmount = Math.max(0, toNumber(userSettings?.taxLumpSumExpectedAmount || 0));
+      const expectedMonth = String(userSettings?.taxLumpSumExpectedMonth || "").trim();
+      const currentMonth = getMonthKey(now);
+      if (expectedAmount > 0 && expectedMonth && expectedMonth >= currentMonth) {
+        remainingNeed = Math.max(0, remainingNeed - expectedAmount);
+      }
+    }
+
+    if (mode === "PAY_LATER") {
+      return {
+        mode,
+        onboardingChoice,
+        taxMonthlyTarget: 0,
+        taxMonthlyActual: 0,
+        taxTopUpFromSurplus: 0,
+        taxShortfallThisMonth: 0,
+        taxNotProvisionedAmount: roundMoney(remainingNeed),
+        capMonthlyFromSurplus: roundMoney(capMonthlyFromSurplus),
+        pressure: roundMoney(toNumber(taxMetrics.pressureRatio || 0)),
+      };
+    }
+
+    let taxTopUpFromSurplus = 0;
+    let workingNeed = remainingNeed;
+    let workingSurplus = initialSurplus;
+    const isMix = onboardingChoice === "MIX" && workingNeed > 0;
+    if (isMix) {
+      const preTaxPct = monthsRemaining <= 2 ? 0.2 : 0.1;
+      const targetRemaining = capMonthlyFromSurplus * monthsRemaining;
+      const neededTopUpToStabilize = Math.max(0, workingNeed - targetRemaining);
+      const topUpCap = Math.min(workingNeed, initialSurplus * preTaxPct);
+      taxTopUpFromSurplus = Math.min(neededTopUpToStabilize, topUpCap);
+      workingNeed = Math.max(0, workingNeed - taxTopUpFromSurplus);
+      workingSurplus = Math.max(0, initialSurplus - taxTopUpFromSurplus);
+    }
+
+    const monthlyLayer = computeMonthlyLayer(workingNeed, workingSurplus);
+    return {
+      mode,
+      onboardingChoice,
+      taxMonthlyTarget: roundMoney(monthlyLayer.theoretical),
+      taxMonthlyActual: roundMoney(monthlyLayer.monthlyActual),
+      taxTopUpFromSurplus: roundMoney(taxTopUpFromSurplus),
+      taxShortfallThisMonth: roundMoney(monthlyLayer.shortfall),
+      taxNotProvisionedAmount: roundMoney(Math.max(0, workingNeed - monthlyLayer.monthlyActual)),
+      capMonthlyFromSurplus: roundMoney(capMonthlyFromSurplus),
+      capMonthlyAfterTopUp: roundMoney(monthlyLayer.capMonthly),
+      pressure: roundMoney(toNumber(taxMetrics.pressureRatio || 0)),
+    };
+  };
+
+  const computeRebalanceTransfers = ({
+    balances = {},
+    limits = {},
+    taxFunding = {},
+    taxPriorityNeed = 0,
+    formData = {},
+    monthInputs = {},
+    monthId = "",
+    smartSaveSettings = {},
+    advancedSettings = {},
+    monthlySurplus = 0,
+  }) => {
+    const safeSmartSaveSettings = normalizeSmartSaveSettings(smartSaveSettings);
+    const safeAdvancedSettings = normalizeAdvancedSettings(advancedSettings);
+    const state = {
+      current: Math.max(0, roundMoney(balances.current)),
+      security: Math.max(0, roundMoney(balances.security)),
+      tax: Math.max(0, roundMoney(balances.tax)),
+      pillar3a: Math.max(0, roundMoney(balances.pillar3a)),
+      investments: Math.max(0, roundMoney(balances.investments)),
+    };
+    const frozenAccount = resolveActiveFrozenAccount(safeAdvancedSettings);
+    const pullOrder =
+      safeAdvancedSettings.savingsUsage.pullOrder === "savings_first"
+        ? ["security", "current"]
+        : ["current", "security"];
+    const currentLimit = Math.max(0, roundMoney(limits.current || 0));
+    const savingsLimit = Math.max(0, roundMoney(limits.savings || 0));
+    const taxShortfall = Math.max(0, toNumber(taxPriorityNeed || 0));
+    const surplusCurrent = Math.max(0, state.current - currentLimit);
+    const savingsTarget = savingsLimit;
+    const savingsFloor = savingsTarget;
+    const surplusSavings = Math.max(0, state.security - savingsTarget);
+    const savingsComfortCeiling = roundMoney(savingsTarget * 1.5);
+    let savingsReallocationRate = 0;
+    let savingsZone = "security";
+    if (state.security > savingsComfortCeiling) {
+      savingsReallocationRate = 0.35;
+      savingsZone = "over_savings";
+    } else if (state.security > savingsTarget) {
+      savingsReallocationRate = 0.2;
+      savingsZone = "comfort";
+    }
+    const configuredMonthlyCap = Math.max(
+      0,
+      toNumber(safeAdvancedSettings?.transferControls?.maxMonthlyTotal || 0)
+    );
+    const savingsMonthlyCap = configuredMonthlyCap > 0 ? roundMoney(configuredMonthlyCap) : Number.POSITIVE_INFINITY;
+    const rawSavingsMovable = roundMoney(surplusSavings * savingsReallocationRate);
+    const cappedSavingsMovable = Math.max(0, Math.min(rawSavingsMovable, savingsMonthlyCap));
+    let movableFromCurrent = surplusCurrent;
+    let movableFromSavings = cappedSavingsMovable;
+    const initialMovableFromCurrent = roundMoney(movableFromCurrent);
+    const initialMovableFromSavings = roundMoney(movableFromSavings);
+    const initialMovablePool = roundMoney(initialMovableFromCurrent + initialMovableFromSavings);
+    const pillarRoom = computeThirdPillarRoomForRebalance(formData, monthInputs, balances, monthId);
+    const transfers = [];
+
+    const pushTransfer = (from, to, amount, reason) => {
+      const fromKey = normalizeTransferAccountKey(from);
+      const toKey = normalizeTransferAccountKey(to);
+      if (frozenAccount && (fromKey === frozenAccount || toKey === frozenAccount)) return 0;
+      const sourceFloor =
+        from === "current"
+          ? currentLimit
+          : from === "security"
+          ? savingsFloor
+          : 0;
+      const maxAllowedFromSource =
+        from === "current" || from === "security"
+          ? Math.max(0, Math.floor(Math.max(0, toNumber(state[from])) - sourceFloor))
+          : Math.max(0, Math.floor(Math.max(0, toNumber(state[from]))));
+      const value = Math.min(roundMoney(amount), maxAllowedFromSource);
+      if (value <= 0 || from === to) return 0;
+      if (state[from] < value) return 0;
+      state[from] -= value;
+      state[to] = Math.max(0, toNumber(state[to])) + value;
+      const after = `${formatTransferAccountLabel(from)}: ${formatCurrency(
+        state[from]
+      )} · ${formatTransferAccountLabel(to)}: ${formatCurrency(state[to])}`;
+      transfers.push({
+        from,
+        to,
+        fromLabel: formatTransferAccountLabel(from),
+        toLabel: formatTransferAccountLabel(to),
+        amount: value,
+        reason,
+        after,
+      });
+      return value;
+    };
+
+    const getMovablePool = () => Math.max(0, roundMoney(movableFromCurrent + movableFromSavings));
+    let keepOnSavings = 0;
+
+    const pullFromSource = (sourceKey, toKey, requestedAmount, reason) => {
+      const wanted = Math.max(0, roundMoney(requestedAmount));
+      if (!wanted) return 0;
+      if (sourceKey === "current") {
+        const part = Math.min(wanted, movableFromCurrent);
+        if (part <= 0) return 0;
+        const applied = pushTransfer("current", toKey, part, reason);
+        movableFromCurrent = Math.max(0, roundMoney(movableFromCurrent - applied));
+        return applied;
+      }
+      if (sourceKey === "security") {
+        const part = Math.min(wanted, movableFromSavings);
+        if (part <= 0) return 0;
+        const applied = pushTransfer("security", toKey, part, reason);
+        movableFromSavings = Math.max(0, roundMoney(movableFromSavings - applied));
+        return applied;
+      }
+      return 0;
+    };
+
+    const pullFromPool = (toKey, requestedAmount, reasons = {}) => {
+      let remaining = Math.max(0, roundMoney(requestedAmount));
+      if (!remaining) return 0;
+      let appliedTotal = 0;
+      pullOrder.forEach((sourceKey) => {
+        if (remaining <= 0) return;
+        const reason =
+          sourceKey === "security"
+            ? reasons.security || reasons.default || "Réarrangement SmartSave"
+            : reasons.current || reasons.default || "Réarrangement SmartSave";
+        const applied = pullFromSource(sourceKey, toKey, remaining, reason);
+        if (!applied) return;
+        appliedTotal += applied;
+        remaining = Math.max(0, roundMoney(remaining - applied));
+      });
+      return appliedTotal;
+    };
+
+    const reserveOnSavings = (requestedAmount) => {
+      const wanted = Math.max(0, roundMoney(requestedAmount));
+      if (!wanted) return 0;
+      const reserved = Math.min(wanted, movableFromSavings);
+      if (!reserved) return 0;
+      movableFromSavings = Math.max(0, roundMoney(movableFromSavings - reserved));
+      keepOnSavings += reserved;
+      return reserved;
+    };
+
+    const allocateToSavings = (requestedAmount, reason) => {
+      let remaining = Math.max(0, roundMoney(requestedAmount));
+      if (!remaining) return 0;
+      let applied = 0;
+      const reserved = reserveOnSavings(remaining);
+      if (reserved > 0) {
+        applied += reserved;
+        remaining = Math.max(0, roundMoney(remaining - reserved));
+      }
+      if (remaining > 0) {
+        applied += pullFromSource(
+          "current",
+          "security",
+          remaining,
+          reason || "Renfort compte épargne"
+        );
+      }
+      return applied;
+    };
+
+    // 1) Compte courant: combler le trou vers la cible depuis le surplus épargne mobilisable.
+    const currentGap = Math.max(0, roundMoney(currentLimit - state.current));
+    if (currentGap > 0 && movableFromSavings > 0) {
+      pullFromSource("security", "current", Math.min(currentGap, movableFromSavings), "Compte courant sous la cible");
+    }
+
+    // 2) Impôts: réduction de pression basée sur ratio effort/revenu.
+    const totalTaxEstimate = Math.max(0, toNumber(taxFunding?.totalEstimate || 0));
+    const remainingTaxEstimate = Math.max(0, toNumber(taxFunding?.remainingEstimate || 0));
+    const fallbackTaxTotal = Math.max(0, state.tax + Math.max(remainingTaxEstimate, taxShortfall));
+    const totalTaxes = Math.max(totalTaxEstimate, fallbackTaxTotal);
+    const provisionExisting = Math.max(0, toNumber(state.tax));
+    const monthsRemaining = Math.max(1, Math.round(toNumber(taxFunding?.monthsRemaining || 1)));
+    const taxOutstanding = Math.max(0, totalTaxes - provisionExisting);
+    const effortMensuel = taxOutstanding / monthsRemaining;
+    const revenuNetMensuel = Math.max(
+      0,
+      toNumber(monthInputs?.revenuNetMensuel || monthInputs?.totalIncome || 0)
+    );
+    const ratioImpots = revenuNetMensuel > 0 ? effortMensuel / revenuNetMensuel : taxOutstanding > 0 ? 1 : 0;
+
+    let reductionRate = 0;
+    let surplusCapRate = 0;
+    let taxReasonLabel = "";
+    if (ratioImpots > 0.2) {
+      reductionRate = 0.3;
+      surplusCapRate = 0.4;
+      taxReasonLabel = "Charge impôts critique: réduction prioritaire";
+    } else if (ratioImpots > 0.1) {
+      reductionRate = 0.15;
+      surplusCapRate = 0.25;
+      taxReasonLabel = "Charge impôts lourde: réduction progressive";
+    }
+
+    if (taxOutstanding > 0 && reductionRate > 0) {
+      const effortCible = effortMensuel * (1 - reductionRate);
+      const reductionMensuelle = Math.max(0, effortMensuel - effortCible);
+      const montantAProvisionner = roundMoney(reductionMensuelle * monthsRemaining);
+      const surplusDisponible = getMovablePool();
+      const montantFinal = Math.max(
+        0,
+        Math.min(montantAProvisionner, roundMoney(surplusDisponible * surplusCapRate), surplusDisponible)
+      );
+      if (montantFinal > 0) {
+        pullFromPool("tax", montantFinal, {
+          current: `${taxReasonLabel} (depuis courant)`,
+          security: `${taxReasonLabel} (depuis épargne)`,
+          default: taxReasonLabel,
+        });
+      }
+    }
+
+    // 3) Epargne: allocation progressive selon niveau de remplissage.
+    const fillRatio = savingsTarget > 0 ? state.security / savingsTarget : 1;
+    let savingsPct = 0;
+    if (fillRatio < 0.5) savingsPct = 0.6;
+    else if (fillRatio < 0.9) savingsPct = 0.3;
+    else if (fillRatio < 1) savingsPct = 0.2;
+    else savingsPct = 0;
+    if (savingsPct > 0) {
+      const remainingSurplus = getMovablePool();
+      const savingsTargetAmount = roundMoney(remainingSurplus * savingsPct);
+      if (savingsTargetAmount > 0) {
+        allocateToSavings(savingsTargetAmount, "Renfort épargne selon palier de remplissage");
+      }
+    }
+
+    // 4) Fin de réarrangement: priorité au 3e pilier jusqu'au plafond, puis investissements.
+    const remainingBeforePillar = getMovablePool();
+    if (remainingBeforePillar > 0 && pillarRoom > 0) {
+      const pillarTarget = Math.min(remainingBeforePillar, roundMoney(pillarRoom));
+      pullFromPool("pillar3a", pillarTarget, {
+        current: "Priorité au 3e pilier (plafond annuel non atteint)",
+        security: "Priorité au 3e pilier depuis surplus épargne",
+        default: "Priorité au 3e pilier",
+      });
+    }
+
+    const remainingToInvest = getMovablePool();
+    if (remainingToInvest > 0) {
+      pullFromPool("investments", remainingToInvest, {
+        current: "Surplus résiduel vers investissements",
+        security: "Surplus épargne résiduel vers investissements",
+        default: "Surplus résiduel vers investissements",
+      });
+    }
+
+    const totalTransfers = roundMoney(transfers.reduce((sum, item) => sum + toNumber(item.amount), 0));
+    const finalMovableCurrent = roundMoney(movableFromCurrent);
+    const finalMovableSavings = roundMoney(movableFromSavings);
+    const usedFromCurrent = Math.max(0, roundMoney(initialMovableFromCurrent - finalMovableCurrent));
+    const usedFromSavings = Math.max(0, roundMoney(initialMovableFromSavings - finalMovableSavings));
+    const transferredFromCurrent = roundMoney(
+      transfers
+        .filter((item) => String(item?.from || "").trim().toLowerCase() === "current")
+        .reduce((sum, item) => sum + toNumber(item.amount || 0), 0)
+    );
+    const transferredFromSavings = roundMoney(
+      transfers
+        .filter((item) => String(item?.from || "").trim().toLowerCase() === "security")
+        .reduce((sum, item) => sum + toNumber(item.amount || 0), 0)
+    );
+    const rearrangedTotal = roundMoney(totalTransfers + keepOnSavings);
+    return {
+      transfers,
+      totals: {
+        pool: initialMovablePool,
+        rearrangedTotal,
+        keepOnSavings: roundMoney(keepOnSavings),
+        savingsFloor: roundMoney(savingsFloor),
+        savingsTarget: roundMoney(savingsTarget),
+        savingsZone,
+        savingsRatePct: roundMoney(savingsReallocationRate * 100),
+        savingsProgressivePct: roundMoney(savingsPct * 100),
+        savingsMonthlyCap: Number.isFinite(savingsMonthlyCap) ? roundMoney(savingsMonthlyCap) : 0,
+        savingsMovable: roundMoney(cappedSavingsMovable),
+        movablePool: roundMoney(getMovablePool()),
+        unusedPool: roundMoney(getMovablePool()),
+        sourceUsage: {
+          currentUsed: usedFromCurrent,
+          savingsUsed: usedFromSavings,
+          currentTransferred: transferredFromCurrent,
+          savingsTransferred: transferredFromSavings,
+          savingsKept: roundMoney(keepOnSavings),
+        },
+        totalTransfers,
+      },
+      needsRebalance: transfers.length > 0,
+      overflow: {
+        current: roundMoney(surplusCurrent),
+        savings: roundMoney(surplusSavings),
+      },
+    };
+  };
+
+  const computeMonthlyAllocationTransfers = ({
+    entries = [],
+    taxMonthly = {},
+    availableSurplus = 0,
+    currentLimit = 0,
+    currentBalance = 0,
+    pillarAnnualRoom = Number.POSITIVE_INFINITY,
+    smartSaveSettings = {},
+    advancedSettings = {},
+    allocationSnapshot = null,
+  }) => {
+    const safeSmartSaveSettings = normalizeSmartSaveSettings(smartSaveSettings);
+    const safeAdvancedSettings = normalizeAdvancedSettings(advancedSettings);
+    const surplusEnvelope = Math.max(0, roundMoney(availableSurplus));
+    const frozenAccount = resolveActiveFrozenAccount(safeAdvancedSettings);
+    const isFrozenTransfer = (from, to) => {
+      if (!frozenAccount) return false;
+      const fromKey = normalizeTransferAccountKey(from);
+      const toKey = normalizeTransferAccountKey(to);
+      return fromKey === frozenAccount || toKey === frozenAccount;
+    };
+    const negativeSurplusMode = String(
+      safeAdvancedSettings?.exceptions?.negativeSurplusMode || "no_transfer"
     ).toLowerCase();
-    const balances = resolveBalances(formData);
-    const goals = resolveGoals(formData);
-    const taxInfo = data.taxProvision || {};
-
-    const allocationEntries = Object.values(allocations).map((value) =>
-      Math.max(0, toNumber(value))
-    );
-    const totalAllocated =
-      Math.max(0, toNumber(planSnapshot?.totalSmartSave || 0)) ||
-      allocationEntries.reduce((sum, value) => sum + value, 0);
-    const monthlyToAllocate = Math.max(0, toNumber(data.allocation?.disponibleInitial));
-    const allocationBase =
-      totalAllocated > 0
-        ? totalAllocated
-        : Math.max(0, monthlyToAllocate + shortTermAmount);
-    const safeTotal = Math.max(1, allocationBase);
-
-    setText("[data-allocation-total]", formatCurrency(allocationBase));
-
-    const securityTarget = Math.max(0, toNumber(data.allocation?.debug?.savingsTargets?.targetAmount || 0));
-    const securityGap = Math.max(0, securityTarget - balances.security);
-    const goalGap = Math.max(0, goals.totalTarget - goals.totalSaved);
-    const taxTarget = Math.max(
-      0,
-      toNumber(taxInfo.remaining || taxInfo.outstanding || taxInfo.totalTax || 0)
-    );
-
-    const longTermKey = "projetsLongTerme";
-    const longTermFallbackByType = (() => {
-      if (longTermType === "security") return toNumber(allocations.securite || 0);
-      if (longTermType === "invest") return toNumber(allocations.investissements || 0);
-      if (longTermType === "retirement") {
-        return toNumber(allocations.investissements || 0) + toNumber(allocations.pilier3a || 0);
-      }
-      return toNumber(allocations[longTermKey] || allocations.projets || 0);
-    })();
-    const longTermAmount = Math.max(
-      0,
-      toNumber(longTermDiagnostic?.monthlyContribution || 0) || longTermFallbackByType
-    );
-    const longTermTypeLabels = {
-      security: "Sécurité financière",
-      home: "Achat immobilier",
-      invest: "Investissement long terme",
-      children: "Épargne enfants",
-      retirement: "Retraite",
-    };
-    const getAllocationAmount = (key) => {
-      if (key === longTermKey) return longTermAmount;
-      return Math.max(0, toNumber(allocations[key] || 0));
-    };
-
-    const allocationItems = [
-      {
-        key: "compteCourant",
-        label: "Compte courant",
-        subtitle: "Everyday spending",
-        style: "current",
-        icon: "M5 7h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm2 4h4",
-        note: data.allocation?.debug?.currentTarget
-          ? `Target SmartSave: ${formatCurrency(data.allocation.debug.currentTarget)}`
-          : "Dépenses du quotidien couvertes.",
-      },
-      {
-        key: "securite",
-        label: "Compte épargne",
-        subtitle: "Security pillar",
-        style: "security",
-        icon: "M12 3l7 4v5c0 4.4-3 7.8-7 9-4-1.2-7-4.6-7-9V7l7-4z",
-        note: securityTarget
-          ? `${formatCurrency(securityGap)} more to reach target`
-          : "Priorité à la sécurité.",
-      },
-      {
-        key: longTermKey,
-        label: longTermTypeLabels[longTermType] || "Objectif long terme",
-        subtitle: "Objectifs long terme",
-        style: "anticipation",
-        icon: "M7 4h10v14H7zM7 7h10",
-        note:
-          longTermDiagnostic?.enabled && longTermDiagnostic?.message
-            ? String(longTermDiagnostic.message)
-            : goals.totalTarget
-              ? `${formatCurrency(goalGap)} more to reach target`
-              : goals.primaryName || "Plan ahead for goals.",
-      },
-      ...(shortTermAmount > 0
-        ? [
-            {
-              key: shortTermKey,
-              label: shortTermAccount?.label || `Compte ${shortTermAccount?.name || "court terme"}`,
-              subtitle: "Objectif court terme",
-              style: "anticipation",
-              icon: "M7 4h10v14H7zM7 7h10",
-              note: "Prélèvement mensuel dédié avant allocation SmartSave.",
-            },
-          ]
-        : []),
-      {
-        key: "investissements",
-        label: "Investissements",
-        subtitle: "Growth pillar",
-        style: "growth",
-        icon: "M4 17l5-6 4 4 7-8",
-        note: "Invest remaining funds for long-term growth.",
-      },
-      {
-        key: "pilier3a",
-        label: "3e pilier",
-        subtitle: "Retirement pillar",
-        style: "pillar",
-        icon: "M7 5h10v3H7zM5 10h14v9H5z",
-        note: "Préparer la retraite (3e pilier).",
-      },
-      {
-        key: "impots",
-        label: "Provision impôts",
-        subtitle: "Tax reserve",
-        style: "tax",
-        icon: "M7 4h8l3 3v13H7z",
-        note: taxTarget ? `Target SmartSave: ${formatCurrency(taxTarget)}` : "Provisionner les impôts.",
-      },
-      {
-        key: "dettes",
-        label: "Remboursement dettes",
-        subtitle: "Debt management",
-        style: "debt",
-        icon: "M4 7h16v10H4zM8 11h8",
-        note: data.debtMonthly ? `Mensualités: ${formatCurrency(data.debtMonthly)}` : "Réduire les dettes.",
-      },
-    ];
-
-    const list = document.querySelector("[data-allocation-list]");
-    if (list) {
-      const sortedItems = allocationItems
-        .map((item, index) => {
-          const amount = getAllocationAmount(item.key);
-          const percent = Math.round((amount / safeTotal) * 100);
-          return { ...item, amount, percent, index };
-        })
-        .sort((a, b) => b.amount - a.amount || a.index - b.index);
-
-      list.innerHTML = sortedItems
-        .map((item) => {
-          const percent = item.percent;
-          return `
-            <article
-              class="allocation-card card allocation-card--${item.style}"
-              data-allocation-details-trigger
-              data-allocation-detail-key="${item.key}"
-              data-allocation-detail-amount="${item.amount}"
-              tabindex="0"
-              role="button"
-              aria-label="Voir le détail de ${item.label}"
-            >
-              <div class="allocation-card__header">
-                <span class="allocation-card__icon">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="${item.icon}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </span>
-                <div class="allocation-card__title">
-                  <p>${item.label}</p>
-                  <small>${item.subtitle}</small>
-                </div>
-                <div class="allocation-card__value">
-                  <strong>${formatCurrency(item.amount)}</strong>
-                  <span>${percent}%</span>
-                </div>
-              </div>
-              <div class="progress-track">
-                <span class="progress-fill" style="width:${percent}%"></span>
-              </div>
-              <small class="allocation-card__note">${item.note}</small>
-            </article>
-          `;
-        })
-        .join("");
+    if (safeAdvancedSettings?.overrides?.skipCurrentMonth) {
+      return {
+        transfers: [],
+        totalTransfers: 0,
+        totalAllocated: surplusEnvelope,
+        availableSurplus: surplusEnvelope,
+        retainedOnCurrent: surplusEnvelope,
+        breakdown: surplusEnvelope > 0 ? { compteCourant: surplusEnvelope } : {},
+      };
+    }
+    if (surplusEnvelope <= 0 && negativeSurplusMode === "no_transfer") {
+      return {
+        transfers: [],
+        totalTransfers: 0,
+        totalAllocated: 0,
+        availableSurplus: surplusEnvelope,
+        retainedOnCurrent: surplusEnvelope,
+        breakdown: {},
+      };
     }
 
-    const nextNote = document.querySelector("[data-allocation-next]");
-    if (nextNote) {
-      if (longTermDiagnostic?.enabled && longTermDiagnostic?.message) {
-        nextNote.textContent = longTermDiagnostic.message;
-      } else if (securityTarget && securityGap > 0) {
-        nextNote.textContent = `Focus on building your emergency fund. Allocate ${formatCurrency(
-          Math.min(securityGap, allocations.securite || securityGap)
-        )} from your next salary.`;
-      } else if (goalGap > 0) {
-        nextNote.textContent = `Keep funding your goals. Allocate ${formatCurrency(
-          Math.min(goalGap, longTermAmount || goalGap)
-        )} this month.`;
+    let remainingPillarAnnualRoom = Number.isFinite(pillarAnnualRoom)
+      ? Math.max(0, roundMoney(pillarAnnualRoom))
+      : Number.POSITIVE_INFINITY;
+    const capPillarAmount = (toAccount, amount) => {
+      const safeAmount = Math.max(0, roundMoney(amount));
+      if (safeAmount <= 0) return 0;
+      if (normalizeTransferAccountKey(toAccount) !== "pillar3a") return safeAmount;
+      if (!Number.isFinite(remainingPillarAnnualRoom)) return safeAmount;
+      return Math.min(safeAmount, remainingPillarAnnualRoom);
+    };
+    const consumePillarAmount = (toAccount, amount) => {
+      if (normalizeTransferAccountKey(toAccount) !== "pillar3a") return;
+      if (!Number.isFinite(remainingPillarAnnualRoom)) return;
+      remainingPillarAnnualRoom = Math.max(0, roundMoney(remainingPillarAnnualRoom - roundMoney(amount)));
+    };
+
+    const snapshotAllocations =
+      allocationSnapshot &&
+      typeof allocationSnapshot === "object" &&
+      allocationSnapshot.allocations &&
+      typeof allocationSnapshot.allocations === "object"
+        ? allocationSnapshot.allocations
+        : null;
+    const snapshotEntries = snapshotAllocations ? Object.entries(snapshotAllocations) : [];
+    const snapshotPositiveTotal = snapshotEntries.reduce((sum, [, amount]) => {
+      const value = Math.max(0, roundMoney(amount));
+      return sum + value;
+    }, 0);
+    const snapshotPositiveForEnvelope = Math.max(0, roundMoney(snapshotPositiveTotal));
+    const snapshotNegativeTotal = snapshotEntries.reduce((sum, [, amount]) => {
+      const value = Math.min(0, roundMoney(amount));
+      return sum + Math.abs(value);
+    }, 0);
+    const snapshotUsable =
+      snapshotEntries.length > 0 &&
+      snapshotNegativeTotal <= 0.5 &&
+      snapshotPositiveForEnvelope <= surplusEnvelope + 0.5;
+    if (snapshotAllocations && snapshotUsable) {
+      const breakdown = {};
+      const transfers = [];
+      const addBreakdown = (key, amount) => {
+        const safeKey = String(key || "").trim() || "compteCourant";
+        const safeAmount = Math.max(0, roundMoney(amount));
+        if (safeAmount <= 0) return;
+        breakdown[safeKey] = Math.max(0, roundMoney(toNumber(breakdown[safeKey] || 0) + safeAmount));
+      };
+      const resolveTransferSpecFromAllocationKey = (key) => {
+        const normalized = String(key || "").trim().toLowerCase();
+        if (!normalized || normalized === "comptecourant") return null;
+        if (normalized === "securite") return { to: "security", toLabel: formatTransferAccountLabel("security") };
+        if (normalized === "impots") return { to: "tax", toLabel: formatTransferAccountLabel("tax") };
+        if (normalized === "pilier3a") return { to: "pillar3a", toLabel: formatTransferAccountLabel("pillar3a") };
+        if (normalized === "investissements") {
+          return { to: "investments", toLabel: formatTransferAccountLabel("investments") };
+        }
+        if (normalized === "projetscourtterme" || normalized === "projetslongterme" || normalized === "projets") {
+          return { to: "projects", toLabel: formatTransferAccountLabel("projects") };
+        }
+        return null;
+      };
+
+      Object.entries(snapshotAllocations).forEach(([key, amount]) => {
+        const value = Math.max(0, roundMoney(amount));
+        if (value <= 0) return;
+        const normalizedKey = String(key || "").trim().toLowerCase();
+        if (normalizedKey === "comptecourant") {
+          addBreakdown("compteCourant", value);
+          return;
+        }
+        const transferSpec = resolveTransferSpecFromAllocationKey(key);
+        if (!transferSpec) {
+          addBreakdown(key, value);
+          return;
+        }
+        if (isFrozenTransfer("current", transferSpec.to)) {
+          addBreakdown("compteCourant", value);
+          return;
+        }
+        const cappedValue = capPillarAmount(transferSpec.to, value);
+        if (cappedValue <= 0) return;
+        addBreakdown(key, cappedValue);
+        transfers.push({
+          from: "current",
+          to: transferSpec.to,
+          fromLabel: formatTransferAccountLabel("current"),
+          toLabel: transferSpec.toLabel,
+          amount: cappedValue,
+          allocationKey: String(key || "").trim() || "compteCourant",
+          reason: "Répartition SmartSave du mois",
+        });
+        consumePillarAmount(transferSpec.to, cappedValue);
+      });
+
+      const allocatedBeforeFallback = roundMoney(
+        Object.values(breakdown).reduce((sum, amount) => sum + Math.max(0, toNumber(amount)), 0)
+      );
+      const allocatedForEnvelope = Math.max(0, roundMoney(allocatedBeforeFallback));
+      let remainingToAllocate = Math.max(0, surplusEnvelope - allocatedForEnvelope);
+      if (remainingToAllocate > 0) {
+        if (!isFrozenTransfer("current", "security")) {
+          const value = roundMoney(remainingToAllocate);
+          if (value > 0) {
+            addBreakdown("securite", value);
+            transfers.push({
+              from: "current",
+              to: "security",
+              fromLabel: formatTransferAccountLabel("current"),
+              toLabel: formatTransferAccountLabel("security"),
+              amount: value,
+              allocationKey: "securite",
+              reason: "Ajustement SmartSave: reliquat vers sécurité",
+            });
+            remainingToAllocate = Math.max(0, remainingToAllocate - value);
+          }
+        }
+        if (remainingToAllocate > 0) {
+          addBreakdown("compteCourant", remainingToAllocate);
+          remainingToAllocate = 0;
+        }
+      }
+
+      const totalTransfers = roundMoney(
+        transfers.reduce((sum, item) => sum + Math.max(0, toNumber(item?.amount || 0)), 0)
+      );
+      const totalAllocated = roundMoney(
+        Object.values(breakdown).reduce((sum, amount) => sum + Math.max(0, toNumber(amount)), 0)
+      );
+      const effectiveEnvelope = Math.max(surplusEnvelope, totalAllocated);
+      const retainedOnCurrent = Math.max(0, roundMoney(toNumber(breakdown.compteCourant || 0)));
+      return {
+        transfers,
+        totalTransfers,
+        totalAllocated,
+        availableSurplus: effectiveEnvelope,
+        retainedOnCurrent,
+        breakdown,
+      };
+    }
+
+    let remainingSurplus = surplusEnvelope;
+    let retainedOnCurrent = 0;
+    const normalizedCurrentLimit = Math.max(0, roundMoney(currentLimit || 0));
+    const normalizedCurrentBalance = Math.max(0, roundMoney(currentBalance || 0));
+    let remainingCurrentHeadroom = Math.max(0, normalizedCurrentLimit - normalizedCurrentBalance);
+    const taxPriority = resolveTaxPriority({
+      smartSaveSettings: safeSmartSaveSettings,
+      advancedSettings: safeAdvancedSettings,
+    });
+    const taxesEnabled =
+      Boolean(safeSmartSaveSettings.taxes.enabled) &&
+      String(safeSmartSaveSettings.taxes.provisionMode || "").toLowerCase() !== "recommendations";
+    const allocationOrder = String(
+      safeSmartSaveSettings.allocationPriority.order || "security_tax_invest"
+    );
+    let remainingGrowthCap = resolveGrowthCapFromSettings({
+      availableSurplus: surplusEnvelope,
+      smartSaveSettings: safeSmartSaveSettings,
+      advancedSettings: safeAdvancedSettings,
+    });
+
+    const breakdown = {};
+    const source = ensureArray(entries).filter(
+      (entry) =>
+        entry &&
+        entry.type === "transfer" &&
+        entry.autoApplyKind === "allocation-transfer" &&
+        Math.max(0, toNumber(entry.amount)) > 0
+    );
+    const transfers = [];
+    const addBreakdown = (key, amount) => {
+      const safeKey = String(key || "").trim() || "compteCourant";
+      const safeAmount = Math.max(0, roundMoney(amount));
+      if (safeAmount <= 0) return;
+      breakdown[safeKey] = Math.max(0, roundMoney(toNumber(breakdown[safeKey] || 0) + safeAmount));
+    };
+    const resolveAllocationKey = (entry = {}) => {
+      const explicit = String(entry?.allocationKey || entry?.key || "").trim();
+      if (explicit) return explicit;
+      const to = String(entry?.to || "").trim().toLowerCase();
+      if (to === "security") return "securite";
+      if (to === "tax") return "impots";
+      if (to === "pillar3a") return "pilier3a";
+      if (to === "investments") return "investissements";
+      if (to === "projects") return "projetsCourtTerme";
+      return to || "compteCourant";
+    };
+    const getPriorityRank = (entry = {}) => {
+      const toKey = normalizeTransferAccountKey(entry?.to || "");
+      const isTax = toKey === "tax";
+      const isSecurity = toKey === "security";
+      const isGrowth = isGrowthDestination(toKey);
+      if (taxPriority === "critical" && isTax) return 5;
+      if (isSecurity) return 10;
+      if (toKey === "current") return 12;
+      if (taxPriority === "high" && isTax) return 20;
+      if (allocationOrder === "security_invest_tax") {
+        if (isGrowth) return 30;
+        if (isTax) return 40;
       } else {
-        nextNote.textContent = "You are on track. Continue investing for long-term growth.";
+        if (isTax) return 30;
+        if (isGrowth) return 40;
+      }
+      if (toKey === "projects") return 50;
+      return 60;
+    };
+
+    const queue = [];
+    let queueIndex = 0;
+    const pushQueue = (entry = {}) => {
+      queue.push({
+        ...entry,
+        _queueIndex: queueIndex++,
+        _rank: getPriorityRank(entry),
+      });
+    };
+
+    const topUpFromSurplusRequested =
+      String(taxMonthly?.onboardingChoice || "").toUpperCase() === "MIX"
+        ? taxMonthly?.taxTopUpFromSurplus || 0
+        : 0;
+    if (taxesEnabled) {
+      pushQueue({
+        type: "tax",
+        from: "current",
+        to: "tax",
+        amount: topUpFromSurplusRequested,
+        reason: "Top-up exceptionnel impôts (réduit la pression des prochains mois)",
+        taxType: "topup",
+      });
+      pushQueue({
+        type: "tax",
+        from: "current",
+        to: "tax",
+        amount: taxMonthly?.taxMonthlyActual || 0,
+        reason: `Impôts (mensuel): objectif ${formatCurrency(
+          Math.max(0, toNumber(taxMonthly?.taxMonthlyTarget || 0))
+        )}, réalisé ${formatCurrency(Math.max(0, toNumber(taxMonthly?.taxMonthlyActual || 0)))}, manque ${formatCurrency(
+          Math.max(0, toNumber(taxMonthly?.taxShortfallThisMonth || 0))
+        )}`,
+        taxType: "monthly",
+      });
+    }
+
+    source.forEach((entry) => {
+      const to = normalizeTransferAccountKey(entry?.to || "");
+      if (to === "tax") return;
+      const allocationKey = resolveAllocationKey(entry);
+      pushQueue({
+        type: "allocation",
+        from: String(entry?.from || "").trim(),
+        to: String(entry?.to || "").trim(),
+        fromLabel: formatTransferAccountLabel(entry?.fromLabel || entry?.from),
+        toLabel: formatTransferAccountLabel(entry?.toLabel || entry?.to),
+        amount: Math.max(0, toNumber(entry?.amount || 0)),
+        allocationKey,
+      });
+    });
+
+    queue
+      .sort((a, b) => {
+        if (a._rank !== b._rank) return a._rank - b._rank;
+        return a._queueIndex - b._queueIndex;
+      })
+      .forEach((entry) => {
+        if (remainingSurplus < 1) return;
+        const from = String(entry?.from || "").trim();
+        const to = String(entry?.to || "").trim();
+        const normalizedTo = normalizeTransferAccountKey(to);
+        if (!from || !to || isFrozenTransfer(from, to)) return;
+        if (entry.type === "tax" && !taxesEnabled) return;
+        const requested = roundMoney(entry?.amount || 0);
+        if (requested <= 0) return;
+        let amount = Math.min(requested, remainingSurplus);
+        if (normalizedTo === "current") {
+          amount = Math.min(amount, remainingCurrentHeadroom);
+        }
+        if (isGrowthDestination(normalizedTo)) {
+          amount = Math.min(amount, Math.max(0, remainingGrowthCap));
+        }
+        amount = capPillarAmount(to, amount);
+        if (amount <= 0) return;
+        const allocationKey =
+          entry.type === "tax" ? "impots" : String(entry?.allocationKey || "").trim() || resolveAllocationKey(entry);
+        transfers.push({
+          from,
+          to,
+          fromLabel: formatTransferAccountLabel(entry?.fromLabel || from),
+          toLabel: formatTransferAccountLabel(entry?.toLabel || to),
+          amount,
+          allocationKey,
+          reason:
+            amount < requested
+              ? `${entry.reason || "Répartition du surplus du mois"} (ajusté au surplus disponible)`
+              : entry.reason || "Répartition du surplus du mois",
+          meta:
+            entry.type === "tax"
+              ? {
+                  taxType: entry.taxType || "monthly",
+                }
+              : undefined,
+        });
+        addBreakdown(allocationKey, amount);
+        remainingSurplus = Math.max(0, remainingSurplus - amount);
+        if (normalizedTo === "current") {
+          remainingCurrentHeadroom = Math.max(0, remainingCurrentHeadroom - amount);
+        }
+        if (isGrowthDestination(normalizedTo)) {
+          remainingGrowthCap = Math.max(0, remainingGrowthCap - amount);
+        }
+        consumePillarAmount(to, amount);
+      });
+
+    if (remainingSurplus > 0 && remainingCurrentHeadroom > 0) {
+      const keepOnCurrent = Math.min(remainingSurplus, remainingCurrentHeadroom);
+      addBreakdown("compteCourant", keepOnCurrent);
+      retainedOnCurrent += keepOnCurrent;
+      remainingSurplus = Math.max(0, remainingSurplus - keepOnCurrent);
+      remainingCurrentHeadroom = Math.max(0, remainingCurrentHeadroom - keepOnCurrent);
+    }
+    if (
+      remainingSurplus >= 1 &&
+      remainingGrowthCap > 0 &&
+      !isFrozenTransfer("current", "investments")
+    ) {
+      const value = roundMoney(Math.min(remainingSurplus, remainingGrowthCap));
+      transfers.push({
+        from: "current",
+        to: "investments",
+        fromLabel: formatTransferAccountLabel("current"),
+        toLabel: formatTransferAccountLabel("investments"),
+        amount: value,
+        allocationKey: "investissements",
+        reason: "Ajustement SmartSave: surplus restant alloué en croissance",
+      });
+      addBreakdown("investissements", value);
+      remainingSurplus = Math.max(0, remainingSurplus - value);
+      remainingGrowthCap = Math.max(0, remainingGrowthCap - value);
+    }
+    if (remainingSurplus > 0) {
+      if (!isFrozenTransfer("current", "security")) {
+        const value = roundMoney(remainingSurplus);
+        if (value > 0) {
+          transfers.push({
+            from: "current",
+            to: "security",
+            fromLabel: formatTransferAccountLabel("current"),
+            toLabel: formatTransferAccountLabel("security"),
+            amount: value,
+            allocationKey: "securite",
+            reason: "Ajustement SmartSave: reliquat vers sécurité",
+          });
+          addBreakdown("securite", value);
+          remainingSurplus = Math.max(0, remainingSurplus - value);
+        }
+      }
+      if (remainingSurplus > 0) {
+        addBreakdown("compteCourant", remainingSurplus);
+        retainedOnCurrent += remainingSurplus;
+        remainingSurplus = 0;
+      }
+    }
+    const totalTransfers = roundMoney(transfers.reduce((sum, item) => sum + toNumber(item.amount), 0));
+    const totalAllocated = roundMoney(
+      Object.values(breakdown).reduce((sum, amount) => sum + Math.max(0, toNumber(amount)), 0)
+    );
+    const effectiveEnvelope = Math.max(surplusEnvelope, totalAllocated);
+    return {
+      transfers,
+      totalTransfers,
+      totalAllocated,
+      availableSurplus: effectiveEnvelope,
+      retainedOnCurrent: Math.max(0, roundMoney(retainedOnCurrent)),
+      breakdown,
+    };
+  };
+
+  const renderSmartSave = (data, formData, activeUser, monthContext) => {
+    if (!document.querySelector("[data-smartsave-main-cta]")) return;
+    const store = getMonthlyStore();
+    const context = monthContext || lastMonthlyContext || null;
+    const monthId = context?.monthId || getMonthKey(new Date());
+    const monthDate = parseMonthKey(monthId) || new Date();
+    const monthLabel = new Intl.DateTimeFormat("fr-CH", {
+      month: "long",
+      year: "numeric",
+    }).format(monthDate);
+
+    const flow =
+      store && typeof store.getFlowStateForMonth === "function"
+        ? store.getFlowStateForMonth({
+            userId: activeUser?.id,
+            monthId,
+            now: new Date(),
+            monthlyPlan: context?.monthlyPlan || null,
+          }) || { state: "NOUVEAU_MOIS" }
+        : { state: "NOUVEAU_MOIS" };
+
+    const titleNode = document.querySelector("[data-smartsave-title]");
+    if (titleNode) titleNode.textContent = `Répartition – ${monthLabel}`;
+
+    const blockingCard = document.querySelector("[data-smartsave-blocking]");
+    const starCard = document.querySelector("[data-smartsave-star]");
+    const setupCard = document.querySelector("[data-smartsave-setup-card]");
+    const setupBody = document.querySelector("[data-smartsave-setup-body]");
+    const setupStatusNode = document.querySelector("[data-smartsave-setup-status]");
+    const setupTotalNode = document.querySelector("[data-smartsave-setup-total]");
+    const setupChecklistNode = document.querySelector("[data-smartsave-setup-checklist]");
+    const setupHintNode = document.querySelector("[data-smartsave-setup-profile-hint]");
+    const setupToggleNode = document.querySelector("[data-smartsave-setup-toggle]");
+    const setupApplyAllBtn = document.querySelector("[data-smartsave-setup-apply-all]");
+    const transfersCard = document.querySelector("[data-smartsave-transfers-card]");
+    const allocationLinesNode = document.querySelector("[data-smartsave-allocation-lines]");
+    const transferTotalNode = document.querySelector("[data-smartsave-transfer-total]");
+    const monthlyStatusNode = document.querySelector("[data-smartsave-monthly-status]");
+    const mainCta = document.querySelector("[data-smartsave-main-cta]");
+    const projectionCard = document.querySelector("[data-smartsave-projection-card]");
+    const projectionNoteNode = document.querySelector("[data-smartsave-projection-note]");
+    const planStatusBadgeNode = document.querySelector("[data-smartsave-plan-status-badge]");
+    const reviewBanner = document.querySelector("[data-smartsave-review-banner]");
+    const statusBanner = document.querySelector("[data-smartsave-status-banner]");
+
+    if (reviewBanner) reviewBanner.hidden = flow.state !== "FIN_MOIS_A_CLOTURER";
+    if (statusBanner) statusBanner.hidden = true;
+
+    if (flow.state === "NOUVEAU_MOIS") {
+      if (blockingCard) blockingCard.hidden = false;
+      if (starCard) starCard.hidden = true;
+      if (setupCard) setupCard.hidden = true;
+      if (transfersCard) transfersCard.hidden = true;
+      if (projectionCard) projectionCard.hidden = true;
+      if (mainCta) mainCta.hidden = true;
+      return;
+    }
+
+    if (blockingCard) blockingCard.hidden = true;
+    if (starCard) starCard.hidden = false;
+
+    const budget = store?.getMonthlyBudgetForMonth
+      ? store.getMonthlyBudgetForMonth({ userId: activeUser?.id, monthId, formData }) || {}
+      : {};
+    const totalIncome = Math.max(0, toNumber(budget.totalIncome));
+    const totalExpenses =
+      Math.max(0, toNumber(budget.fixedTotal)) +
+      Math.max(0, toNumber(budget.mandatoryTotal)) +
+      Math.max(0, toNumber(budget.variablePlanned));
+    const remaining =
+      budget.remaining != null ? toNumber(budget.remaining) : Math.max(0, totalIncome - totalExpenses);
+    const surplus = Math.max(0, remaining);
+
+    const surplusNode = document.querySelector("[data-smartsave-surplus-value]");
+    if (surplusNode) {
+      surplusNode.textContent = formatSignedCurrency(surplus);
+      surplusNode.classList.remove("is-positive", "is-neutral", "is-negative");
+      if (surplus > 0) surplusNode.classList.add("is-positive");
+      else if (surplus < 0) surplusNode.classList.add("is-negative");
+      else surplusNode.classList.add("is-neutral");
+    }
+
+    const heroEquationNode = document.querySelector("[data-smartsave-hero-equation]");
+    if (heroEquationNode && totalIncome > 0) {
+      const incomeNode = heroEquationNode.querySelector("[data-smartsave-income-value]");
+      const expensesNode = heroEquationNode.querySelector("[data-smartsave-expenses-value]");
+      if (incomeNode) incomeNode.textContent = formatCurrency(totalIncome);
+      if (expensesNode) expensesNode.textContent = formatCurrency(totalExpenses);
+      heroEquationNode.hidden = false;
+    } else if (heroEquationNode) {
+      heroEquationNode.hidden = true;
+    }
+
+    const monthStatus = String(context?.monthlyPlan?.flags?.monthStatus || "active");
+    const monthlyFlags = context?.monthlyPlan?.flags || {};
+    const isPlanReady = flow.state !== "NOUVEAU_MOIS";
+    const isPlanApplied =
+      Boolean(monthlyFlags.monthlyPlanIsApplied) ||
+      Boolean(monthlyFlags.planAppliedAt) ||
+      Boolean(monthlyFlags.monthlyPlanApplied) ||
+      monthStatus === "closed";
+
+    const setupUi = ensureSmartSaveMonthUi();
+    const taxModal = setupUi?.taxModal || null;
+    const planSnapshot = context?.monthlyPlan?.allocationResultSnapshot || null;
+    const allocationsRaw = planSnapshot?.allocations || data?.allocation?.allocations || {};
+    const taxFunding = planSnapshot?.debug?.taxFunding || data?.allocation?.debug?.taxFunding || {};
+    const monthInputs = context?.monthlyPlan?.inputsSnapshot || {};
+    const settingsContext = resolveEffectiveMonthSettings(context || {});
+    const userSettings = settingsContext.userSettings || {};
+    const smartSaveSettings = settingsContext.smartSaveSettings;
+    const advancedSettings = settingsContext.advancedSettings;
+    const liveBalances = getLiveAccountBalances(activeUser, formData);
+    const forcedPayLaterBySettings =
+      !smartSaveSettings.taxes.enabled ||
+      String(smartSaveSettings.taxes.provisionMode || "").toLowerCase() === "recommendations";
+    const taxPriority = resolveTaxPriority({ smartSaveSettings, advancedSettings });
+    const defaultTaxChoice = mapTaxPriorityToChoice(taxPriority);
+    const taxMode = String(
+      forcedPayLaterBySettings ? "PAY_LATER" : userSettings?.taxMode || "AUTO_PROVISION"
+    ).toUpperCase();
+    const rawTaxOnboardingChoice = String(userSettings?.taxOnboardingChoice || "").toUpperCase();
+    let taxOnboardingChoice = taxMode === "PAY_LATER"
+      ? "PAY_LATER"
+      : rawTaxOnboardingChoice || defaultTaxChoice || null;
+    if (taxOnboardingChoice === "PAY_LATER" && taxMode !== "PAY_LATER") {
+      taxOnboardingChoice = defaultTaxChoice || "SPREAD";
+    }
+    if (taxPriority === "critical" && taxMode !== "PAY_LATER") {
+      taxOnboardingChoice = "USE_SAVINGS";
+    }
+    const taxDueDate = userSettings?.taxDueDate || defaultTaxDueDate(new Date());
+    const taxCapPct = resolveTaxCapPct({ smartSaveSettings, advancedSettings });
+    const annualTaxEstimate = Math.max(0, toNumber(taxFunding.totalEstimate || data?.taxProvision?.totalTax || 0));
+
+    const taxOnboarding = computeTaxOnboardingTrigger({
+      annualTaxEstimate,
+      taxReserveBalance: liveBalances.tax,
+      taxDueDate,
+      surplus,
+      capPct: taxCapPct,
+      now: new Date(),
+    });
+
+    const mandatoryMonthlyNeed = Math.max(
+      0,
+      toNumber(monthInputs.mandatoryTotal)
+    );
+    const fixedMandatoryMonthlyNeed = Math.max(
+      0,
+      toNumber(monthInputs.fixedTotal) + toNumber(monthInputs.mandatoryTotal)
+    );
+    const debugCurrentLimit = Math.max(
+      0,
+      toNumber(data?.allocation?.debug?.currentTarget || 0)
+    );
+    const settingsCurrentLimit = Math.max(
+      0,
+      roundMoney(mandatoryMonthlyNeed * Math.max(1, toNumber(smartSaveSettings?.limits?.minCurrentMonths || 1)))
+    );
+    const currentLimit = Math.max(0, roundMoney(debugCurrentLimit > 0 ? debugCurrentLimit : settingsCurrentLimit));
+    const debugSecurityLimit = Math.max(
+      0,
+      toNumber(data?.allocation?.debug?.savingsTargets?.targetAmount || 0)
+    );
+    const settingsSecurityLimit = Math.max(
+      0,
+      roundMoney(
+        fixedMandatoryMonthlyNeed *
+          Math.max(0, toNumber(smartSaveSettings?.limits?.precautionIncomeMonths || 0))
+      )
+    );
+    const advancedSavingsFloor = Math.max(0, toNumber(advancedSettings?.savingsUsage?.savingsFloor || 0));
+    const securityLimit = Math.max(
+      0,
+      roundMoney(
+        debugSecurityLimit > 0 ? debugSecurityLimit : Math.max(settingsSecurityLimit, advancedSavingsFloor)
+      )
+    );
+
+    const rebalance = computeRebalanceTransfers({
+      balances: liveBalances,
+      limits: {
+        current: currentLimit,
+        savings: securityLimit,
+      },
+      taxFunding,
+      taxPriorityNeed: taxOnboardingChoice === "USE_SAVINGS" ? taxOnboarding.remainingNeed : 0,
+      formData,
+      monthInputs,
+      monthId,
+      smartSaveSettings,
+      advancedSettings,
+      monthlySurplus: surplus,
+    });
+
+    const rebalanceTaxTopup = roundMoney(
+      ensureArray(rebalance.transfers)
+        .filter((entry) => String(entry?.to || "").trim().toLowerCase() === "tax")
+        .reduce((sum, entry) => sum + Math.max(0, toNumber(entry?.amount || 0)), 0)
+    );
+    const effectiveTaxOnboarding =
+      taxOnboardingChoice === "USE_SAVINGS" && rebalanceTaxTopup > 0
+        ? computeTaxOnboardingTrigger({
+            annualTaxEstimate,
+            taxReserveBalance: liveBalances.tax + rebalanceTaxTopup,
+            taxDueDate,
+            surplus,
+            capPct: taxCapPct,
+            now: new Date(),
+          })
+        : taxOnboarding;
+    const taxMonthly = computeMonthlyTaxContributionFromSurplus({
+      taxMetrics: effectiveTaxOnboarding,
+      userSettings,
+      smartSaveSettings,
+      advancedSettings,
+      surplus,
+      now: new Date(),
+    });
+    const taxChoiceEffective = String(taxMonthly.onboardingChoice || taxOnboardingChoice || "").toUpperCase();
+    const taxTopUpFromSurplusEffective =
+      taxChoiceEffective === "MIX" ? Math.max(0, toNumber(taxMonthly.taxTopUpFromSurplus || 0)) : 0;
+
+    setText("[data-smartsave-tax-estimate]", formatCurrency(annualTaxEstimate));
+    const dueDateLabel = new Intl.DateTimeFormat("fr-CH", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(effectiveTaxOnboarding.dueDate || taxDueDate));
+    setText("[data-smartsave-tax-deadline]", dueDateLabel);
+
+    const shouldOpenTaxOnboardingModal = Boolean(
+      effectiveTaxOnboarding.shouldTrigger &&
+        !rawTaxOnboardingChoice &&
+        taxMode !== "PAY_LATER" &&
+        smartSaveSettings.taxes.enabled
+    );
+
+    if (taxModal && shouldOpenTaxOnboardingModal) {
+      const closeTaxModal = () => {
+        taxModal.hidden = true;
+        taxModal.setAttribute("aria-hidden", "true");
+        taxModal.classList.remove("is-open");
+      };
+      const taxSummaryNeed = taxModal.querySelector("[data-smartsave-tax-summary-need]");
+      const taxSummaryDue = taxModal.querySelector("[data-smartsave-tax-summary-due]");
+      const taxSummaryReco = taxModal.querySelector("[data-smartsave-tax-summary-reco]");
+      const taxOptionSpread = taxModal.querySelector('[data-smartsave-tax-impact="SPREAD"]');
+      const taxOptionMix = taxModal.querySelector('[data-smartsave-tax-impact="MIX"]');
+      const taxOptionUseSavings = taxModal.querySelector('[data-smartsave-tax-impact="USE_SAVINGS"]');
+      const taxOptionPayLater = taxModal.querySelector('[data-smartsave-tax-impact="PAY_LATER"]');
+      const modalSpread = computeMonthlyTaxContributionFromSurplus({
+        taxMetrics: effectiveTaxOnboarding,
+        userSettings: { ...userSettings, taxMode: "AUTO_PROVISION", taxOnboardingChoice: "SPREAD" },
+        smartSaveSettings,
+        advancedSettings,
+        surplus,
+        now: new Date(),
+      });
+      const modalMix = computeMonthlyTaxContributionFromSurplus({
+        taxMetrics: effectiveTaxOnboarding,
+        userSettings: { ...userSettings, taxMode: "AUTO_PROVISION", taxOnboardingChoice: "MIX" },
+        smartSaveSettings,
+        advancedSettings,
+        surplus,
+        now: new Date(),
+      });
+      const modalUseSavings = computeMonthlyTaxContributionFromSurplus({
+        taxMetrics: effectiveTaxOnboarding,
+        userSettings: { ...userSettings, taxMode: "AUTO_PROVISION", taxOnboardingChoice: "USE_SAVINGS" },
+        smartSaveSettings,
+        advancedSettings,
+        surplus,
+        now: new Date(),
+      });
+      if (taxSummaryNeed) taxSummaryNeed.textContent = formatCurrency(effectiveTaxOnboarding.remainingNeed || 0);
+      if (taxSummaryDue) taxSummaryDue.textContent = `${effectiveTaxOnboarding.monthsRemaining || 0} mois (${dueDateLabel})`;
+      if (taxSummaryReco) taxSummaryReco.textContent = `${formatCurrency(effectiveTaxOnboarding.theoreticalNeed || 0)} / mois`;
+      if (taxOptionSpread) taxOptionSpread.textContent = `Ce mois: ${formatCurrency(modalSpread.taxMonthlyActual || 0)}.`;
+      if (taxOptionMix) {
+        taxOptionMix.textContent = `Ce mois: ${formatCurrency(modalMix.taxTopUpFromSurplus || 0)} + ${formatCurrency(
+          modalMix.taxMonthlyActual || 0
+        )}.`;
+      }
+      if (taxOptionUseSavings) {
+        taxOptionUseSavings.textContent = `Ajustements: ${formatCurrency(rebalanceTaxTopup)} + ${formatCurrency(
+          modalUseSavings.taxMonthlyActual || 0
+        )}.`;
+      }
+      if (taxOptionPayLater) taxOptionPayLater.textContent = "Ce mois: CHF 0.";
+
+      taxModal.hidden = false;
+      taxModal.setAttribute("aria-hidden", "false");
+      taxModal.classList.add("is-open");
+      if (!taxModal.dataset.bound) {
+        taxModal.addEventListener("click", (event) => {
+          if (event.target.closest("[data-smartsave-tax-close]")) return closeTaxModal();
+          const optionCard = event.target.closest("[data-smartsave-tax-option]");
+          if (optionCard) {
+            const choice = String(optionCard.dataset.smartsaveTaxOption || "").toUpperCase();
+            const input = taxModal.querySelector(`input[name="smartsave-tax-choice"][value="${choice}"]`);
+            if (input) input.checked = true;
+          }
+          if (!event.target.closest("[data-smartsave-tax-continue]")) return;
+          const selected = taxModal.querySelector('input[name="smartsave-tax-choice"]:checked');
+          const choice = String(selected?.value || "").toUpperCase();
+          if (!choice || !activeUser?.id || typeof store?.updateUserSettingsForUser !== "function") return;
+          store.updateUserSettingsForUser({
+            userId: activeUser.id,
+            patch: {
+              taxOnboardingChoice: choice,
+              taxMode: choice === "PAY_LATER" ? "PAY_LATER" : "AUTO_PROVISION",
+            },
+          });
+          closeTaxModal();
+          renderAll();
+        });
+        taxModal.dataset.bound = "true";
+      }
+    } else if (taxModal) {
+      taxModal.hidden = true;
+      taxModal.setAttribute("aria-hidden", "true");
+      taxModal.classList.remove("is-open");
+    }
+
+    if (typeof store?.saveMonthlyPlanTaxForMonth === "function" && activeUser?.id && monthId) {
+      store.saveMonthlyPlanTaxForMonth({
+        userId: activeUser.id,
+        monthId,
+        now: new Date(),
+        tax: {
+          taxMode: taxMonthly.mode || taxMode,
+          taxOnboardingChoice: taxMonthly.onboardingChoice || taxOnboardingChoice,
+          taxMonthlyTarget: taxMonthly.taxMonthlyTarget,
+          taxMonthlyActual: taxMonthly.taxMonthlyActual,
+          taxTopUpFromSurplus: taxTopUpFromSurplusEffective,
+          taxShortfallThisMonth: taxMonthly.taxShortfallThisMonth,
+          taxNotProvisionedAmount: taxMonthly.taxNotProvisionedAmount,
+        },
+      });
+    }
+
+    const counters = getCompletedSetupTransferKeys(activeUser, monthId);
+    const isRebalanceLockedForMonth = Boolean(monthlyFlags.accountsBalanced);
+    const rebalanceRows = ensureArray(rebalance.transfers).map((row, index) => {
+      const matchKey = getTransferMatchKey(row.from, row.to, row.amount);
+      const done = isRebalanceLockedForMonth || (counters[matchKey] || 0) > 0;
+      if (!isRebalanceLockedForMonth && done) counters[matchKey] -= 1;
+      return {
+        ...row,
+        amount: Math.max(0, toNumber(row.amount)),
+        matchKey,
+        actionId: `row-${index + 1}-${normalizeEntryIdPart(row.from)}-${normalizeEntryIdPart(row.to)}-${Math.round(
+          Math.max(0, toNumber(row.amount))
+        )}`,
+        done,
+      };
+    });
+    const hasRebalance = rebalanceRows.length > 0;
+    const allRebalanceDone = hasRebalance && rebalanceRows.every((row) => row.done);
+    const pendingRebalanceRows = rebalanceRows.filter((row) => !row.done);
+
+    if (
+      allRebalanceDone &&
+      !monthlyFlags.accountsBalanced &&
+      activeUser?.id &&
+      typeof store?.markAccountsBalancedForMonth === "function"
+    ) {
+      store.markAccountsBalancedForMonth({
+        userId: activeUser.id,
+        monthId,
+        now: new Date(),
+        details: {
+          currentLimit,
+          securityLimit,
+          totals: rebalance.totals,
+        },
+      });
+    }
+
+    if (setupCard) setupCard.hidden = true;
+
+    if (setupCard) {
+      setupCard.classList.toggle("is-readonly", hasRebalance && allRebalanceDone);
+      setupCard.classList.toggle("is-collapsed", hasRebalance && allRebalanceDone);
+    }
+    if (setupStatusNode) {
+      setupStatusNode.textContent = "";
+    }
+    if (setupTotalNode) {
+      setupTotalNode.textContent = "";
+    }
+    if (setupHintNode) {
+      setupHintNode.textContent = "";
+    }
+    if (setupChecklistNode) {
+      setupChecklistNode.__rebalanceRows = rebalanceRows;
+      const escapeForHtml = (value) =>
+        String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      const totalRebalance = Math.max(
+        0,
+        toNumber(rebalance?.totals?.pool || rebalance?.totals?.rearrangedTotal || rebalance?.totals?.totalTransfers || 0)
+      );
+      const totalTransferred = Math.max(0, toNumber(rebalance?.totals?.totalTransfers || 0));
+      const totalKeptOnSavings = Math.max(0, toNumber(rebalance?.totals?.keepOnSavings || 0));
+      const sourceUsage =
+        rebalance?.totals?.sourceUsage && typeof rebalance.totals.sourceUsage === "object"
+          ? rebalance.totals.sourceUsage
+          : {};
+      const movedBySource = {};
+      const usedFromCurrent = Math.max(0, toNumber(sourceUsage.currentUsed || 0));
+      const usedFromSavings = Math.max(0, toNumber(sourceUsage.savingsUsed || 0));
+      if (usedFromCurrent > 0) movedBySource.current = usedFromCurrent;
+      if (usedFromSavings > 0) movedBySource.security = usedFromSavings;
+      if (!Object.keys(movedBySource).length) {
+        rebalanceRows.forEach((row) => {
+          const key = String(row?.from || "").trim().toLowerCase();
+          const amount = Math.max(0, toNumber(row?.amount || 0));
+          if (!key || amount <= 0) return;
+          movedBySource[key] = Math.max(0, toNumber(movedBySource[key] || 0)) + amount;
+        });
+      }
+      const sourceRows = Object.keys(movedBySource)
+        .map((accountKey) => {
+          const movedAmount = Math.max(0, toNumber(movedBySource[accountKey] || 0));
+          const amountOnAccount = Math.max(0, toNumber(liveBalances?.[accountKey] || 0));
+          const hasLimit = accountKey === "current" || accountKey === "security";
+          const limit =
+            accountKey === "current"
+              ? Math.max(0, toNumber(currentLimit || 0))
+              : Math.max(0, toNumber(rebalance?.totals?.savingsFloor || securityLimit || 0));
+          const surplus = hasLimit ? Math.max(0, toNumber(amountOnAccount) - toNumber(limit)) : 0;
+          const sharePct = totalRebalance > 0 ? Math.round((movedAmount / totalRebalance) * 100) : 0;
+          const keptOnSource =
+            accountKey === "security"
+              ? Math.max(0, toNumber(sourceUsage.savingsKept || totalKeptOnSavings || 0))
+              : 0;
+          return {
+            accountKey,
+            accountLabel: formatTransferAccountLabel(accountKey),
+            movedAmount,
+            amountOnAccount,
+            hasLimit,
+            limit,
+            surplus,
+            sharePct,
+            keptOnSource,
+          };
+        })
+        .sort((a, b) => b.movedAmount - a.movedAmount);
+      const whyLines = sourceRows
+        .filter((r) => r.hasLimit && r.surplus > 0.5)
+        .map(
+          (r) =>
+            `Ton ${r.accountLabel.toLowerCase()} a ${formatCurrency(r.surplus)} au-dessus de la limite recommandée (${formatCurrency(r.limit)}).`
+        );
+      setupChecklistNode.innerHTML = hasRebalance
+        ? `
+            ${
+              allRebalanceDone
+                ? `<p class="smartsave-rebalance-intro smartsave-rebalance-intro--done">Virements effectués. Tes comptes sont dans la bonne zone.</p>`
+                : `<p class="smartsave-rebalance-intro">SmartSave a détecté que tes comptes sont déséquilibrés. Effectue ces virements <strong>dans ta banque</strong> avant d'appliquer ton plan mensuel.</p>`
+            }
+            <ol class="smartsave-rebalance-steps">
+              ${rebalanceRows
+                .map(
+                  (row, i) => `
+                  <li class="smartsave-rebalance-step ${row.done ? "is-done" : ""}">
+                    <span class="smartsave-rebalance-step__num" aria-hidden="true">${row.done ? "✓" : i + 1}</span>
+                    <div class="smartsave-rebalance-step__body">
+                      <p class="smartsave-rebalance-step__route">
+                        <span class="smartsave-rebalance-step__from">${escapeForHtml(row.fromLabel)}</span>
+                        <span class="smartsave-rebalance-step__arrow" aria-hidden="true">→</span>
+                        <span class="smartsave-rebalance-step__to">${escapeForHtml(row.toLabel)}</span>
+                      </p>
+                      <p class="smartsave-rebalance-step__amount">${formatCurrency(row.amount)}</p>
+                    </div>
+                    ${row.done ? "" : `<span class="smartsave-rebalance-step__badge">À faire</span>`}
+                  </li>
+                `
+                )
+                .join("")}
+            </ol>
+            ${
+              whyLines.length > 0 && !allRebalanceDone
+                ? `<p class="smartsave-rebalance-why">${whyLines.join(" ")}</p>`
+                : ""
+            }
+          `
+        : "";
+    }
+    if (setupToggleNode) {
+      setupToggleNode.hidden = !(hasRebalance && allRebalanceDone);
+      if (hasRebalance && allRebalanceDone) {
+        const isOpen = setupToggleNode.dataset.open === "true";
+        setupToggleNode.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        setupToggleNode.textContent = isOpen ? "⌃" : "⌄";
+        if (setupBody) setupBody.hidden = !isOpen;
+      } else {
+        setupToggleNode.dataset.open = "false";
+        setupToggleNode.setAttribute("aria-expanded", "false");
+        setupToggleNode.textContent = "⌄";
+        if (setupBody) setupBody.hidden = false;
+      }
+      if (!setupToggleNode.dataset.bound) {
+        setupToggleNode.addEventListener("click", () => {
+          const nowOpen = setupToggleNode.dataset.open === "true";
+          setupToggleNode.dataset.open = nowOpen ? "false" : "true";
+          setupToggleNode.setAttribute("aria-expanded", nowOpen ? "false" : "true");
+          setupToggleNode.textContent = nowOpen ? "⌄" : "⌃";
+          if (setupBody) setupBody.hidden = nowOpen;
+        });
+        setupToggleNode.dataset.bound = "true";
+      }
+    }
+    if (setupApplyAllBtn) {
+      setupApplyAllBtn.hidden = allRebalanceDone || !hasRebalance;
+      setupApplyAllBtn.disabled = pendingRebalanceRows.length === 0;
+      setupApplyAllBtn.__rebalanceRows = pendingRebalanceRows;
+      setupApplyAllBtn.onclick = () => {
+        if (setupApplyAllBtn.dataset.processing === "true") return;
+        if (!activeUser?.id || !pendingRebalanceRows.length) return;
+        setupApplyAllBtn.dataset.processing = "true";
+        setupApplyAllBtn.disabled = true;
+        appendTransferTransactions({
+          activeUser,
+          monthId,
+          transfers: pendingRebalanceRows.map((row, index) => ({
+            ...row,
+            id: `smartsave-rebalance-${activeUser.id}-${monthId}-${index + 1}-${row.actionId}`,
+          })),
+          idPrefix: "smartsave-rebalance",
+          noteFallback: "Ajustement SmartSave",
+          autoApplyKind: "account-balance-adjustment",
+        });
+        if (typeof store?.saveRebalanceExecutionForMonth === "function") {
+          store.saveRebalanceExecutionForMonth({
+            userId: activeUser.id,
+            monthId,
+            now: new Date(),
+            transfers: rebalanceRows,
+          });
+        }
+        if (typeof store?.markAccountsBalancedForMonth === "function") {
+          store.markAccountsBalancedForMonth({
+            userId: activeUser.id,
+            monthId,
+            now: new Date(),
+            details: {
+              currentLimit,
+              securityLimit,
+              totals: rebalance.totals,
+            },
+          });
+        }
+        if (typeof store?.regeneratePlanForMonth === "function" && typeof window.buildMvpData === "function") {
+          const latestFormData = typeof window.loadUserForm === "function" ? window.loadUserForm(activeUser.id) : null;
+          if (latestFormData) {
+            const latestMvpData = window.buildMvpData(latestFormData);
+            store.regeneratePlanForMonth({
+              userId: activeUser.id,
+              monthId,
+              formData: latestFormData,
+              mvpData: latestMvpData,
+            });
+          }
+        }
+        renderAll();
+      };
+      setupApplyAllBtn.dataset.processing = "false";
+    }
+
+    let planBadgeLabel = "Plan prêt";
+    let planBadgeClass = "is-ready";
+    if (isPlanApplied) {
+      planBadgeLabel = "Plan appliqué";
+      planBadgeClass = "is-applied";
+    } else if (hasRebalance && !allRebalanceDone) {
+      planBadgeLabel = "Ajustement requis";
+      planBadgeClass = "is-adjustment";
+    }
+    if (planStatusBadgeNode) {
+      planStatusBadgeNode.textContent = planBadgeLabel;
+      planStatusBadgeNode.classList.remove("is-ready", "is-applied", "is-adjustment");
+      planStatusBadgeNode.classList.add(planBadgeClass);
+    }
+
+    const lockPlanByRebalance = hasRebalance && !allRebalanceDone;
+    if (transfersCard) transfersCard.hidden = false;
+    if (projectionCard) projectionCard.hidden = false;
+
+    const monthlyTransferEntries = buildMonthlyApplyEntries({
+      activeUser,
+      monthId,
+      monthContext: context,
+      mvpData: data,
+    });
+    const allocationEnvelope = Math.max(
+      0,
+      roundMoney(
+        toNumber(
+          data?.allocation?.disponibleInitial != null
+            ? data.allocation.disponibleInitial
+            : surplus
+        )
+      )
+    );
+    const pillarAnnualRoom = computeThirdPillarRoomForRebalance(formData, monthInputs, liveBalances, monthId);
+    const monthlyPlan = computeMonthlyAllocationTransfers({
+      entries: monthlyTransferEntries,
+      taxMonthly,
+      availableSurplus: allocationEnvelope,
+      currentLimit,
+      currentBalance: liveBalances.current,
+      pillarAnnualRoom,
+      smartSaveSettings,
+      advancedSettings,
+      allocationSnapshot: data?.allocation || planSnapshot || null,
+    });
+
+    const fallbackAllocationSource = {
+      ...allocationsRaw,
+      impots:
+        taxMode === "PAY_LATER"
+          ? 0
+          : roundMoney(Math.max(0, toNumber(taxMonthly.taxMonthlyActual || 0)) + taxTopUpFromSurplusEffective),
+    };
+    const hasPlanBreakdown =
+      monthlyPlan && monthlyPlan.breakdown && typeof monthlyPlan.breakdown === "object";
+    const allocationSource = hasPlanBreakdown ? monthlyPlan.breakdown : fallbackAllocationSource;
+    const shortTermAccount =
+      planSnapshot?.shortTermAccount ||
+      data?.allocation?.shortTermAccount ||
+      data?.allocation?.debug?.shortTermAccount ||
+      {};
+    const shortTermKey = String(shortTermAccount?.key || "projetsCourtTerme").trim() || "projetsCourtTerme";
+    const shortTermKeyLower = shortTermKey.toLowerCase();
+    const shortTermLabel =
+      String(shortTermAccount?.label || shortTermAccount?.name || "Projets court terme").trim() ||
+      "Projets court terme";
+    const readAllocationAmount = (source, key) => {
+      if (!source || typeof source !== "object") return 0;
+      const direct = toNumber(source[key]);
+      if (direct > 0) return direct;
+      const needle = String(key || "").trim().toLowerCase();
+      if (!needle) return 0;
+      const match = Object.entries(source).find(
+        ([entryKey]) => String(entryKey || "").trim().toLowerCase() === needle
+      );
+      return match ? toNumber(match[1]) : 0;
+    };
+    const shortTermAmountFromPlan = Math.max(
+      0,
+      toNumber(
+        readAllocationAmount(allocationSource, shortTermKey) ||
+          readAllocationAmount(allocationSource, "projetsCourtTerme") ||
+          planSnapshot?.shortTermDeduction ||
+          data?.allocation?.shortTermDeduction ||
+          shortTermAccount?.amount ||
+          0
+      )
+    );
+
+    const allocationPriority = [
+      "impots",
+      "compteCourant",
+      "securite",
+      shortTermKey,
+      "pilier3a",
+      "investissements",
+    ].filter((key, index, all) => all.indexOf(key) === index);
+    const allocationLabels = {
+      impots: "Impôts",
+      compteCourant: "Compte courant",
+      securite: "Épargne",
+      [shortTermKey]: shortTermLabel,
+      pilier3a: "3e pilier",
+      investissements: "Investissements",
+    };
+    const allocationWhy = {
+      impots: "Anticipe ta facture fiscale pour éviter un choc.",
+      compteCourant: "Sécurise ton compte courant pour couvrir tes dépenses essentielles.",
+      securite: "Renforce ton matelas de sécurité pour les imprévus.",
+      [shortTermKey]: "Tu finances ton objectif court terme défini dans ton plan.",
+      pilier3a: "Optimise ta fiscalité tant que le plafond annuel n’est pas atteint.",
+      investissements: "Tes bases sont assez solides : SmartSave fait travailler ton argent.",
+    };
+    const toDetailKey = {
+      impots: "impots",
+      compteCourant: "compteCourant",
+      securite: "securite",
+      [shortTermKeyLower]: "projetsCourtTerme",
+      pilier3a: "pilier3a",
+      investissements: "investissements",
+    };
+    const iconSvg = {
+      tax: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5M10 12h5M10 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+      current:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8.5h17v10h-17z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 12.5h3.5M3.5 8.5l2-3h13l2 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      security:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.2-2.8 8-7 10-4.2-2-7-5.8-7-10V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.5 12.2l1.9 1.9 3.4-3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      pillar:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14c0-4.3 3.3-7.5 8.7-8-0.6 5.4-3.8 8.6-8.7 8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 14v6M9 20h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      project:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+      invest:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 15l4-4 3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h2v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      default:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+    };
+    const iconMeta = {
+      impots: { style: "tax", icon: "tax" },
+      compteCourant: { style: "current", icon: "current" },
+      securite: { style: "security", icon: "security" },
+      [shortTermKey]: { style: "project", icon: "project" },
+      pilier3a: { style: "pillar", icon: "pillar" },
+      investissements: { style: "invest", icon: "invest" },
+    };
+    const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(toNumber(value))));
+    const getProgressPercent = (current, target) => {
+      const safeTarget = Math.max(0, toNumber(target));
+      if (safeTarget <= 0) return 0;
+      return clampPercent((Math.max(0, toNumber(current)) / safeTarget) * 100);
+    };
+
+    const currentBefore = Math.max(0, toNumber(liveBalances.current || 0));
+    const securityBefore = Math.max(0, toNumber(liveBalances.security || 0));
+    const taxBefore = Math.max(0, toNumber(liveBalances.tax || 0));
+    const pillarBefore = Math.max(0, toNumber(liveBalances.pillar3a || 0));
+    const investBefore = Math.max(0, toNumber(liveBalances.investments || 0));
+    const currentTargetReached = currentBefore >= Math.max(0, toNumber(currentLimit)) - 0.5;
+    const pillarCapReached = Math.max(0, toNumber(pillarAnnualRoom || 0)) <= 0.5;
+    const pillarAnnualCap = Math.max(0, roundMoney(pillarBefore + Math.max(0, toNumber(pillarAnnualRoom || 0))));
+
+    const allocationActionVerbs = {
+      securite: "Virer sur",
+      impots: "Virer sur",
+      [shortTermKey]: "Virer sur",
+      pilier3a: "Verser sur",
+      investissements: "Virer sur",
+      compteCourant: "Conserver dans",
+    };
+    const allocationDistColors = {
+      securite: "#10b981",
+      impots: "#f472b6",
+      [shortTermKey]: "#0ea5e9",
+      investissements: "#f59e0b",
+      pilier3a: "#6366f1",
+      compteCourant: "#0ea5e9",
+    };
+
+    const rows = allocationPriority.map((key) => {
+      let baseAmount = Math.max(0, toNumber(allocationSource[key] || 0));
+      const keyLower = String(key || "").trim().toLowerCase();
+      if (keyLower === shortTermKeyLower || keyLower === "projetscourtterme") {
+        if (baseAmount <= 0.5) {
+          baseAmount = shortTermAmountFromPlan;
+        }
+      }
+      const icon = iconMeta[key] || { style: "other", icon: "default" };
+      const label = allocationLabels[key] || formatTransferAccountLabel(key);
+      const hasAlloc = baseAmount > 0.5;
+      const row = {
+        key,
+        label,
+        amount: baseAmount,
+        why: allocationWhy[key] || "Répartition SmartSave automatique.",
+        action: hasAlloc
+          ? `${allocationActionVerbs[key] || "Virer sur"} ${label}`
+          : null,
+        distColor: allocationDistColors[key] || "#94a3b8",
+        stateKind: "text",
+        stateText: "",
+        stateLabel: "",
+        statePercent: 0,
+        stateValue: "",
+        detailGoal: "",
+        isMuted: false,
+        hasAllocation: hasAlloc,
+        iconStyle: icon.style,
+        iconSvg: iconSvg[icon.icon] || iconSvg.default,
+      };
+
+      if (key === "impots") {
+        const afterTax = roundMoney(taxBefore + baseAmount);
+        if (String(taxMode || "").toUpperCase() === "PAY_LATER") {
+          row.isMuted = true;
+          row.why = "Paiement des impôts reporté";
+          row.stateText = "Aucune provision ce mois-ci";
+        } else if (baseAmount <= 0.5) {
+          row.isMuted = true;
+          row.stateText = "Aucune provision ce mois-ci";
+        } else if (annualTaxEstimate > afterTax + 0.5) {
+          row.stateText = "Provision en cours pour l’échéance fiscale";
+        } else {
+          row.stateText = `Après ce mois-ci : ${formatCurrency(afterTax)}`;
+        }
+        row.detailGoal = row.stateText;
+        return row;
+      }
+
+      if (key === "compteCourant") {
+        const afterCurrent = roundMoney(currentBefore + baseAmount);
+        const securedAfter = afterCurrent >= Math.max(0, toNumber(currentLimit)) - 0.5;
+        if (baseAmount <= 0.5 && currentTargetReached) {
+          row.why = "Compte courant déjà sécurisé";
+          row.stateText = "Compte courant sécurisé";
+        } else if (baseAmount <= 0.5) {
+          row.isMuted = true;
+          row.stateText = "Aucun versement ce mois-ci";
+        } else if (securedAfter) {
+          row.stateText = "Compte courant sécurisé";
+        } else {
+          row.stateText = `Après ce mois-ci : ${formatCurrency(afterCurrent)}`;
+        }
+        row.detailGoal = row.stateText;
+        return row;
+      }
+
+      if (key === "securite") {
+        const afterSecurity = roundMoney(securityBefore + baseAmount);
+        if (baseAmount <= 0.5) {
+          row.isMuted = true;
+          row.stateText = "Aucun versement ce mois-ci";
+          row.detailGoal = row.stateText;
+          return row;
+        }
+        if (Math.max(0, toNumber(securityLimit)) > 0.5) {
+          const pct = getProgressPercent(afterSecurity, securityLimit);
+          row.stateKind = "progress";
+          row.stateLabel = "Progression";
+          row.statePercent = pct;
+          row.stateValue = `${pct} %`;
+          row.detailGoal = `Progression : ${pct} %`;
+        } else {
+          row.stateText = `Après ce mois-ci : ${formatCurrency(afterSecurity)}`;
+          row.detailGoal = row.stateText;
+        }
+        return row;
+      }
+
+      if (key === "pilier3a") {
+        const displayedAmount = pillarCapReached ? 0 : baseAmount;
+        const afterPillar = roundMoney(pillarBefore + displayedAmount);
+        row.amount = displayedAmount;
+        row.hasAllocation = displayedAmount > 0.5;
+        if (pillarCapReached) {
+          row.isMuted = true;
+          row.why = "Plafond annuel atteint";
+          row.stateText = "Plafond annuel atteint";
+          row.detailGoal = row.stateText;
+          return row;
+        }
+        if (displayedAmount <= 0.5) {
+          row.isMuted = true;
+          row.stateText = "Aucun versement ce mois-ci";
+          row.detailGoal = row.stateText;
+          return row;
+        }
+        const pct = getProgressPercent(afterPillar, Math.max(1, pillarAnnualCap));
+        row.stateKind = "progress";
+        row.stateLabel = "Progression";
+        row.statePercent = pct;
+        row.stateValue = `${pct} % du plafond annuel`;
+        row.detailGoal = `Progression : ${pct} % du plafond annuel`;
+        return row;
+      }
+
+      if (key === "investissements") {
+        const afterInvest = roundMoney(investBefore + baseAmount);
+        if (baseAmount <= 0.5) {
+          row.isMuted = true;
+          row.why = "Investissements bloqués pour l’instant";
+          row.stateText = "Investissements bloqués pour l’instant";
+        } else if (afterInvest > 0.5) {
+          row.stateText = `Après ce mois-ci : ${formatCurrency(afterInvest)} investis`;
+        } else {
+          row.stateText = "Investissements activés";
+        }
+        row.detailGoal = row.stateText;
+        return row;
+      }
+
+      row.stateText = "";
+      row.detailGoal = row.stateText;
+      return row;
+    });
+
+    const totalUsed = Math.max(
+      0,
+      roundMoney(monthlyPlan.totalAllocated || rows.reduce((sum, row) => sum + row.amount, 0))
+    );
+    const activeRows = rows.filter((row) => row.hasAllocation && row.amount > 0.5);
+    if (allocationLinesNode) {
+      allocationLinesNode.innerHTML = activeRows.length
+        ? activeRows
+            .map((row) => {
+              const detailKey = toDetailKey[String(row.key || "").trim().toLowerCase()] || row.key;
+              const classes = [
+                "smartsave-account-card",
+                `is-${row.iconStyle}`,
+                row.isMuted ? "is-muted" : "is-active",
+              ]
+                .filter(Boolean)
+                .join(" ");
+              const pct = totalUsed > 0 ? Math.round((row.amount / totalUsed) * 100) : 0;
+              const visualPct = Math.max(4, Math.min(100, pct || 0));
+              return `
+              <article
+                class="${classes}"
+                data-allocation-details-trigger
+                data-allocation-detail-key="${detailKey}"
+                data-allocation-detail-amount="${row.amount}"
+                data-allocation-detail-goal="${row.detailGoal}"
+                tabindex="0"
+                role="button"
+                aria-label="Voir le détail de ${row.label}"
+                style="--allocation-color:${row.distColor};"
+              >
+                <div class="smartsave-account-card__top">
+                  <div class="smartsave-account-card__lead">
+                    <span class="smartsave-account-card__icon" aria-hidden="true">${row.iconSvg}</span>
+                    <p data-allocation-card-label>${row.label}</p>
+                  </div>
+                  <div class="smartsave-account-card__amount">
+                    <strong>${formatCurrency(row.amount)}</strong>
+                    <span>${pct}%</span>
+                  </div>
+                </div>
+                <span class="smartsave-account-card__progress" aria-hidden="true"><span style="width:${visualPct}%"></span></span>
+              </article>
+            `;
+            })
+            .join("")
+        : '<p class="smartsave-inline-state">Aucun surplus à répartir ce mois.</p>';
+    }
+
+    if (transferTotalNode) {
+      transferTotalNode.hidden = true;
+    }
+
+    const lockPlanByModal = shouldOpenTaxOnboardingModal && !taxOnboardingChoice;
+    const lockPlanByStatus = monthStatus === "closed";
+    const lockPlanByReadiness = !isPlanReady;
+    const lockPlanByOverride = Boolean(advancedSettings?.overrides?.skipCurrentMonth);
+    const planHasTransfers = activeRows.length > 0;
+    if (monthlyStatusNode) {
+      if (lockPlanByRebalance) {
+        monthlyStatusNode.textContent = "Répartition prête. Ajuste d'abord tes comptes pour l'appliquer.";
+      } else if (lockPlanByStatus) {
+        monthlyStatusNode.textContent = "Mois clôturé: le plan n'est plus modifiable.";
+      } else if (lockPlanByOverride) {
+        monthlyStatusNode.textContent = "Plan non appliqué: l'option d'override est active.";
+      } else if (lockPlanByModal) {
+        monthlyStatusNode.textContent = "Choisis d'abord une stratégie impôts.";
+      } else if (lockPlanByReadiness) {
+        monthlyStatusNode.textContent = "Le plan n'est pas encore prêt.";
+      } else if (surplus <= 0) {
+        monthlyStatusNode.textContent = "Pas de surplus à répartir ce mois.";
+      } else if (isPlanApplied) {
+        monthlyStatusNode.textContent = "Plan appliqué.";
+      } else {
+        monthlyStatusNode.textContent = "Plan prêt à appliquer.";
       }
     }
 
-    renderSmartSaveMonthCycle(activeUser, monthContext, data, formData);
+    const canApplyPlan =
+      !isPlanApplied &&
+      !lockPlanByRebalance &&
+      !lockPlanByModal &&
+      !lockPlanByStatus &&
+      !lockPlanByOverride &&
+      !lockPlanByReadiness &&
+      surplus > 0 &&
+      planHasTransfers;
+
+    if (mainCta) {
+      const showRebalanceAction = lockPlanByRebalance && !isPlanApplied;
+      const canRunRebalance =
+        showRebalanceAction &&
+        pendingRebalanceRows.length > 0 &&
+        typeof setupApplyAllBtn?.onclick === "function";
+      mainCta.hidden = false;
+      mainCta.disabled = showRebalanceAction ? !canRunRebalance : !canApplyPlan;
+      mainCta.textContent = isPlanApplied
+        ? "Plan appliqué"
+        : showRebalanceAction
+        ? "Ajuster mes comptes"
+        : "Appliquer mon plan";
+      mainCta.onclick = () => {
+        if (showRebalanceAction) {
+          if (typeof setupApplyAllBtn?.onclick === "function") setupApplyAllBtn.onclick();
+          return;
+        }
+        if (!canApplyPlan || !store || !activeUser?.id) return;
+        const transferControls =
+          advancedSettings.transferControls && typeof advancedSettings.transferControls === "object"
+            ? advancedSettings.transferControls
+            : {};
+        const overrides =
+          advancedSettings.overrides && typeof advancedSettings.overrides === "object"
+            ? advancedSettings.overrides
+            : {};
+        const planTransfers = ensureArray(monthlyPlan?.transfers);
+        const transferCount = planTransfers.length;
+        const transferTotal = roundMoney(
+          planTransfers.reduce((sum, entry) => sum + Math.max(0, toNumber(entry?.amount || 0)), 0)
+        );
+        const maxTransfers = Math.max(0, Math.round(toNumber(transferControls.maxTransfersPerMonth || 0)));
+        const maxPerTransfer = Math.max(0, toNumber(transferControls.maxPerTransfer || 0));
+        const maxMonthlyTotal = Math.max(0, toNumber(transferControls.maxMonthlyTotal || 0));
+
+        if (overrides.skipCurrentMonth) {
+          if (monthlyStatusNode) {
+            monthlyStatusNode.textContent =
+              "Plan non appliqué: l'override 'Ignorer SmartSave pour ce mois' est actif.";
+          }
+          return;
+        }
+        if (maxTransfers > 0 && transferCount > maxTransfers) {
+          if (monthlyStatusNode) {
+            monthlyStatusNode.textContent =
+              `Plan bloqué: ${transferCount} transferts prévus (max autorisé ${maxTransfers}).`;
+          }
+          return;
+        }
+        if (maxPerTransfer > 0) {
+          const exceedsPerTransfer = planTransfers.some(
+            (entry) => Math.max(0, toNumber(entry?.amount || 0)) > maxPerTransfer + 1e-6
+          );
+          if (exceedsPerTransfer) {
+            if (monthlyStatusNode) {
+              monthlyStatusNode.textContent =
+                `Plan bloqué: au moins un transfert dépasse le plafond unitaire (${formatCurrency(maxPerTransfer)}).`;
+            }
+            return;
+          }
+        }
+        if (maxMonthlyTotal > 0 && transferTotal > maxMonthlyTotal + 1e-6) {
+          if (monthlyStatusNode) {
+            monthlyStatusNode.textContent =
+              `Plan bloqué: total des transferts ${formatCurrency(transferTotal)} > plafond mensuel ${formatCurrency(maxMonthlyTotal)}.`;
+          }
+          return;
+        }
+        if (transferControls.requireConfirmation) {
+          const confirmed = window.confirm(
+            `Confirmer l'application du plan (${transferCount} transferts, total ${formatCurrency(transferTotal)}) ?`
+          );
+          if (!confirmed) return;
+        }
+        const result = store.applyPlanForMonth({ userId: activeUser.id, monthId });
+        if (!result?.ok) return;
+        if (typeof store.markAllocationValidatedForMonth === "function") {
+          store.markAllocationValidatedForMonth({
+            userId: activeUser.id,
+            monthId,
+            now: new Date(),
+          });
+        }
+        if (context?.monthlyPlan) {
+          context.monthlyPlan.taxMode = taxMonthly.mode || taxMode;
+          context.monthlyPlan.taxOnboardingChoice = taxMonthly.onboardingChoice || taxOnboardingChoice;
+          context.monthlyPlan.taxMonthlyTarget = Math.max(0, toNumber(taxMonthly.taxMonthlyTarget || 0));
+          context.monthlyPlan.taxMonthlyActual = Math.max(0, toNumber(taxMonthly.taxMonthlyActual || 0));
+          context.monthlyPlan.taxTopUpFromSurplus = Math.max(0, toNumber(taxMonthly.taxTopUpFromSurplus || 0));
+          context.monthlyPlan.taxShortfallThisMonth = Math.max(0, toNumber(taxMonthly.taxShortfallThisMonth || 0));
+          context.monthlyPlan.taxNotProvisionedAmount = Math.max(0, toNumber(taxMonthly.taxNotProvisionedAmount || 0));
+        }
+
+        const fundingAmount = Math.max(
+          0,
+          roundMoney(
+            toNumber(
+              monthlyPlan?.availableSurplus != null
+                ? monthlyPlan.availableSurplus
+                : allocationEnvelope
+            )
+          )
+        );
+        const fundingExecution = appendExternalFundingTransaction({
+          activeUser,
+          monthId,
+          amount: fundingAmount,
+          idPrefix: "smartsave-plan-funding",
+          note: "Alimentation externe du surplus SmartSave du mois",
+          autoApplyKind: "allocation-funding",
+        });
+        const execution = appendTransferTransactions({
+          activeUser,
+          monthId,
+          transfers: monthlyPlan.transfers,
+          idPrefix: "smartsave-plan",
+          noteFallback: "Répartition SmartSave du mois",
+          autoApplyKind: "allocation-transfer",
+        });
+        const executionEntries = []
+          .concat(
+            Array.isArray(fundingExecution?.addedEntries) ? fundingExecution.addedEntries : []
+          )
+          .concat(Array.isArray(execution?.addedEntries) ? execution.addedEntries : []);
+        if (typeof store.saveMonthlyPlanExecutionForMonth === "function") {
+          store.saveMonthlyPlanExecutionForMonth({
+            userId: activeUser.id,
+            monthId,
+            now: new Date(),
+            entries: executionEntries,
+            source: "smartsave-main-cta",
+          });
+        }
+        if (typeof store.regeneratePlanForMonth === "function" && typeof window.buildMvpData === "function") {
+          const latestFormData = typeof window.loadUserForm === "function" ? window.loadUserForm(activeUser.id) : null;
+          if (latestFormData) {
+            const latestMvpData = window.buildMvpData(latestFormData);
+            store.regeneratePlanForMonth({
+              userId: activeUser.id,
+              monthId,
+              formData: latestFormData,
+              mvpData: latestMvpData,
+            });
+          }
+        }
+        renderAll();
+      };
+    }
+
+    if (projectionCard) {
+      projectionCard.hidden = false;
+      // Reuse the centralized projection already built from form + monthly budget.
+      const projection = data?.projection || null;
+      const currentHistory = ensureArray(projection?.current?.history);
+      const smartHistory = ensureArray(projection?.smartSave?.history);
+      const hasHistory = smartHistory.length > 0 || currentHistory.length > 0;
+      const smart10 = hasHistory
+        ? getHistoryValueAtMonth(smartHistory, 119)
+        : Math.max(0, toNumber(projection?.smartSave?.netWorth || 0));
+      const current10 = hasHistory
+        ? getHistoryValueAtMonth(currentHistory, 119)
+        : Math.max(0, toNumber(projection?.current?.netWorth || 0));
+      const smart20 = hasHistory
+        ? getHistoryValueAtMonth(smartHistory, 239)
+        : Math.max(0, toNumber(projection?.smartSave?.netWorth || 0));
+      const current20 = hasHistory
+        ? getHistoryValueAtMonth(currentHistory, 239)
+        : Math.max(0, toNumber(projection?.current?.netWorth || 0));
+      const gain10 = smart10 - current10;
+      const gain20 = smart20 - current20;
+
+      setText("[data-smartsave-projection-10y]", formatCurrency(smart10));
+      setText(
+        "[data-smartsave-projection-10y-gain]",
+        `Gain vs trajectoire actuelle: ${formatSignedCurrency(gain10)}`
+      );
+      setText("[data-smartsave-projection-20y]", formatCurrency(smart20));
+      setText(
+        "[data-smartsave-projection-20y-gain]",
+        `Gain vs trajectoire actuelle: ${formatSignedCurrency(gain20)}`
+      );
+      setText(
+        "[data-smartsave-projection-compound]",
+        `Impact des intérêts composés: ${formatSignedCurrency(
+          gain20
+        )} de patrimoine supplémentaire sur 20 ans en suivant SmartSave.`
+      );
+      if (projectionNoteNode) {
+        projectionNoteNode.hidden = isPlanApplied;
+        if (!isPlanApplied) {
+          projectionNoteNode.textContent = "En appliquant ton plan, tu actives cette trajectoire.";
+        }
+      }
+    }
   };
 
   const ensureSmartSaveMonthUi = () => {
     if (document.body?.dataset.page !== "smartsave") return null;
     const root = document.querySelector(".app-main");
     if (!root) return null;
-
-    let cycleCard = document.querySelector("[data-smartsave-month-cycle]");
-    if (!cycleCard) {
-      cycleCard = document.createElement("section");
-      cycleCard.className = "card smartsave-month-cycle";
-      cycleCard.setAttribute("data-smartsave-month-cycle", "");
-      cycleCard.innerHTML = `
-        <div class="smartsave-month-cycle__header">
-          <strong data-month-cycle-title>Mois —</strong>
-          <span class="smartsave-month-cycle__badge" data-month-cycle-badge>ACTIF</span>
-        </div>
-        <p class="smartsave-month-cycle__text" data-month-cycle-text></p>
-        <div class="smartsave-month-cycle__actions">
-          <button class="cta" type="button" data-month-cycle-primary></button>
-          <button class="ghost-btn small" type="button" data-month-cycle-secondary hidden></button>
-        </div>
-        <p class="smartsave-month-cycle__status" data-month-cycle-status></p>
-      `;
-      const titleSection = root.querySelector(".page-title");
-      if (titleSection && titleSection.parentNode) {
-        titleSection.parentNode.insertBefore(cycleCard, titleSection.nextSibling);
-      } else {
-        root.prepend(cycleCard);
-      }
-    }
+    const cycleCard = document.querySelector("[data-smartsave-month-cycle]");
+    if (cycleCard) cycleCard.remove();
 
     let setupModal = document.querySelector("[data-smartsave-setup-modal]");
     if (!setupModal) {
@@ -1418,11 +3972,85 @@
       document.body.appendChild(setupModal);
     }
 
-    return { cycleCard, setupModal };
+    let taxModal = document.querySelector("[data-smartsave-tax-modal]");
+    if (!taxModal) {
+      taxModal = document.createElement("div");
+      taxModal.className = "allocation-details-modal";
+      taxModal.setAttribute("data-smartsave-tax-modal", "");
+      taxModal.hidden = true;
+      taxModal.setAttribute("aria-hidden", "true");
+      taxModal.innerHTML = `
+        <div class="allocation-details-modal__overlay" data-smartsave-tax-close></div>
+        <div class="allocation-details-modal__content" role="dialog" aria-modal="true" aria-labelledby="smartsave-tax-title">
+          <header class="allocation-details-modal__header">
+            <h2 id="smartsave-tax-title">Échéance fiscale proche</h2>
+            <button class="allocation-details-modal__close" type="button" data-smartsave-tax-close aria-label="Fermer">×</button>
+          </header>
+          <div class="allocation-details-modal__body">
+            <section class="allocation-details-block">
+              <p>
+                L’échéance est proche. Pour éviter un effort mensuel trop lourd, choisis comment tu veux t’organiser.<br>
+                Tu pourras changer plus tard.
+              </p>
+            </section>
+            <section class="allocation-details-block">
+              <div class="smartsave-tax-summary">
+                <p><span>Impôts restants</span><strong data-smartsave-tax-summary-need>CHF 0</strong></p>
+                <p><span>Échéance</span><strong data-smartsave-tax-summary-due>0 mois</strong></p>
+                <p><span>Recommandation actuelle</span><strong data-smartsave-tax-summary-reco>CHF 0 / mois</strong></p>
+              </div>
+            </section>
+            <section class="allocation-details-block">
+              <div class="smartsave-tax-options-grid">
+                <label class="smartsave-tax-option-card" data-smartsave-tax-option="MIX">
+                  <input type="radio" name="smartsave-tax-choice" value="MIX">
+                  <div>
+                    <p class="smartsave-tax-option-title">Équilibré <span class="smartsave-tax-badge">Recommandé</span></p>
+                    <p class="smartsave-tax-option-copy">Je mets un peu maintenant, puis le reste chaque mois.</p>
+                    <p class="smartsave-tax-option-impact" data-smartsave-tax-impact="MIX"></p>
+                  </div>
+                </label>
+                <label class="smartsave-tax-option-card" data-smartsave-tax-option="SPREAD">
+                  <input type="radio" name="smartsave-tax-choice" value="SPREAD">
+                  <div>
+                    <p class="smartsave-tax-option-title">Mensualités légères</p>
+                    <p class="smartsave-tax-option-copy">Je mets le maximum raisonnable chaque mois (sans toucher à mon épargne).</p>
+                    <p class="smartsave-tax-option-impact" data-smartsave-tax-impact="SPREAD"></p>
+                  </div>
+                </label>
+                <label class="smartsave-tax-option-card" data-smartsave-tax-option="USE_SAVINGS">
+                  <input type="radio" name="smartsave-tax-choice" value="USE_SAVINGS">
+                  <div>
+                    <p class="smartsave-tax-option-title">Utiliser mon épargne</p>
+                    <p class="smartsave-tax-option-copy">Je couvre une grande partie tout de suite via l’excès d’épargne.</p>
+                    <p class="smartsave-tax-option-impact" data-smartsave-tax-impact="USE_SAVINGS"></p>
+                  </div>
+                </label>
+                <label class="smartsave-tax-option-card smartsave-tax-option-card--danger" data-smartsave-tax-option="PAY_LATER">
+                  <input type="radio" name="smartsave-tax-choice" value="PAY_LATER">
+                  <div>
+                    <p class="smartsave-tax-option-title">Gérer plus tard</p>
+                    <p class="smartsave-tax-option-copy">Je ne mets rien de côté pour l’instant (risque d’un gros paiement).</p>
+                    <p class="smartsave-tax-option-impact" data-smartsave-tax-impact="PAY_LATER"></p>
+                  </div>
+                </label>
+              </div>
+            </section>
+            <section class="allocation-details-block">
+              <button class="cta" type="button" data-smartsave-tax-continue>Continuer</button>
+            </section>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(taxModal);
+    }
+
+    return { setupModal, taxModal };
   };
 
   const getLiveAccountBalances = (_activeUser, formData) =>
     normalizeBalances(resolveBalances(formData || {}));
+  const SETUP_RULES_VERSION = "setup-static-v2";
 
   const buildMonthZeroRecommendations = (activeUser, formData, data, monthContext) => {
     const balances = getLiveAccountBalances(activeUser, formData);
@@ -1431,13 +4059,15 @@
     const currentTarget = Math.max(
       0,
       toNumber(
-        debug.currentTarget ||
-          (toNumber(inputs.fixedTotal) + toNumber(inputs.mandatoryTotal) + toNumber(inputs.debtsTotal))
+        debug.currentTarget || toNumber(inputs.mandatoryTotal)
       )
     );
     const securityTarget = Math.max(
       0,
-      toNumber(debug.savingsTargets?.targetAmount || 0)
+      toNumber(
+        debug.savingsTargets?.targetAmount ||
+          (toNumber(inputs.fixedTotal) + toNumber(inputs.mandatoryTotal)) * 3
+      )
     );
     const taxTarget = Math.max(
       0,
@@ -1449,19 +4079,12 @@
           0
       )
     );
-    const employmentStatus = String(formData?.personal?.employmentStatus || "").toLowerCase();
-    const annualNetIncome = Math.max(0, toNumber(inputs.revenuNetMensuel || 0) * 12);
-    const pillarCap = employmentStatus.includes("indep")
-      ? Math.max(7056, Math.min(annualNetIncome * 0.2, 35280))
-      : 7056;
-    const pillarPaidYtd = Math.max(
-      0,
-      toNumber(formData?.assets?.thirdPillarPaidYTD || formData?.taxes?.thirdPillarPaidYTD || 0)
-    );
-    const pillarRemaining = Math.max(0, pillarCap - pillarPaidYtd);
+    const monthId = monthContext?.monthId || getMonthKey(new Date());
+    const pillarRemaining = computeThirdPillarRoomForRebalance(formData, inputs, balances, monthId);
 
     const recommendations = [];
     const savingsCeiling = Math.max(securityTarget * 1.25, securityTarget + 5000);
+    let reservedSecurityOverflow = 0;
     const projected = {
       current: Math.max(0, toNumber(balances.current)),
       security: Math.max(0, toNumber(balances.security)),
@@ -1491,7 +4114,8 @@
     };
 
     const availableFromCurrent = () => Math.max(0, projected.current - currentTarget);
-    const availableFromSecurity = () => Math.max(0, projected.security - savingsCeiling);
+    const availableFromSecurity = () =>
+      Math.max(0, projected.security - savingsCeiling - reservedSecurityOverflow);
     const poolAmount = () => availableFromCurrent() + availableFromSecurity();
     const securityGap = () => Math.max(0, securityTarget - projected.security);
     const taxGap = () => Math.max(0, taxTarget - projected.tax);
@@ -1547,28 +4171,41 @@
       });
     }
 
-    // 2) Keep building savings up to the ceiling from current surplus.
-    const savingsKeepAmount = Math.min(
-      poolAmount() * 0.15,
-      Math.max(0, savingsCeiling - projected.security),
-      availableFromCurrent()
-    );
-    const keepToSavings = transfer("current", "security", savingsKeepAmount);
-    pushReco({
-      title: "Conserver une partie sur l'épargne",
-      detail: `Epargne cible ${formatCurrency(securityTarget)} · plafond ${formatCurrency(savingsCeiling)}.`,
-      from: "current",
-      to: "security",
-      amount: keepToSavings,
-    });
-
-    // 3) Fill tax gap first from surplus pool.
+    // 2) Fill tax gap first from surplus pool.
     pullSurplusTo(
       "tax",
       taxGap(),
       "Combler la provision impôts",
       `Impôts ${formatCurrency(projected.tax)} / cible ${formatCurrency(taxTarget)}.`
     );
+
+    // 3) Keep 15% on savings from the surplus pool (including security-origin surplus).
+    const savingsKeepAmount = Math.min(
+      poolAmount() * 0.15,
+      Math.max(0, savingsCeiling - projected.security) + availableFromSecurity()
+    );
+    const keepToSavingsFromCurrent = transfer(
+      "current",
+      "security",
+      Math.min(savingsKeepAmount, availableFromCurrent())
+    );
+    if (keepToSavingsFromCurrent > 0) {
+      pushReco({
+        title: "Conserver une partie sur l'épargne",
+        detail: `Epargne cible ${formatCurrency(securityTarget)} · plafond ${formatCurrency(savingsCeiling)}.`,
+        from: "current",
+        to: "security",
+        amount: keepToSavingsFromCurrent,
+      });
+    }
+    const keepToSavingsFromSecurity = Math.min(
+      Math.max(0, savingsKeepAmount - keepToSavingsFromCurrent),
+      availableFromSecurity()
+    );
+    if (keepToSavingsFromSecurity > 0) {
+      // Virtual reserve: this part stays on savings instead of being reallocated out.
+      reservedSecurityOverflow += keepToSavingsFromSecurity;
+    }
 
     // 4) Growth allocation from remaining pool: 60% pillar3a, 40% investments.
     const growthPool = poolAmount();
@@ -1623,7 +4260,11 @@
     const existing = store?.getSetupPlanForMonth
       ? store.getSetupPlanForMonth({ userId: activeUser.id, monthId })
       : null;
-    if (existing && Array.isArray(existing.items) && existing.items.length) {
+    if (
+      existing &&
+      existing.rulesVersion === SETUP_RULES_VERSION &&
+      Array.isArray(existing.items)
+    ) {
       return existing;
     }
 
@@ -1640,7 +4281,7 @@
     );
     const setupPlan = {
       monthId,
-      rulesVersion: "setup-static-v1",
+      rulesVersion: SETUP_RULES_VERSION,
       createdAt: new Date().toISOString(),
       balancesSnapshot: balances,
       items,
@@ -1689,6 +4330,18 @@
     }
   };
 
+  const saveUserFormLocal = (userId, formData) => {
+    if (!userId || !formData || typeof formData !== "object") return;
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_FORM) || "{}");
+      parsed[userId] = formData;
+      if (!parsed.__default) parsed.__default = formData;
+      localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(parsed));
+    } catch (_error) {
+      // ignore
+    }
+  };
+
   const normalizeEntryIdPart = (value) =>
     String(value || "")
       .toLowerCase()
@@ -1696,14 +4349,175 @@
       .replace(/^-+|-+$/g, "")
       .slice(0, 40) || "item";
 
-  const buildMonthlyApplyEntries = ({ activeUser, monthId, monthContext, mvpData }) => {
+  const appendTransferTransactions = ({
+    activeUser,
+    monthId,
+    transfers = [],
+    idPrefix = "smartsave-transfer",
+    noteFallback = "Transfert SmartSave",
+    autoApplyKind = "allocation-transfer",
+  }) => {
+    const userId = String(activeUser?.id || "").trim();
+    if (!userId || !monthId) return { addedCount: 0, addedEntries: [] };
+
+    const monthDate = parseMonthKey(monthId) || new Date();
+    const now = new Date();
+    const entryDate = isSameMonth(now, monthDate) ? toISODate(now) : toISODate(monthDate);
+    const nowIso = now.toISOString();
+    const stored = readAllTransactionsRaw();
+    const existingIds = new Set(stored.map((entry) => String(entry?.id || "").trim()).filter(Boolean));
+    const added = [];
+
+    ensureArray(transfers).forEach((row, index) => {
+      const from = String(row?.from || "").trim();
+      const to = String(row?.to || "").trim();
+      const amount = Math.max(0, toNumber(row?.amount || 0));
+      if (!from || !to || from === to || amount <= 0) return;
+      const id =
+        String(row?.id || "").trim() ||
+        `${idPrefix}-${userId}-${monthId}-${index + 1}-${normalizeEntryIdPart(from)}-${normalizeEntryIdPart(
+          to
+        )}-${Math.round(amount)}`;
+      if (existingIds.has(id)) return;
+      const entry = {
+        id,
+        userId,
+        type: "transfer",
+        from,
+        fromLabel: row?.fromLabel || formatTransferAccountLabel(from),
+        to,
+        toLabel: row?.toLabel || formatTransferAccountLabel(to),
+        amount,
+        date: entryDate,
+        note: String(row?.reason || row?.why || "").trim() || noteFallback,
+        isFixed: true,
+        autoApplyKind,
+        autoApplyMonthId: monthId,
+        autoGenerated: true,
+        createdAt: nowIso,
+      };
+      existingIds.add(id);
+      stored.push(entry);
+      added.push(entry);
+    });
+
+    if (!added.length) return { addedCount: 0, addedEntries: [] };
+    saveAllTransactionsRaw(stored);
+    if (typeof window.syncTransactionToProfile === "function") {
+      added.forEach((entry) => window.syncTransactionToProfile(entry, userId));
+    }
+    return { addedCount: added.length, addedEntries: added };
+  };
+
+  const appendExternalFundingTransaction = ({
+    activeUser,
+    monthId,
+    amount = 0,
+    idPrefix = "smartsave-funding",
+    note = "Alimentation externe SmartSave",
+    autoApplyKind = "allocation-funding",
+  }) => {
+    const userId = String(activeUser?.id || "").trim();
+    const safeAmount = Math.max(0, roundMoney(toNumber(amount)));
+    if (!userId || !monthId || safeAmount <= 0) return { addedCount: 0, addedEntries: [] };
+
+    const monthDate = parseMonthKey(monthId) || new Date();
+    const now = new Date();
+    const entryDate = isSameMonth(now, monthDate) ? toISODate(now) : toISODate(monthDate);
+    const nowIso = now.toISOString();
+    const stored = readAllTransactionsRaw();
+    const id = `${idPrefix}-${userId}-${monthId}-current-${Math.round(safeAmount)}`;
+    if (stored.some((entry) => String(entry?.id || "").trim() === id)) {
+      return { addedCount: 0, addedEntries: [] };
+    }
+
+    const entry = {
+      id,
+      userId,
+      type: "income",
+      account: "current",
+      accountLabel: formatTransferAccountLabel("current"),
+      category: "Alimentation SmartSave",
+      amount: safeAmount,
+      date: entryDate,
+      note: String(note || "").trim() || "Alimentation externe SmartSave",
+      isFixed: true,
+      autoApplyKind,
+      autoApplyMonthId: monthId,
+      autoGenerated: true,
+      createdAt: nowIso,
+    };
+
+    stored.push(entry);
+    saveAllTransactionsRaw(stored);
+    if (typeof window.syncTransactionToProfile === "function") {
+      window.syncTransactionToProfile(entry, userId);
+    }
+    return { addedCount: 1, addedEntries: [entry] };
+  };
+
+  const getNetWorthFromHistoryEntry = (entry = {}) => {
+    const accounts = entry?.accounts || {};
+    return (
+      toNumber(accounts.current) +
+      toNumber(accounts.savings) +
+      toNumber(accounts.blocked) +
+      toNumber(accounts.pillar3) +
+      toNumber(accounts.investments)
+    );
+  };
+
+  const getHistoryValueAtMonth = (history = [], monthIndex = 0) => {
+    if (!Array.isArray(history) || !history.length) return 0;
+    const safeIndex = Math.max(0, Math.min(history.length - 1, monthIndex));
+    return getNetWorthFromHistoryEntry(history[safeIndex] || {});
+  };
+
+  const buildMonthlyApplyEntries = ({
+    activeUser,
+    monthId,
+    monthContext,
+    mvpData,
+    transferPlan = null,
+  }) => {
     const plan = monthContext?.monthlyPlan || {};
-    const userSettings = monthContext?.userSettings || {};
+    const settingsContext = resolveEffectiveMonthSettings(monthContext || {});
+    const userSettings = settingsContext.userSettings || monthContext?.userSettings || {};
+    const smartSaveSettings = settingsContext.smartSaveSettings;
+    const advancedSettings = settingsContext.advancedSettings;
     const inputs = plan.inputsSnapshot || {};
-    const allocations = plan.allocationResultSnapshot?.allocations || {};
+    const liveAllocation = mvpData?.allocation && typeof mvpData.allocation === "object" ? mvpData.allocation : null;
+    const allocations =
+      liveAllocation?.allocations && typeof liveAllocation.allocations === "object"
+        ? liveAllocation.allocations
+        : plan.allocationResultSnapshot?.allocations || {};
+    const shortTermAccount = liveAllocation?.shortTermAccount || liveAllocation?.debug?.shortTermAccount || {};
+    const shortTermKey = String(shortTermAccount?.key || "projetsCourtTerme").trim() || "projetsCourtTerme";
+    const shortTermLabel = shortTermAccount?.name || shortTermAccount?.label || "Compte court terme";
+    const forcedPayLaterBySettings =
+      !smartSaveSettings.taxes.enabled ||
+      String(smartSaveSettings.taxes.provisionMode || "").toLowerCase() === "recommendations";
+    const taxMode = String(
+      forcedPayLaterBySettings ? "PAY_LATER" : plan.taxMode || userSettings?.taxMode || "AUTO_PROVISION"
+    ).toUpperCase();
+    const frozenAccount = resolveActiveFrozenAccount(advancedSettings);
+    const skipCurrentMonth = Boolean(advancedSettings?.overrides?.skipCurrentMonth);
+    const shortTermAllocationFromAllocations = Math.max(
+      0,
+      toNumber(
+        allocations[shortTermKey] ||
+          allocations.projetsCourtTerme ||
+          0
+      )
+    );
     const shortTermDeduction = Math.max(
       0,
-      toNumber(plan.allocationResultSnapshot?.shortTermDeduction || 0)
+      toNumber(
+        shortTermAccount?.amount ||
+          liveAllocation?.shortTermDeduction ||
+          plan.allocationResultSnapshot?.shortTermDeduction ||
+          shortTermAllocationFromAllocations
+      )
     );
 
     const today = new Date();
@@ -1808,49 +4622,135 @@
       });
     }
 
-    const transferSpecs = [
-      { allocationKey: "securite", to: "security", label: "Compte épargne" },
-      { allocationKey: "impots", to: "tax", label: "Provision impôts" },
-      { allocationKey: "pilier3a", to: "pillar3a", label: "3e pilier" },
-      { allocationKey: "investissements", to: "investments", label: "Investissements" },
-    ];
-
-    const shortTermAccount = mvpData?.allocation?.shortTermAccount || mvpData?.allocation?.debug?.shortTermAccount || {};
-    const shortTermTo = "projects";
-    const shortTermLabel = shortTermAccount?.name || shortTermAccount?.label || "Compte court terme";
-    if (shortTermDeduction > 0) {
-      transferSpecs.push({
-        allocationKey: "__short_term__",
-        to: shortTermTo,
-        label: shortTermLabel,
-      });
-    }
-
-    transferSpecs.forEach((spec) => {
-      const amount =
-        spec.allocationKey === "__short_term__"
-          ? shortTermDeduction
-          : Math.max(0, toNumber(allocations[spec.allocationKey] || 0));
-      pushEntry({
-        id: `autoapply-${userId}-${monthId}-transfer-${normalizeEntryIdPart(spec.to)}`,
-        type: "transfer",
-        from: "current",
-        fromLabel: "Compte courant",
-        to: spec.to,
-        toLabel: spec.label,
-        note: "Répartition SmartSave (auto)",
-        isFixed: true,
-        autoApplyKind: "allocation-transfer",
-        amount,
-      });
+    const plannedTransfers = ensureArray(transferPlan).filter(
+      (row) =>
+        row &&
+        String(row.from || "").trim() &&
+        String(row.to || "").trim() &&
+        Math.max(0, toNumber(row.amount)) > 0
+    ).filter((row) => {
+      if (skipCurrentMonth) return false;
+      if (!frozenAccount) return true;
+      const fromKey = normalizeTransferAccountKey(row?.from || "");
+      const toKey = normalizeTransferAccountKey(row?.to || "");
+      return fromKey !== frozenAccount && toKey !== frozenAccount;
     });
+    if (plannedTransfers.length) {
+      plannedTransfers.forEach((row, index) => {
+        const from = String(row.from || "").trim();
+        const to = String(row.to || "").trim();
+        const reason = String(row.reason || "").trim();
+        pushEntry({
+          id: `autoapply-${userId}-${monthId}-transfer-plan-${index + 1}-${normalizeEntryIdPart(from)}-${normalizeEntryIdPart(
+            to
+          )}`,
+          type: "transfer",
+          from,
+          fromLabel: formatTransferAccountLabel(row.fromLabel || from),
+          to,
+          toLabel: formatTransferAccountLabel(row.toLabel || to),
+          note: reason || "Répartition SmartSave (auto)",
+          isFixed: true,
+          autoApplyKind: "allocation-transfer",
+          allocationKey: String(row.allocationKey || row.key || "").trim() || null,
+          amount: Math.max(0, toNumber(row.amount || 0)),
+        });
+      });
+    } else if (!skipCurrentMonth) {
+      const transferSpecs = [
+        { allocationKey: "securite", to: "security", label: "Compte épargne" },
+        { allocationKey: "pilier3a", to: "pillar3a", label: "3e pilier" },
+        { allocationKey: "investissements", to: "investments", label: "Investissements" },
+        { allocationKey: "projetsLongTerme", to: "projects", label: "Projet long terme" },
+      ];
+      if (shortTermDeduction > 0) {
+        transferSpecs.push({
+          allocationKey: shortTermKey,
+          to: "projects",
+          label: shortTermLabel,
+        });
+      }
+
+      transferSpecs.forEach((spec) => {
+        const fromKey = normalizeTransferAccountKey("current");
+        const toKey = normalizeTransferAccountKey(spec.to);
+        if (frozenAccount && (fromKey === frozenAccount || toKey === frozenAccount)) return;
+        let amount = Math.max(0, toNumber(allocations[spec.allocationKey] || 0));
+        if (spec.allocationKey === shortTermKey) amount = shortTermDeduction;
+        if (spec.allocationKey === "projetsLongTerme") {
+          amount = Math.max(0, toNumber(allocations.projetsLongTerme || allocations.projets || 0));
+        }
+        pushEntry({
+          id: `autoapply-${userId}-${monthId}-transfer-${normalizeEntryIdPart(
+            spec.allocationKey || spec.to
+          )}-${normalizeEntryIdPart(spec.to)}`,
+          type: "transfer",
+          from: "current",
+          fromLabel: "Compte courant",
+          to: spec.to,
+          toLabel: spec.label,
+          note: "Répartition SmartSave (auto)",
+          isFixed: true,
+          autoApplyKind: "allocation-transfer",
+          allocationKey: spec.allocationKey,
+          amount,
+        });
+      });
+
+      const taxMonthlyActual = Math.max(0, toNumber(plan.taxMonthlyActual || 0));
+      const taxTopUpFromSurplus = Math.max(0, toNumber(plan.taxTopUpFromSurplus || 0));
+      if (
+        taxMode !== "PAY_LATER" &&
+        taxTopUpFromSurplus > 0 &&
+        !(frozenAccount && (frozenAccount === "current" || frozenAccount === "tax"))
+      ) {
+        pushEntry({
+          id: `autoapply-${userId}-${monthId}-transfer-tax-topup`,
+          type: "transfer",
+          from: "current",
+          fromLabel: "Compte courant",
+          to: "tax",
+          toLabel: "Provision impôts",
+          note: "Top-up exceptionnel impôts (auto)",
+          isFixed: true,
+          autoApplyKind: "allocation-transfer",
+          allocationKey: "impots",
+          amount: taxTopUpFromSurplus,
+        });
+      }
+      if (
+        taxMode !== "PAY_LATER" &&
+        taxMonthlyActual > 0 &&
+        !(frozenAccount && (frozenAccount === "current" || frozenAccount === "tax"))
+      ) {
+        pushEntry({
+          id: `autoapply-${userId}-${monthId}-transfer-tax-monthly`,
+          type: "transfer",
+          from: "current",
+          fromLabel: "Compte courant",
+          to: "tax",
+          toLabel: "Provision impôts",
+          note: "Provision mensuelle impôts (auto)",
+          isFixed: true,
+          autoApplyKind: "allocation-transfer",
+          allocationKey: "impots",
+          amount: taxMonthlyActual,
+        });
+      }
+    }
 
     return entries;
   };
 
-  const runMonthlyAutoApply = ({ activeUser, monthId, monthContext, mvpData }) => {
-    const candidates = buildMonthlyApplyEntries({ activeUser, monthId, monthContext, mvpData });
-    if (!candidates.length) return { addedCount: 0 };
+  const runMonthlyAutoApply = ({ activeUser, monthId, monthContext, mvpData, transferPlan = null }) => {
+    const candidates = buildMonthlyApplyEntries({
+      activeUser,
+      monthId,
+      monthContext,
+      mvpData,
+      transferPlan,
+    });
+    if (!candidates.length) return { addedCount: 0, addedEntries: [] };
 
     const stored = readAllTransactionsRaw();
     const existingIds = new Set(
@@ -1866,12 +4766,12 @@
       added.push(entry);
     });
 
-    if (!added.length) return { addedCount: 0 };
+    if (!added.length) return { addedCount: 0, addedEntries: [] };
     saveAllTransactionsRaw(stored);
     if (typeof window.syncTransactionToProfile === "function" && activeUser?.id) {
       added.forEach((entry) => window.syncTransactionToProfile(entry, activeUser.id));
     }
-    return { addedCount: added.length };
+    return { addedCount: added.length, addedEntries: added };
   };
 
   const openRecommendedTransfer = (transfer = {}) => {
@@ -1905,56 +4805,23 @@
     window.location.href = `mon-argent.html?${params.toString()}`;
   };
 
-  const renderSmartSaveMonthCycle = (activeUser, monthContext, data, formData) => {
-    const ui = ensureSmartSaveMonthUi();
-    if (!ui) return;
-    const { cycleCard, setupModal } = ui;
-    const titleNode = cycleCard.querySelector("[data-month-cycle-title]");
-    const badgeNode = cycleCard.querySelector("[data-month-cycle-badge]");
-    const textNode = cycleCard.querySelector("[data-month-cycle-text]");
-    const statusNode = cycleCard.querySelector("[data-month-cycle-status]");
-    const primaryButton = cycleCard.querySelector("[data-month-cycle-primary]");
-    const secondaryButton = cycleCard.querySelector("[data-month-cycle-secondary]");
+  const openSetupRecommendationsModal = ({
+    setupModal,
+    activeUser,
+    formData,
+    data,
+    monthContext,
+  }) => {
+    if (!setupModal) return;
     const setupRecoNode = setupModal.querySelector("[data-smartsave-setup-recommendations]");
     const setupEmptyNode = setupModal.querySelector("[data-smartsave-setup-empty]");
-
     const monthId = monthContext?.monthId || getMonthKey(new Date());
-    const monthDate = parseMonthKey(monthId) || new Date();
-    const monthLabel = new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric" }).format(monthDate);
-    const flags = monthContext?.monthlyPlan?.flags || {};
-    const monthStatus = String(flags.monthStatus || "active");
-    const appliedAt = flags.planAppliedAt || null;
-
-    if (titleNode) titleNode.textContent = `Cycle ${monthLabel}`;
-    if (secondaryButton) secondaryButton.hidden = true;
-
-    if (monthStatus === "setup") {
-      const setupPlan = getStaticSetupPlan(activeUser, formData, data, monthContext);
-      const pendingTransfers = getPendingSetupTransfers(setupPlan, activeUser, monthId);
-      const setupDone = pendingTransfers.length === 0;
-      if (badgeNode) badgeNode.textContent = "MOIS 0";
-      if (textNode) {
-        textNode.textContent = setupDone
-          ? "Vos comptes sont a jour, suivez votre budget jusqu'a la fin du mois !"
-          : "Mise en place: organise tes comptes maintenant. L'application du plan commence le mois prochain.";
-      }
-      if (statusNode) {
-        statusNode.textContent = setupDone
-          ? "Rearrangement termine pour ce mois 0."
-          : "Mode setup: conseils de reorganisation initiale.";
-      }
-      if (primaryButton) {
-        primaryButton.disabled = setupDone;
-        primaryButton.textContent = setupDone
-          ? "Comptes a jour pour ce mois"
-          : "Voir comment organiser mes comptes";
-        primaryButton.onclick = () => {
-          const liveSetupPlan = getStaticSetupPlan(activeUser, formData, data, monthContext);
-          const livePendingTransfers = getPendingSetupTransfers(liveSetupPlan, activeUser, monthId);
-          if (setupRecoNode) {
-            setupRecoNode.innerHTML = livePendingTransfers
-              .map(
-                (item, index) => `
+    const liveSetupPlan = getStaticSetupPlan(activeUser, formData, data, monthContext);
+    const livePendingTransfers = getPendingSetupTransfers(liveSetupPlan, activeUser, monthId);
+    if (setupRecoNode) {
+      setupRecoNode.innerHTML = livePendingTransfers
+        .map(
+          (item, index) => `
                 <article class="smartsave-setup-reco">
                   <p class="smartsave-setup-reco__title">${index + 1}. ${item.title}</p>
                   <p class="smartsave-setup-reco__detail">${item.detail}</p>
@@ -1970,88 +4837,21 @@
                   </button>
                 </article>
               `
-              )
-              .join("");
-          }
-          if (setupEmptyNode) {
-            setupEmptyNode.textContent = livePendingTransfers.length
-              ? "Aucun transfert one-shot necessaire pour l'instant."
-              : "Rearrangement termine: tous les transferts one-shot sont faits.";
-            setupEmptyNode.hidden = livePendingTransfers.length > 0;
-          }
-          setupModal.hidden = false;
-          setupModal.setAttribute("aria-hidden", "false");
-          setupModal.classList.add("is-open");
-        };
-      }
-      if (secondaryButton) secondaryButton.hidden = true;
-    } else if (monthStatus === "active" && !appliedAt) {
-      if (badgeNode) badgeNode.textContent = "ACTIF";
-      if (textNode) {
-        textNode.textContent =
-          "Applique ton plan SmartSave une seule fois apres reception du salaire.";
-      }
-      if (statusNode) statusNode.textContent = "Plan non applique pour ce mois.";
-      if (primaryButton) {
-        primaryButton.disabled = false;
-        primaryButton.textContent = "Appliquer mon plan SmartSave ce mois-ci";
-        primaryButton.onclick = () => {
-          const store = getMonthlyStore();
-          if (!store || !activeUser?.id || !monthId) return;
-          const result = store.applyPlanForMonth({ userId: activeUser.id, monthId });
-          if (!result?.ok) return;
-          const execution = runMonthlyAutoApply({
-            activeUser,
-            monthId,
-            monthContext,
-            mvpData: data,
-          });
-          if (statusNode) {
-            statusNode.textContent = `✔ Plan applique pour ${monthId} · ${execution.addedCount || 0} operations enregistrees`;
-          }
-          renderAll();
-        };
-      }
-    } else {
-      if (badgeNode) badgeNode.textContent = monthStatus === "closed" ? "CLOTURE" : "APPLIQUE";
-      if (textNode) {
-        textNode.textContent =
-          monthStatus === "closed"
-            ? "Ce mois est archive en lecture seule."
-            : "Le plan est deja applique pour ce mois.";
-      }
-      if (statusNode) {
-        statusNode.textContent = appliedAt
-          ? `✔ Plan applique pour ${monthId}`
-          : "Ce mois est en lecture seule.";
-      }
-      if (primaryButton) {
-        primaryButton.disabled = true;
-        primaryButton.textContent = appliedAt ? `✔ Plan applique pour ${monthId}` : "Plan indisponible";
-        primaryButton.onclick = null;
-      }
+        )
+        .join("");
     }
-
-    if (!setupModal.dataset.bound) {
-      setupModal.addEventListener("click", (event) => {
-        const transferButton = event.target.closest("[data-smartsave-setup-transfer]");
-        if (transferButton) {
-          openRecommendedTransfer({
-            from: transferButton.getAttribute("data-transfer-from"),
-            to: transferButton.getAttribute("data-transfer-to"),
-            amount: toNumber(transferButton.getAttribute("data-transfer-amount")),
-          });
-          return;
-        }
-        const close = event.target.closest("[data-smartsave-setup-close]");
-        if (!close) return;
-        setupModal.classList.remove("is-open");
-        setupModal.hidden = true;
-        setupModal.setAttribute("aria-hidden", "true");
-      });
-      setupModal.dataset.bound = "true";
+    if (setupEmptyNode) {
+      setupEmptyNode.textContent = livePendingTransfers.length
+        ? "Aucun transfert one-shot necessaire pour l'instant."
+        : "Rearrangement termine: tous les transferts one-shot sont faits.";
+      setupEmptyNode.hidden = livePendingTransfers.length > 0;
     }
+    setupModal.hidden = false;
+    setupModal.setAttribute("aria-hidden", "false");
+    setupModal.classList.add("is-open");
   };
+
+  const renderSmartSaveMonthCycle = () => {};
 
   const renderActions = (data, formData, activeUser) => {
     const homeDashboard = document.querySelector("[data-home-dashboard-root]");
@@ -2068,10 +4868,15 @@
       const planAppliedAt = monthInfo?.month?.planAppliedAt || null;
       const planSnapshot =
         monthInfo?.monthlyContext?.monthlyPlan?.allocationResultSnapshot || null;
+      const homeMonthlyPlan = monthInfo?.monthlyContext?.monthlyPlan || null;
       const allocations =
         planSnapshot?.allocations ||
         data.allocation?.allocations ||
         {};
+      const effectiveTaxAmount = getEffectiveTaxPlanAmount({
+        monthlyPlan: homeMonthlyPlan,
+        fallbackAllocationTax: allocations.impots || 0,
+      });
       const shortTermAccount =
         data.allocation?.shortTermAccount || data.allocation?.debug?.shortTermAccount || null;
       const shortTermKey = String(shortTermAccount?.key || "projetsCourtTerme").trim();
@@ -2102,7 +4907,7 @@
           key: "tax",
           className: "home-plan__dot--tax",
           label: "Impots",
-          value: Math.max(0, toNumber(allocations.impots || 0)),
+          value: effectiveTaxAmount,
         },
         {
           key: "pillar3a",
@@ -2836,11 +5641,11 @@
     const assumptionSmart = document.querySelector("[data-projection-assumption-smart]");
     if (!assumptionSmart) return;
 
-    const projectionEngine = window.ProjectionEngine;
-    const projection =
-      projectionEngine?.calculateProjection && formData
-        ? projectionEngine.calculateProjection(formData, { years, keepHistory: true })
-        : data.projection || {};
+    const projection = resolveProjectionForApp({
+      data,
+      formData,
+      months: Math.max(1, Math.round(toNumber(years || 10) * 12)),
+    });
     const current = projection.current || {};
     const smart = projection.smartSave || {};
     const currentHistory = Array.isArray(current.history) ? current.history : [];
@@ -2926,414 +5731,923 @@
     const goalsRoot = document.querySelector("[data-goals-root]");
     if (!goalsRoot) return;
 
-    const allocationPlan = formData?.allocationPlan || {};
-    const shortTerm = allocationPlan.shortTerm || {};
-    const longTerm = allocationPlan.longTerm || {};
-    const allocations = data?.allocation?.allocations || {};
+    const resolveTaxEngineTotal = () => {
+      const engine = window.TaxEngine || window.SmartSaveTaxEngine;
+      if (!engine || typeof engine.calculateAnnualTax !== "function") return 0;
+      try {
+        const taxData = engine.calculateAnnualTax(formData || {});
+        return Math.max(0, toNumber(taxData?.total || 0));
+      } catch (_error) {
+        return 0;
+      }
+    };
 
-    const fallbackMonthlyBeforePlan = Math.max(
-      0,
-      getMonthlyIncomeEstimate(formData) -
-        getMonthlyExpenseTotal(formData?.expenses?.fixed) -
-        getMonthlyExpenseTotal(formData?.expenses?.variable) -
-        Math.max(0, toNumber(data?.debtMonthly))
-    );
-    const monthlyAvailableBeforePlan = Math.max(
-      0,
-      toNumber(data?.allocation?.debug?.monthlyAvailableBeforePlan || fallbackMonthlyBeforePlan)
-    );
+    const escapeHtml = (value) =>
+      String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
-    const leisureMonthly = Math.max(
-      0,
-      Math.min(monthlyAvailableBeforePlan, toNumber(allocationPlan.leisureMonthly || 0))
-    );
-    const remainingAfterLifeBudget = Math.max(0, monthlyAvailableBeforePlan - leisureMonthly);
+    const toAllocObject = (source) => {
+      if (!source || typeof source !== "object") return null;
+      if (source.allocations && typeof source.allocations === "object") return source.allocations;
+      return source;
+    };
 
-    const sliderNode = goalsRoot.querySelector('[data-goals-field="leisure-slider"]');
-    const inputNode = goalsRoot.querySelector('[data-goals-field="leisure-input"]');
-    const variableFeedbackNode = goalsRoot.querySelector("[data-goals-variable-feedback]");
-    if (sliderNode) {
-      sliderNode.max = String(Math.max(0, Math.round(monthlyAvailableBeforePlan)));
-      sliderNode.value = String(Math.round(leisureMonthly));
-    }
-    if (inputNode) inputNode.value = String(Math.round(leisureMonthly));
-    if (variableFeedbackNode) {
-      variableFeedbackNode.textContent = `Avec ce choix, il te restera ${formatCurrency(
-        remainingAfterLifeBudget
-      )} à répartir.`;
-    }
+    const toDateValue = (raw) => {
+      if (!raw) return null;
+      if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
+      if (typeof raw === "number" && Number.isFinite(raw)) {
+        const parsed = new Date(raw);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      }
+      if (typeof raw !== "string") return null;
+      const value = raw.trim();
+      if (!value) return null;
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(value)) {
+        const [day, month, year] = value.split(".").map((part) => Number(part));
+        const parsed = new Date(year, month - 1, day);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      }
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
 
-    const ctEnabled = Boolean(shortTerm.enabled);
-    const ctType = String(shortTerm.type || "vacances").toLowerCase();
-    const ctAmount = Math.max(0, toNumber(shortTerm.amount || 0));
-    const ctHorizon = Math.max(1, Math.round(toNumber(shortTerm.horizonYears || 1)));
-    const ctMonthly = ctEnabled && ctAmount > 0 ? ctAmount / (ctHorizon * 12) : 0;
+    const formatDate = (raw) => {
+      const parsed = toDateValue(raw);
+      if (!parsed) return "";
+      return new Intl.DateTimeFormat("fr-CH", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+        .format(parsed)
+        .replace(/\//g, ".");
+    };
 
-    const ctEnabledNode = goalsRoot.querySelector('[data-goals-field="ct-enabled"]');
-    const ctFieldsNode = goalsRoot.querySelector("[data-goals-ct-fields]");
-    const ctTypeNode = goalsRoot.querySelector('[data-goals-field="ct-type"]');
-    const ctAmountNode = goalsRoot.querySelector('[data-goals-field="ct-amount"]');
-    const ctHorizonNode = goalsRoot.querySelector('[data-goals-field="ct-horizon"]');
-    const ctMonthlyNode = goalsRoot.querySelector("[data-goals-ct-monthly]");
-    if (ctEnabledNode) ctEnabledNode.checked = ctEnabled;
-    if (ctFieldsNode) ctFieldsNode.hidden = !ctEnabled;
-    if (ctTypeNode) ctTypeNode.value = ctType;
-    if (ctAmountNode) ctAmountNode.value = String(Math.round(ctAmount));
-    if (ctHorizonNode) ctHorizonNode.value = String(ctHorizon);
-    if (ctMonthlyNode) {
-      ctMonthlyNode.textContent = `Cela représente ${formatCurrency(
-        ctMonthly
-      )}/mois mis de côté avant la répartition.`;
-    }
+    const monthId = lastMonthlyContext?.monthId || getMonthKey(new Date());
+    const monthDate = parseMonthKey(monthId) || new Date();
+    const monthlyPlan =
+      lastMonthlyContext?.allMonthlyPlan?.[monthId] ||
+      lastMonthlyContext?.monthlyPlan ||
+      null;
+    const planFlags = monthlyPlan?.flags || {};
+    const isPlanValidated =
+      Boolean(planFlags.planAppliedAt) ||
+      Boolean(planFlags.monthlyPlanApplied) ||
+      String(planFlags.monthStatus || "") === "closed";
 
-    const ltType = String(longTerm.type || "security").toLowerCase();
-    const ltTarget = Math.max(0, toNumber(longTerm.amount || longTerm.target || 0));
-    const ltHorizon = Math.max(3, Math.round(toNumber(longTerm.horizonYears || 10)));
-    const ltNeedMonthly = ltTarget > 0 ? ltTarget / (ltHorizon * 12) : 0;
-    const ltFundingMonthly = Math.max(
-      0,
-      toNumber(data?.allocation?.longTermDiagnostic?.monthlyContribution || 0)
-    );
+    const allocationSnapshot =
+      monthlyPlan?.allocation ||
+      monthlyPlan?.allocationResultSnapshot ||
+      lastMonthlyContext?.monthlyPlan?.allocation ||
+      lastMonthlyContext?.monthlyPlan?.allocationResultSnapshot ||
+      null;
+    let allocations = toAllocObject(allocationSnapshot) || toAllocObject(data?.allocation) || {};
 
-    const ltTypeNode = goalsRoot.querySelector(
-      `[data-goals-field="lt-type"][value="${ltType}"]`
-    );
-    goalsRoot.querySelectorAll('[data-goals-field="lt-type"]').forEach((node) => {
-      node.checked = false;
-    });
-    if (ltTypeNode) ltTypeNode.checked = true;
-
-    const ltTargetNode = goalsRoot.querySelector('[data-goals-field="lt-target"]');
-    const ltHorizonNode = goalsRoot.querySelector('[data-goals-field="lt-horizon"]');
-    if (ltTargetNode) ltTargetNode.value = String(Math.round(ltTarget));
-    if (ltHorizonNode) ltHorizonNode.value = String(ltHorizon);
-
-    const diagnosticNode = goalsRoot.querySelector("[data-goals-lt-diagnostic]");
-    const statusNode = goalsRoot.querySelector("[data-goals-lt-status]");
-    if (diagnosticNode) {
-      const lines = diagnosticNode.querySelectorAll("p");
-      if (lines[0]) lines[0].textContent = `Besoin mensuel: ${formatCurrency(ltNeedMonthly)}`;
-      if (lines[1]) lines[1].textContent = `Financement actuel: ${formatCurrency(ltFundingMonthly)}/mois`;
-    }
-    if (statusNode) {
-      statusNode.classList.remove("is-green", "is-orange", "is-red", "is-neutral");
-      if (ltNeedMonthly <= 0) {
-        statusNode.classList.add("is-neutral");
-        statusNode.textContent = "Renseigne une cible et un horizon pour le diagnostic.";
-      } else {
-        const ratio = ltFundingMonthly / ltNeedMonthly;
-        if (ratio >= 1) {
-          statusNode.classList.add("is-green");
-          statusNode.textContent = "Dans les temps.";
-        } else if (ratio >= 0.75) {
-          statusNode.classList.add("is-orange");
-          statusNode.textContent = "En retard: accélération conseillée.";
-        } else {
-          statusNode.classList.add("is-red");
-          statusNode.textContent = "Hors trajectoire: ajustement nécessaire.";
-        }
+    if (!Object.keys(allocations).length) {
+      const allocationEngine = window.AllocationEngine;
+      if (allocationEngine && typeof allocationEngine.calculateAllocation === "function") {
+        const fallback = allocationEngine.calculateAllocation(formData || {});
+        allocations = toAllocObject(fallback) || {};
       }
     }
 
-    const smartSaveDistributed = Math.max(0, toNumber(data?.allocation?.disponibleInitial || 0));
-    const investedThisMonth = Math.max(0, toNumber(allocations.investissements || 0));
-    setText(
-      "[data-goals-impact-summary-life]",
-      `${formatCurrency(leisureMonthly)} utilisés · ${formatCurrency(
-        remainingAfterLifeBudget
-      )} à répartir`
-    );
-    setText(
-      "[data-goals-impact-summary-ct]",
-      ctEnabled
-        ? `${formatCurrency(ctAmount)} sur ${ctHorizon} an${ctHorizon > 1 ? "s" : ""} · ${formatCurrency(
-            ctMonthly
-          )}/mois`
-        : "Non actif"
-    );
-    setText(
-      "[data-goals-impact-summary-lt]",
-      ltTarget > 0
-        ? `${formatCurrency(ltTarget)} sur ${ltHorizon} an${ltHorizon > 1 ? "s" : ""} · besoin ${formatCurrency(
-            ltNeedMonthly
-          )}/mois`
-        : `Horizon ${ltHorizon} an${ltHorizon > 1 ? "s" : ""} · cible non définie`
-    );
-
-    goalsRoot.dataset.monthlyAvailableBeforePlan = String(monthlyAvailableBeforePlan);
-    goalsRoot.dataset.ltFundingMonthly = String(ltFundingMonthly);
-    goalsRoot.dataset.investedThisMonth = String(investedThisMonth);
-    goalsRoot.dataset.smartSaveDistributed = String(smartSaveDistributed);
-  };
-
-  const setupGoalsEditor = () => {
-    const goalsRoot = document.querySelector("[data-goals-root]");
-    if (!goalsRoot || goalsRoot.dataset.bound === "true") return;
-    goalsRoot.dataset.bound = "true";
-    const LT_DEFAULTS = {
-      security: { target: 30000, horizonYears: 8 },
-      home: { target: 120000, horizonYears: 15 },
-      invest: { target: 80000, horizonYears: 12 },
-      retirement: { target: 250000, horizonYears: 25 },
+    const shortTermTypeLabels = {
+      vacances: "Vacances",
+      cadeaux: "Cadeaux",
+      voiture: "Voiture",
+      mariage: "Mariage",
+      autre: "Projet court terme",
+    };
+    const longTermTypeLabels = {
+      security: "Épargne sécurité",
+      home: "Achat immobilier",
+      invest: "Investissement long terme",
+      children: "Épargne pour enfants",
+      retirement: "Retraite",
+    };
+    const categoryLabels = {
+      projects: "Projets",
+      safety: "Sécurité",
+      growth: "Croissance",
+    };
+    const statusClassMap = {
+      ahead: "is-ahead",
+      ontrack: "is-ontrack",
+      late: "is-late",
+      done: "is-done",
     };
 
-    const savingNode = goalsRoot.querySelector("[data-goals-saving-state]");
-    const setSavingLabel = (label) => {
-      if (savingNode) savingNode.textContent = label;
+    const balances = resolveBalances(formData || {});
+    const shortTermAccount =
+      allocationSnapshot?.shortTermAccount ||
+      data?.allocation?.shortTermAccount ||
+      data?.allocation?.debug?.shortTermAccount ||
+      null;
+    const shortTermAmount = Math.max(
+      0,
+      toNumber(shortTermAccount?.amount || allocations.projetsCourtTerme || 0)
+    );
+    const allocLongTerm = Math.max(
+      0,
+      toNumber(allocations.projetsLongTerme || allocations.projets || 0)
+    );
+    const allocSafety = Math.max(0, toNumber(allocations.securite || 0));
+    const allocInvest =
+      Math.max(0, toNumber(allocations.investissements || 0)) +
+      Math.max(0, toNumber(allocations.pilier3a || 0));
+    const allocTaxPlan = getEffectiveTaxPlanAmount({
+      monthlyPlan,
+      fallbackAllocationTax: allocations.impots || 0,
+    });
+    const resolveTaxAllocationLikeSmartSave = () => {
+      try {
+        const activeUserForPreview = window.loadActiveUser?.() || null;
+        const monthContext = lastMonthlyContext || {};
+        const settingsContext = resolveEffectiveMonthSettings(monthContext);
+        const smartSaveSettings = settingsContext.smartSaveSettings || {};
+        const advancedSettings = settingsContext.advancedSettings || {};
+        const userSettings = settingsContext.userSettings || {};
+        const monthInputs = monthlyPlan?.inputsSnapshot || {};
+
+        const store = getMonthlyStore();
+        const budget =
+          store && typeof store.getMonthlyBudgetForMonth === "function"
+            ? store.getMonthlyBudgetForMonth({ userId: activeUserForPreview?.id, monthId, formData }) || {}
+            : {};
+        const totalIncome = Math.max(0, toNumber(budget.totalIncome));
+        const totalExpenses =
+          Math.max(0, toNumber(budget.fixedTotal)) +
+          Math.max(0, toNumber(budget.mandatoryTotal)) +
+          Math.max(0, toNumber(budget.variablePlanned));
+        const remaining =
+          budget.remaining != null ? toNumber(budget.remaining) : Math.max(0, totalIncome - totalExpenses);
+        const surplus = Math.max(0, remaining);
+        const allocationEnvelope = Math.max(
+          0,
+          roundMoney(
+            toNumber(
+              data?.allocation?.disponibleInitial != null ? data.allocation.disponibleInitial : surplus
+            )
+          )
+        );
+
+        const liveBalances = getLiveAccountBalances(activeUserForPreview, formData);
+        const mandatoryMonthlyNeed = Math.max(0, toNumber(monthInputs.mandatoryTotal || 0));
+        const fixedMandatoryMonthlyNeed = Math.max(
+          0,
+          toNumber(monthInputs.fixedTotal || 0) + toNumber(monthInputs.mandatoryTotal || 0)
+        );
+        const debugCurrentLimit = Math.max(0, toNumber(data?.allocation?.debug?.currentTarget || 0));
+        const settingsCurrentLimit = Math.max(
+          0,
+          roundMoney(
+            mandatoryMonthlyNeed * Math.max(1, toNumber(smartSaveSettings?.limits?.minCurrentMonths || 1))
+          )
+        );
+        const currentLimit = Math.max(
+          0,
+          roundMoney(debugCurrentLimit > 0 ? debugCurrentLimit : settingsCurrentLimit)
+        );
+        const pillarAnnualRoom = computeThirdPillarRoomForRebalance(
+          formData,
+          monthInputs,
+          liveBalances,
+          monthId
+        );
+
+        const taxPreview = {
+          mode: String(monthlyPlan?.taxMode || userSettings?.taxMode || "AUTO_PROVISION").toUpperCase(),
+          onboardingChoice: String(monthlyPlan?.taxOnboardingChoice || ""),
+          taxMonthlyTarget: Math.max(0, toNumber(monthlyPlan?.taxMonthlyTarget || 0)),
+          taxMonthlyActual: Math.max(0, toNumber(monthlyPlan?.taxMonthlyActual || allocTaxPlan || 0)),
+          taxTopUpFromSurplus: Math.max(0, toNumber(monthlyPlan?.taxTopUpFromSurplus || 0)),
+          taxShortfallThisMonth: Math.max(0, toNumber(monthlyPlan?.taxShortfallThisMonth || 0)),
+        };
+
+        const previewEntries = buildMonthlyApplyEntries({
+          activeUser: activeUserForPreview,
+          monthId,
+          monthContext: monthContext || null,
+          mvpData: data,
+        });
+        const previewPlan = computeMonthlyAllocationTransfers({
+          entries: previewEntries,
+          taxMonthly: taxPreview,
+          availableSurplus: allocationEnvelope,
+          currentLimit,
+          currentBalance: Math.max(0, toNumber(liveBalances.current || 0)),
+          pillarAnnualRoom,
+          smartSaveSettings,
+          advancedSettings,
+          allocationSnapshot: data?.allocation || allocationSnapshot || null,
+        });
+
+        const breakdownTax = Math.max(0, toNumber(previewPlan?.breakdown?.impots || 0));
+        return breakdownTax;
+      } catch (_error) {
+        return Math.max(0, toNumber(allocTaxPlan || 0));
+      }
+    };
+    const allocTax = resolveTaxAllocationLikeSmartSave();
+    const totalMonthlyContribution = Math.max(0, shortTermAmount + allocLongTerm + allocSafety + allocInvest + allocTax);
+
+    const surplusNoteNode = goalsRoot.querySelector("[data-goals-surplus-note]");
+    if (surplusNoteNode) surplusNoteNode.hidden = totalMonthlyContribution > 0;
+
+    const monthPlans = lastMonthlyContext?.allMonthlyPlan || {};
+    const monthIds = Object.keys(monthPlans).sort((a, b) => a.localeCompare(b));
+    const isAppliedPlan = (plan) => {
+      const flags = plan?.flags || {};
+      return (
+        Boolean(flags.planAppliedAt) ||
+        Boolean(flags.monthlyPlanApplied) ||
+        String(flags.monthStatus || "") === "closed"
+      );
+    };
+    const historyByAllocationKeys = (keys = [], limit = 6) =>
+      monthIds
+        .map((entryMonthId) => {
+          const plan = monthPlans[entryMonthId];
+          if (!isAppliedPlan(plan)) return null;
+          const snap = plan?.allocationResultSnapshot || plan?.allocation || {};
+          const alloc = toAllocObject(snap) || {};
+          const amount = keys.reduce((sum, key) => sum + Math.max(0, toNumber(alloc[key] || 0)), 0);
+          return amount > 0 ? { monthId: entryMonthId, amount } : null;
+        })
+        .filter(Boolean)
+        .slice(limit > 0 ? -limit : undefined);
+
+    const historyByGoalName = (name, limit = 6) => {
+      const needle = normalizeLabel(name);
+      if (!needle) return [];
+      return monthIds
+        .map((entryMonthId) => {
+          const plan = monthPlans[entryMonthId];
+          if (!isAppliedPlan(plan)) return null;
+          const entries = Array.isArray(plan?.allocationResultSnapshot?.objectifsFinances)
+            ? plan.allocationResultSnapshot.objectifsFinances
+            : [];
+          const found = entries.find(
+            (entry) => normalizeLabel(entry?.name || entry?.label || "") === needle
+          );
+          const amount = Math.max(0, toNumber(found?.allocated || found?.amount || 0));
+          return amount > 0 ? { monthId: entryMonthId, amount } : null;
+        })
+        .filter(Boolean)
+        .slice(limit > 0 ? -limit : undefined);
     };
 
-    const readGoalsValues = () => {
-      const sliderNode = goalsRoot.querySelector('[data-goals-field="leisure-slider"]');
-      const inputNode = goalsRoot.querySelector('[data-goals-field="leisure-input"]');
-      const maxLeisure = Math.max(
-        0,
-        toNumber(sliderNode?.max || goalsRoot.dataset.monthlyAvailableBeforePlan || 0)
-      );
-      const rawLeisure = inputNode ? toNumber(inputNode.value) : toNumber(sliderNode?.value);
-      const leisureMonthly = Math.max(0, Math.min(maxLeisure, rawLeisure));
+    const resolveGoalList = (profile = {}) => {
+      const source = Array.isArray(profile.goalTargets)
+        ? profile.goalTargets
+        : Array.isArray(profile.goals)
+        ? profile.goals
+        : [];
+      return source
+        .map((goal, index) => {
+          const id = String(goal?.id || `goal-${index + 1}`);
+          const name = String(goal?.name || goal?.title || goal?.label || "Objectif").trim();
+          const target = Math.max(0, toNumber(goal?.target || goal?.amount || 0));
+          const current = Math.max(
+            0,
+            toNumber(goal?.current || goal?.saved || goal?.balance || goal?.achieved || 0)
+          );
+          const rawType = String(goal?.type || goal?.category || "projet").toLowerCase();
+          const type =
+            rawType === "securite" || rawType === "croissance" || rawType === "projet"
+              ? rawType
+              : "projet";
+          return {
+            ...goal,
+            id,
+            name,
+            target,
+            current,
+            type,
+            priority: Math.max(0, Math.round(toNumber(goal?.priority || 0))),
+            horizonMonths: Math.max(0, Math.round(toNumber(goal?.horizonMonths || 0))),
+            why: String(goal?.why || goal?.reason || "Objectif personnel").trim(),
+            archivedAt: goal?.archivedAt || null,
+            createdAt: goal?.createdAt || null,
+          };
+        })
+        .filter((goal) => goal.name && goal.target > 0 && !String(goal.id).startsWith("builtin:"));
+    };
 
-      const ctEnabled = Boolean(
-        goalsRoot.querySelector('[data-goals-field="ct-enabled"]')?.checked
-      );
-      const ctType = String(
-        goalsRoot.querySelector('[data-goals-field="ct-type"]')?.value || "vacances"
-      ).toLowerCase();
-      const ctLabelNode = goalsRoot.querySelector(
-        `[data-goals-field="ct-type"] option[value="${ctType}"]`
-      );
-      const ctAmount = Math.max(
-        0,
-        toNumber(goalsRoot.querySelector('[data-goals-field="ct-amount"]')?.value)
-      );
-      const ctHorizon = Math.max(
-        1,
-        Math.round(toNumber(goalsRoot.querySelector('[data-goals-field="ct-horizon"]')?.value || 1))
-      );
+    const addMonths = (baseDate, months) => {
+      const source = baseDate instanceof Date ? new Date(baseDate) : new Date();
+      return new Date(source.getFullYear(), source.getMonth() + Math.max(1, months), 0);
+    };
 
-      const ltType =
-        goalsRoot.querySelector('[data-goals-field="lt-type"]:checked')?.value || "security";
-      const ltTarget = Math.max(
-        0,
-        toNumber(goalsRoot.querySelector('[data-goals-field="lt-target"]')?.value)
-      );
-      const ltHorizon = Math.max(
-        3,
-        Math.round(toNumber(goalsRoot.querySelector('[data-goals-field="lt-horizon"]')?.value || 10))
-      );
+    const resolveGoalDeadline = (goal) => {
+      const direct =
+        formatDate(goal?.deadline) ||
+        formatDate(goal?.date) ||
+        formatDate(goal?.targetDate) ||
+        formatDate(goal?.dueDate);
+      if (direct) return direct;
+      if (toNumber(goal?.horizonMonths) > 0) return formatDate(addMonths(monthDate, goal.horizonMonths));
+      return "";
+    };
+
+    const shouldPayTaxes = () => {
+      const raw = formData?.taxes?.paysTaxes ?? formData?.paysTaxes;
+      if (raw == null) return true;
+      const normalized = String(raw).trim().toLowerCase();
+      if (!normalized) return true;
+      return !["non", "false", "0", "no", "off"].includes(normalized);
+    };
+
+    const resolveNextTaxDeadline = (baseDate) => {
+      const from = baseDate instanceof Date ? new Date(baseDate) : new Date();
+      // Fiscal deadline policy: nearest upcoming 30.03.
+      const thisYearDeadline = new Date(from.getFullYear(), 2, 30);
+      const thisYearDeadlineEnd = new Date(from.getFullYear(), 2, 30, 23, 59, 59, 999);
+      return from.getTime() <= thisYearDeadlineEnd.getTime()
+        ? thisYearDeadline
+        : new Date(from.getFullYear() + 1, 2, 30);
+    };
+    const monthsUntilNextTaxDeadline = (baseDate, deadlineDate) => {
+      const from = baseDate instanceof Date ? new Date(baseDate) : new Date();
+      const deadline =
+        deadlineDate instanceof Date && !Number.isNaN(deadlineDate.getTime())
+          ? new Date(deadlineDate)
+          : resolveNextTaxDeadline(from);
+      const raw = (deadline.getTime() - from.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+      return Math.max(1, Math.ceil(raw));
+    };
+
+    const computeGoalState = (goal) => {
+      const target = Math.max(0, toNumber(goal?.target || 0));
+      const current = Math.max(0, toNumber(goal?.current || 0));
+      const monthlyContribution = Math.max(0, toNumber(goal?.monthlyContribution || 0));
+      const reached = target > 0 && current >= target;
+      const remain = Math.max(0, target - current);
+      const percent = target > 0 ? Math.round(Math.min(1, current / target) * 100) : 0;
+      const horizonMonths = Math.max(0, Math.round(toNumber(goal?.horizonMonths || 0)));
+      const etaMonths = !reached && monthlyContribution > 0 ? Math.ceil(remain / monthlyContribution) : null;
+      return { target, current, monthlyContribution, reached, remain, percent, horizonMonths, etaMonths };
+    };
+
+    const resolveStandardStatus = (state) => {
+      if (state.reached) return { key: "done", label: "Terminé" };
+      if (state.monthlyContribution <= 0) return { key: "late", label: "En retard" };
+      if (state.horizonMonths > 0 && state.etaMonths != null) {
+        if (state.etaMonths <= state.horizonMonths * 0.85) return { key: "ahead", label: "En avance" };
+        if (state.etaMonths <= state.horizonMonths * 1.1) {
+          return { key: "ontrack", label: "Sur la bonne trajectoire" };
+        }
+        return { key: "late", label: "En retard" };
+      }
+      const ratio = state.target > 0 ? state.current / state.target : 0;
+      if (ratio >= 0.7) return { key: "ahead", label: "En avance" };
+      if (ratio >= 0.35) return { key: "ontrack", label: "Sur la bonne trajectoire" };
+      return { key: "late", label: "En retard" };
+    };
+
+    const sections = { projects: [], safety: [], growth: [] };
+    const sectionStats = {
+      projects: { count: 0, monthly: 0 },
+      safety: { count: 0, monthly: 0 },
+      growth: { count: 0, monthly: 0 },
+    };
+    const detailMap = {};
+    const summary = { ahead: 0, ontrack: 0, late: 0 };
+    let activeGoalsCount = 0;
+    let growthStandardCount = 0;
+    const completed = [];
+    const completedKeys = new Set();
+    const expandedMap =
+      goalsRoot.__goalsExpanded && typeof goalsRoot.__goalsExpanded === "object"
+        ? goalsRoot.__goalsExpanded
+        : {};
+    goalsRoot.__goalsExpanded = expandedMap;
+
+    const pushCompleted = (goal, rawDate) => {
+      const key = `${goal?.id || ""}:${goal?.name || ""}`;
+      if (completedKeys.has(key)) return;
+      completedKeys.add(key);
+      completed.push({
+        id: String(goal?.id || key),
+        name: String(goal?.name || "Objectif"),
+        dateLabel: formatDate(rawDate) || formatDate(new Date()),
+        timestamp: toDateValue(rawDate)?.getTime?.() || Date.now(),
+      });
+    };
+
+    const pushCard = (sectionKey, card) => {
+      if (!card || !sections[sectionKey]) return;
+      sections[sectionKey].push(card.html);
+      if (sectionStats[sectionKey]) {
+        sectionStats[sectionKey].count += 1;
+        sectionStats[sectionKey].monthly += Math.max(0, toNumber(card.monthlyValue || 0));
+      }
+      if (card.summaryKey && summary[card.summaryKey] != null) {
+        summary[card.summaryKey] += 1;
+        activeGoalsCount += 1;
+      }
+      if (card.detail?.id) {
+        detailMap[card.detail.id] = card.detail;
+      }
+    };
+
+    const buildStandardCard = (goal, categoryKey) => {
+      if (!goal?.active) return null;
+      const state = computeGoalState(goal);
+      const status = resolveStandardStatus(state);
+      if (status.key === "done") {
+        pushCompleted(goal, goal?.archivedAt || goal?.completedAt || new Date());
+        return null;
+      }
+
+      const deadlineLabel = resolveGoalDeadline(goal);
+      const nextLine = deadlineLabel
+        ? `Échéance : ${deadlineLabel}`
+        : state.etaMonths != null
+        ? `À ce rythme : ~${state.etaMonths} mois`
+        : `Reste : ${formatCurrency(state.remain)}`;
+      const isPaused = state.monthlyContribution <= 0;
+      const cardClass = statusClassMap[status.key] || "is-ontrack";
+      const html = `
+        <button
+          class="objectifs-goal-card ${cardClass}${isPaused ? " is-paused" : ""}"
+          type="button"
+          data-goal-open="${escapeHtml(goal.id)}"
+        >
+          <span class="objectifs-goal-card__head">
+            <strong>${escapeHtml(goal.name)}</strong>
+            <span class="objectifs-goal-card__badge">${escapeHtml(status.label)}</span>
+          </span>
+          <span class="objectifs-goal-card__ratio">${formatCurrency(state.current)} / ${formatCurrency(state.target)}</span>
+          <span class="progress-track"><span class="progress-fill" style="width:${state.percent}%"></span></span>
+          <span class="objectifs-goal-card__next">${escapeHtml(nextLine)}</span>
+          ${isPaused ? '<span class="objectifs-goal-card__micro">Contribution en pause</span>' : ""}
+        </button>
+      `;
 
       return {
-        leisureMonthly,
-        shortTerm: {
-          enabled: ctEnabled,
-          type: ctType,
-          name: String(ctLabelNode?.textContent || "Vacances").trim(),
-          label: String(ctLabelNode?.textContent || "Vacances").trim(),
-          amount: ctAmount,
-          horizonYears: ctHorizon,
-        },
-        longTerm: {
-          enabled: true,
-          type: String(ltType).toLowerCase(),
-          amount: ltTarget,
-          horizonYears: ltHorizon,
+        html,
+        summaryKey: status.key,
+        monthlyValue: state.monthlyContribution,
+        detail: {
+          id: String(goal.id),
+          title: goal.name,
+          category: categoryLabels[categoryKey],
+          ratioLabel: `${formatCurrency(state.current)} / ${formatCurrency(state.target)}`,
+          progressPercent: state.percent,
+          statusLabel: status.label,
+          monthLabel: `+${formatCurrency(state.monthlyContribution)}`,
+          remainingLabel: formatCurrency(state.remain),
+          dateLabel: deadlineLabel,
+          advice:
+            "Si tu veux aller plus vite, baisse ton budget variable ou allonge l’échéance.",
+          editHref: "profil.html",
         },
       };
     };
 
-    const updateLocalFeedback = () => {
-      const values = readGoalsValues();
-      const monthlyAvailableBeforePlan = Math.max(
-        0,
-        toNumber(goalsRoot.dataset.monthlyAvailableBeforePlan || 0)
-      );
-      const remainingAfterLifeBudget = Math.max(0, monthlyAvailableBeforePlan - values.leisureMonthly);
-      const ctMonthly =
-        values.shortTerm.enabled && values.shortTerm.amount > 0
-          ? values.shortTerm.amount / (values.shortTerm.horizonYears * 12)
-          : 0;
-      const ltNeedMonthly =
-        values.longTerm.amount > 0
-          ? values.longTerm.amount / (values.longTerm.horizonYears * 12)
-          : 0;
-      const ltFundingMonthly = Math.max(0, toNumber(goalsRoot.dataset.ltFundingMonthly || 0));
+    const sumAccounts = (accounts = {}) =>
+      toNumber(accounts.current) +
+      toNumber(accounts.savings) +
+      toNumber(accounts.blocked) +
+      toNumber(accounts.pillar3) +
+      toNumber(accounts.investments);
 
-      const variableFeedbackNode = goalsRoot.querySelector("[data-goals-variable-feedback]");
-      if (variableFeedbackNode) {
-        variableFeedbackNode.textContent = `Avec ce choix, il te restera ${formatCurrency(
-          remainingAfterLifeBudget
-        )} à répartir.`;
+    const projection = resolveProjectionForApp({ data, formData, months: 240 });
+    const smartHistory = ensureArray(projection?.smartSave?.history);
+    const extractProjectedValue = (projectionData) => {
+      const smart = projectionData?.smartSave || {};
+      const history = Array.isArray(smart.history) ? smart.history : [];
+      if (history.length) return sumAccounts(history[history.length - 1]?.accounts || {});
+      return toNumber(smart.netWorth || 0);
+    };
+    const projected10y = smartHistory.length
+      ? sumAccounts(smartHistory[Math.min(119, smartHistory.length - 1)]?.accounts || {})
+      : extractProjectedValue(projection);
+    const projected20y = smartHistory.length
+      ? sumAccounts(smartHistory[Math.min(239, smartHistory.length - 1)]?.accounts || {})
+      : extractProjectedValue(projection);
+
+    const shortPlan = formData?.allocationPlan?.shortTerm || {};
+    const shortGoal = {
+      id: "builtin:short",
+      active: Boolean(shortPlan?.enabled) || Math.max(0, toNumber(shortPlan?.amount || 0)) > 0,
+      name:
+        String(
+          shortPlan?.name ||
+            shortTermAccount?.name ||
+            shortTermTypeLabels[shortPlan?.type] ||
+            "Objectif projet"
+        ).trim() || "Objectif projet",
+      target: Math.max(0, toNumber(shortPlan?.amount || 0)),
+      current: Math.max(0, toNumber(balances.projects || 0)),
+      monthlyContribution: shortTermAmount,
+      horizonMonths: Math.max(1, Math.round(toNumber(shortPlan?.horizonYears || 1) * 12)),
+    };
+
+    const longPlan = formData?.allocationPlan?.longTerm || {};
+    const longType = String(longPlan?.type || "security").toLowerCase();
+    const longCategory =
+      longType === "security"
+        ? "safety"
+        : longType === "invest" || longType === "retirement"
+        ? "growth"
+        : "projects";
+    const longCurrent = (() => {
+      if (longType === "security") return Math.max(0, toNumber(balances.security || 0));
+      if (longType === "invest") return Math.max(0, toNumber(balances.investments || 0));
+      if (longType === "retirement") return Math.max(0, toNumber(balances.pillar3a || 0));
+      return Math.max(0, toNumber(balances.projects || 0));
+    })();
+    const longGoal = {
+      id: "builtin:long",
+      active: Boolean(longPlan?.enabled) || Math.max(0, toNumber(longPlan?.amount || 0)) > 0,
+      name:
+        String(
+          longPlan?.label || longPlan?.name || longTermTypeLabels[longType] || "Objectif long terme"
+        ).trim() || "Objectif long terme",
+      target: Math.max(0, toNumber(longPlan?.amount || 0)),
+      current: longCurrent,
+      monthlyContribution: allocLongTerm,
+      horizonMonths: Math.max(1, Math.round(toNumber(longPlan?.horizonYears || 10) * 12)),
+    };
+
+    const taxInfo = data?.taxProvision || {};
+    const taxFundingEstimate = Math.max(
+      0,
+      toNumber(
+        allocationSnapshot?.debug?.taxFunding?.totalEstimate ||
+          data?.allocation?.debug?.taxFunding?.totalEstimate ||
+          0
+      )
+    );
+    const taxCurrent = Math.max(
+      0,
+      toNumber(
+        taxInfo?.currentProvision != null ? taxInfo.currentProvision : balances.tax || 0
+      )
+    );
+    // "Ce mois-ci" on Objectifs must reflect the plan contribution, not a theoretical tax need.
+    const taxMonthly = Math.max(0, toNumber(allocTax || 0));
+    const taxTotalEstimate = Math.max(
+      0,
+      toNumber(taxFundingEstimate || taxInfo?.totalTax || resolveTaxEngineTotal() || 0)
+    );
+    const taxRemaining = Math.max(0, toNumber(taxInfo?.remaining || taxInfo?.outstanding || 0));
+    const taxTarget = taxTotalEstimate > 0 ? taxTotalEstimate : taxCurrent + taxRemaining;
+    const taxReferenceDate = new Date();
+    const taxDeadlineDate = resolveNextTaxDeadline(taxReferenceDate);
+    const taxHorizon = monthsUntilNextTaxDeadline(taxReferenceDate, taxDeadlineDate);
+    const taxDeadline = formatDate(taxDeadlineDate);
+    const taxEnabled = shouldPayTaxes() && (taxTarget > 0 || taxCurrent > 0 || taxMonthly > 0);
+
+    if (taxEnabled) {
+      const taxState = computeGoalState({
+        target: taxTarget,
+        current: taxCurrent,
+        monthlyContribution: taxMonthly,
+        horizonMonths: taxHorizon,
+      });
+      const underControl =
+        taxState.reached ||
+        (taxState.etaMonths != null && taxState.etaMonths <= taxState.horizonMonths);
+      const statusLabel = underControl ? "Sous contrôle" : "À rattraper";
+      const statusKey = underControl ? "ontrack" : "late";
+      const html = `
+        <button
+          class="objectifs-goal-card objectifs-goal-card--tax ${statusClassMap[statusKey]}"
+          type="button"
+          data-goal-open="builtin:tax"
+        >
+          <span class="objectifs-goal-card__head">
+            <strong>Impôts</strong>
+            <span class="objectifs-goal-card__badge">${statusLabel}</span>
+          </span>
+          <span class="objectifs-goal-card__line">Estimé : ${formatCurrency(taxState.target)}</span>
+          <span class="objectifs-goal-card__line">Provisionné : ${formatCurrency(taxState.current)}</span>
+          <span class="progress-track"><span class="progress-fill" style="width:${taxState.percent}%"></span></span>
+          <span class="objectifs-goal-card__next">Échéance : ${taxDeadline}</span>
+          <span class="objectifs-goal-card__micro">
+            SmartSave met de côté automatiquement pour éviter un choc fiscal.
+          </span>
+        </button>
+      `;
+      pushCard("safety", {
+        html,
+        summaryKey: statusKey,
+        monthlyValue: taxState.monthlyContribution,
+        detail: {
+          id: "builtin:tax",
+          title: "Impôts",
+          category: categoryLabels.safety,
+          ratioLabel: `${formatCurrency(taxState.current)} / ${formatCurrency(taxState.target)}`,
+          progressPercent: taxState.percent,
+          statusLabel,
+          monthLabel: isPlanValidated
+            ? `+${formatCurrency(taxState.monthlyContribution)}`
+            : `Prévu ce mois-ci : +${formatCurrency(taxState.monthlyContribution)}`,
+          remainingLabel: formatCurrency(taxState.remain),
+          dateLabel: taxDeadline,
+          advice:
+            "Si tu veux aller plus vite, baisse ton budget variable ou allonge l’échéance.",
+          editHref: "profil.html",
+        },
+      });
+      if (taxState.reached) {
+        pushCompleted({ id: "builtin:tax", name: "Impôts" }, new Date());
+      }
+    }
+
+    const cardShort = buildStandardCard(shortGoal, "projects");
+    pushCard("projects", cardShort);
+
+    const cardLong = buildStandardCard(longGoal, longCategory);
+    if (longCategory === "growth" && cardLong) growthStandardCount += 1;
+    pushCard(longCategory, cardLong);
+
+    const customGoals = resolveGoalList(formData || {});
+    customGoals
+      .filter((goal) => !goal.archivedAt)
+      .sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+      })
+      .forEach((goal) => {
+        const monthlyContribution = Math.max(
+          0,
+          toNumber(historyByGoalName(goal.name, 1).slice(-1)[0]?.amount || 0)
+        );
+        const categoryKey =
+          goal.type === "securite" ? "safety" : goal.type === "croissance" ? "growth" : "projects";
+        const card = buildStandardCard(
+          {
+            ...goal,
+            active: true,
+            monthlyContribution,
+          },
+          categoryKey
+        );
+        if (categoryKey === "growth" && card) growthStandardCount += 1;
+        pushCard(categoryKey, card);
+      });
+
+    customGoals
+      .filter((goal) => goal.archivedAt)
+      .forEach((goal) => pushCompleted(goal, goal.archivedAt));
+
+    const investHistory12 = historyByAllocationKeys(["investissements", "pilier3a"], 12);
+    const trend12 = Math.max(
+      0,
+      investHistory12.reduce((sum, entry) => sum + Math.max(0, toNumber(entry.amount || 0)), 0) ||
+        allocInvest * 12
+    );
+    const patrimonyCurrent =
+      Math.max(0, toNumber(balances.investments || 0)) + Math.max(0, toNumber(balances.pillar3a || 0));
+    const patrimonyStatus =
+      trend12 > 0 || allocInvest > 0
+        ? { key: "ahead", label: "En croissance" }
+        : patrimonyCurrent > 0
+        ? { key: "ontrack", label: "Stable" }
+        : { key: "late", label: "À renforcer" };
+    const patrimonyTrendLine = trend12 > 0 ? `+${formatCurrency(trend12)} sur 12 mois` : "↗ en progression";
+    const patrimonyProjectionLine = `10 ans : ${formatCurrency(projected10y)} / 20 ans : ${formatCurrency(projected20y)}`;
+    const patrimonyProgress =
+      patrimonyStatus.key === "ahead" ? 78 : patrimonyStatus.key === "ontrack" ? 48 : 24;
+    const patrimonyHtml = `
+      <button
+        class="objectifs-goal-card objectifs-goal-card--patrimony ${statusClassMap[patrimonyStatus.key]}"
+        type="button"
+        data-goal-open="builtin:patrimony"
+      >
+        <span class="objectifs-goal-card__head">
+          <strong>Patrimoine</strong>
+          <span class="objectifs-goal-card__badge">${patrimonyStatus.label}</span>
+        </span>
+        <span class="objectifs-goal-card__line">Valeur estimée : ${formatCurrency(patrimonyCurrent)}</span>
+        <span class="objectifs-goal-card__line">Tendance 12 mois : ${escapeHtml(patrimonyTrendLine)}</span>
+        <span class="objectifs-goal-card__next">${escapeHtml(patrimonyProjectionLine)}</span>
+        <span class="objectifs-goal-card__micro">
+          Tu construis ton patrimoine progressivement grâce au plan SmartSave.
+        </span>
+      </button>
+    `;
+    pushCard("growth", {
+      html: patrimonyHtml,
+      summaryKey: patrimonyStatus.key,
+      monthlyValue: allocInvest,
+      detail: {
+        id: "builtin:patrimony",
+        title: "Patrimoine",
+        category: categoryLabels.growth,
+        ratioLabel: `Valeur actuelle : ${formatCurrency(patrimonyCurrent)}`,
+        progressPercent: patrimonyProgress,
+        statusLabel: patrimonyStatus.label,
+        monthLabel: `+${formatCurrency(allocInvest)}`,
+        remainingLabel: "—",
+        dateLabel: "",
+        advice:
+          "Si tu veux aller plus vite, baisse ton budget variable ou allonge l’échéance.",
+        editHref: "profil.html",
+      },
+    });
+
+    const summaryActiveNode = goalsRoot.querySelector("[data-goals-summary-active]");
+    const summaryStatusNode = goalsRoot.querySelector("[data-goals-summary-status]");
+    const summaryCopyNode = goalsRoot.querySelector("[data-goals-summary-copy]");
+    if (summaryActiveNode) {
+      summaryActiveNode.textContent = `Objectifs actifs : ${activeGoalsCount}`;
+    }
+    if (summaryStatusNode) {
+      summaryStatusNode.textContent =
+        `En avance : ${summary.ahead} • ` +
+        `Sur la bonne trajectoire : ${summary.ontrack} • ` +
+        `En retard : ${summary.late}`;
+    }
+    if (summaryCopyNode) {
+      summaryCopyNode.textContent =
+        summary.late > 0
+          ? "Certains objectifs nécessitent un ajustement."
+          : "Tu avances régulièrement.";
+    }
+
+    const sectionSummaryNodes = {
+      projects: goalsRoot.querySelector('[data-goals-section-summary="projects"]'),
+      safety: goalsRoot.querySelector('[data-goals-section-summary="safety"]'),
+      growth: goalsRoot.querySelector('[data-goals-section-summary="growth"]'),
+    };
+    const formatSectionSummary = (sectionKey) => {
+      const stats = sectionStats[sectionKey] || { count: 0, monthly: 0 };
+      const goalLabel = stats.count > 1 ? "objectifs" : "objectif";
+      return `${stats.count} ${goalLabel} • +${formatCurrency(stats.monthly)}/mois`;
+    };
+    Object.keys(sectionSummaryNodes).forEach((key) => {
+      const node = sectionSummaryNodes[key];
+      if (!node) return;
+      node.textContent = formatSectionSummary(key);
+    });
+
+    const renderSection = (sectionKey, listSelector, seeMoreSelector) => {
+      const listNode = goalsRoot.querySelector(listSelector);
+      const seeMoreNode = goalsRoot.querySelector(seeMoreSelector);
+      if (!listNode) return;
+      const cards = sections[sectionKey] || [];
+      const hasOverflow = cards.length > 5;
+      const isExpanded = hasOverflow ? Boolean(expandedMap[sectionKey]) : false;
+      const visibleCount = hasOverflow && !isExpanded ? 5 : cards.length;
+      listNode.innerHTML = cards
+        .map((cardHtml, index) => {
+          const isHidden = index >= visibleCount;
+          return `
+            <div class="objectifs-card-wrap"${isHidden ? ' hidden aria-hidden="true"' : ""}>
+              ${cardHtml}
+            </div>
+          `;
+        })
+        .join("");
+      if (seeMoreNode) {
+        seeMoreNode.hidden = !hasOverflow;
+        seeMoreNode.dataset.expanded = isExpanded ? "true" : "false";
+        seeMoreNode.textContent = isExpanded ? "Voir moins" : "Voir plus";
+      }
+      if (!hasOverflow) expandedMap[sectionKey] = false;
+    };
+
+    renderSection("projects", "[data-goals-projects-list]", '[data-goals-see-more="projects"]');
+    renderSection("safety", "[data-goals-safety-list]", '[data-goals-see-more="safety"]');
+    renderSection("growth", "[data-goals-growth-list]", '[data-goals-see-more="growth"]');
+
+    const emptyProjectsNode = goalsRoot.querySelector("[data-goals-empty-projects]");
+    if (emptyProjectsNode) emptyProjectsNode.hidden = (sections.projects || []).length > 0;
+    const emptyGrowthNode = goalsRoot.querySelector("[data-goals-empty-growth]");
+    if (emptyGrowthNode) emptyGrowthNode.hidden = growthStandardCount > 0;
+
+    const completedWrap = goalsRoot.querySelector("[data-goals-completed-wrap]");
+    const completedList = goalsRoot.querySelector("[data-goals-completed-list]");
+    completed.sort((a, b) => b.timestamp - a.timestamp);
+    if (completedList) {
+      completedList.innerHTML = completed
+        .map(
+          (entry) =>
+            `<li><span>${escapeHtml(entry.name)}</span><strong>${escapeHtml(entry.dateLabel)}</strong></li>`
+        )
+        .join("");
+    }
+    if (completedWrap) completedWrap.hidden = completed.length === 0;
+
+    goalsRoot.__goalsDetailMap = detailMap;
+  };
+
+  const setupGoalsInteractions = () => {
+    const goalsRoot = document.querySelector("[data-goals-root]");
+    if (!goalsRoot || goalsRoot.dataset.interactionsBound === "true") return;
+    goalsRoot.dataset.interactionsBound = "true";
+
+    const infoModal = document.querySelector("[data-goals-info-modal]");
+    const drawer = document.querySelector("[data-goals-detail-drawer]");
+    if (!infoModal || !drawer) return;
+
+    const drawerTitle = drawer.querySelector("[data-goals-detail-title]");
+    const drawerCategory = drawer.querySelector("[data-goals-detail-category]");
+    const drawerRatio = drawer.querySelector("[data-goals-detail-ratio]");
+    const drawerProgress = drawer.querySelector("[data-goals-detail-progress]");
+    const drawerStatus = drawer.querySelector("[data-goals-detail-status]");
+    const drawerMonth = drawer.querySelector("[data-goals-detail-month]");
+    const drawerRemaining = drawer.querySelector("[data-goals-detail-remaining]");
+    const drawerDateRow = drawer.querySelector("[data-goals-detail-date-row]");
+    const drawerDate = drawer.querySelector("[data-goals-detail-date]");
+    const drawerAdvice = drawer.querySelector("[data-goals-detail-advice]");
+    const drawerEdit = drawer.querySelector("[data-goals-detail-edit]");
+
+    const syncOverlayState = () => {
+      const hasOpenOverlay = !infoModal.hidden || !drawer.hidden;
+      document.body.classList.toggle("objectifs-overlay-open", hasOpenOverlay);
+    };
+
+    const toggleOverlay = (node, open) => {
+      node.hidden = !open;
+      node.setAttribute("aria-hidden", open ? "false" : "true");
+      syncOverlayState();
+    };
+
+    const closeInfo = () => toggleOverlay(infoModal, false);
+    const closeDrawer = () => toggleOverlay(drawer, false);
+
+    const openDrawer = (goalId) => {
+      const detailMap = goalsRoot.__goalsDetailMap || {};
+      const detail = detailMap[String(goalId || "")];
+      if (!detail) return;
+      if (drawerTitle) drawerTitle.textContent = detail.title || "Objectif";
+      if (drawerCategory) drawerCategory.textContent = detail.category || "Objectif";
+      if (drawerRatio) drawerRatio.textContent = detail.ratioLabel || "CHF 0 / CHF 0";
+      if (drawerProgress) {
+        const value = Math.max(0, Math.min(100, toNumber(detail.progressPercent || 0)));
+        drawerProgress.style.width = `${value}%`;
+      }
+      if (drawerStatus) drawerStatus.textContent = detail.statusLabel || "Sur la bonne trajectoire";
+      if (drawerMonth) drawerMonth.textContent = detail.monthLabel || "+CHF 0";
+      if (drawerRemaining) drawerRemaining.textContent = detail.remainingLabel || "CHF 0";
+      if (drawerDate && drawerDateRow) {
+        const hasDate = Boolean(detail.dateLabel);
+        drawerDateRow.hidden = !hasDate;
+        drawerDate.textContent = hasDate ? detail.dateLabel : "—";
+      }
+      if (drawerAdvice) {
+        drawerAdvice.textContent =
+          detail.advice ||
+          "Si tu veux aller plus vite, baisse ton budget variable ou allonge l’échéance.";
+      }
+      if (drawerEdit) {
+        drawerEdit.setAttribute("href", detail.editHref || "profil.html");
+      }
+      toggleOverlay(drawer, true);
+    };
+
+    goalsRoot.addEventListener("click", (event) => {
+      const infoOpen = event.target.closest("[data-goals-info-open]");
+      if (infoOpen) {
+        toggleOverlay(infoModal, true);
+        return;
       }
 
-      const ctMonthlyNode = goalsRoot.querySelector("[data-goals-ct-monthly]");
-      if (ctMonthlyNode) {
-        ctMonthlyNode.textContent = `Cela représente ${formatCurrency(
-          ctMonthly
-        )}/mois mis de côté avant la répartition.`;
+      const openGoal = event.target.closest("[data-goal-open]");
+      if (openGoal) {
+        openDrawer(openGoal.dataset.goalOpen || "");
+        return;
       }
 
-      const diagnosticNode = goalsRoot.querySelector("[data-goals-lt-diagnostic]");
-      if (diagnosticNode) {
-        const lines = diagnosticNode.querySelectorAll("p");
-        if (lines[0]) lines[0].textContent = `Besoin mensuel: ${formatCurrency(ltNeedMonthly)}`;
-        if (lines[1]) lines[1].textContent = `Financement actuel: ${formatCurrency(ltFundingMonthly)}/mois`;
-      }
-
-      setText(
-        "[data-goals-impact-summary-life]",
-        `${formatCurrency(values.leisureMonthly)} utilisés · ${formatCurrency(
-          remainingAfterLifeBudget
-        )} à répartir`
-      );
-      setText(
-        "[data-goals-impact-summary-ct]",
-        values.shortTerm.enabled
-          ? `${formatCurrency(values.shortTerm.amount)} sur ${values.shortTerm.horizonYears} an${
-              values.shortTerm.horizonYears > 1 ? "s" : ""
-            } · ${formatCurrency(ctMonthly)}/mois`
-          : "Non actif"
-      );
-      setText(
-        "[data-goals-impact-summary-lt]",
-        values.longTerm.amount > 0
-          ? `${formatCurrency(values.longTerm.amount)} sur ${values.longTerm.horizonYears} an${
-              values.longTerm.horizonYears > 1 ? "s" : ""
-            } · besoin ${formatCurrency(ltNeedMonthly)}/mois`
-          : `Horizon ${values.longTerm.horizonYears} an${
-              values.longTerm.horizonYears > 1 ? "s" : ""
-            } · cible non définie`
-      );
-
-      const statusNode = goalsRoot.querySelector("[data-goals-lt-status]");
-      if (statusNode) {
-        statusNode.classList.remove("is-green", "is-orange", "is-red", "is-neutral");
-        if (ltNeedMonthly <= 0) {
-          statusNode.classList.add("is-neutral");
-          statusNode.textContent = "Renseigne une cible et un horizon pour le diagnostic.";
-        } else {
-          const ratio = ltFundingMonthly / ltNeedMonthly;
-          if (ratio >= 1) {
-            statusNode.classList.add("is-green");
-            statusNode.textContent = "Dans les temps.";
-          } else if (ratio >= 0.75) {
-            statusNode.classList.add("is-orange");
-            statusNode.textContent = "En retard: accélération conseillée.";
-          } else {
-            statusNode.classList.add("is-red");
-            statusNode.textContent = "Hors trajectoire: ajustement nécessaire.";
-          }
+      const seeMore = event.target.closest("[data-goals-see-more]");
+      if (seeMore) {
+        const key = String(seeMore.dataset.goalsSeeMore || "");
+        if (!key) return;
+        goalsRoot.__goalsExpanded =
+          goalsRoot.__goalsExpanded && typeof goalsRoot.__goalsExpanded === "object"
+            ? goalsRoot.__goalsExpanded
+            : {};
+        goalsRoot.__goalsExpanded[key] = !Boolean(goalsRoot.__goalsExpanded[key]);
+        if (lastRenderContext) {
+          renderScore(lastRenderContext.data, lastRenderContext.formData);
         }
-      }
-    };
-
-    const applyLtDefaults = () => {
-      const selectedType =
-        goalsRoot.querySelector('[data-goals-field="lt-type"]:checked')?.value || "security";
-      const defaults = LT_DEFAULTS[String(selectedType).toLowerCase()] || LT_DEFAULTS.security;
-      const ltTargetNode = goalsRoot.querySelector('[data-goals-field="lt-target"]');
-      const ltHorizonNode = goalsRoot.querySelector('[data-goals-field="lt-horizon"]');
-      if (ltTargetNode) ltTargetNode.value = String(Math.round(defaults.target));
-      if (ltHorizonNode) ltHorizonNode.value = String(Math.round(defaults.horizonYears));
-    };
-
-    const scheduleSave = () => {
-      if (goalsSaveTimer) clearTimeout(goalsSaveTimer);
-      setSavingLabel("Enregistrement...");
-      goalsSaveTimer = setTimeout(() => {
-        const activeUser = window.loadActiveUser?.();
-        if (!activeUser?.id || typeof window.updateProfileData !== "function") {
-          setSavingLabel("Enregistrement indisponible");
-          return;
-        }
-        const values = readGoalsValues();
-        const updatedProfile = window.updateProfileData(activeUser.id, (profile) => {
-          if (!profile || typeof profile !== "object") return;
-          profile.allocationPlan =
-            profile.allocationPlan && typeof profile.allocationPlan === "object"
-              ? profile.allocationPlan
-              : {};
-          profile.allocationPlan.leisureMonthly = values.leisureMonthly;
-          profile.allocationPlan.shortTerm = values.shortTerm;
-          profile.allocationPlan.longTerm = values.longTerm;
-        });
-        const store = getMonthlyStore();
-        const activeMonthId = lastMonthlyContext?.monthId || null;
-        if (
-          store &&
-          updatedProfile &&
-          activeMonthId &&
-          typeof store.regeneratePlanForMonth === "function"
-        ) {
-          const userState = typeof store.getStateForUser === "function"
-            ? store.getStateForUser(activeUser.id)
-            : null;
-          const monthStatus = userState?.monthlyPlan?.[activeMonthId]?.flags?.monthStatus || "active";
-          if (monthStatus !== "closed") {
-            const nextData =
-              typeof window.buildMvpData === "function" ? window.buildMvpData(updatedProfile) : {};
-            store.regeneratePlanForMonth({
-              userId: activeUser.id,
-              monthId: activeMonthId,
-              formData: updatedProfile,
-              mvpData: nextData,
-            });
-          }
-        }
-        setSavingLabel("Enregistré");
-        renderAll();
-      }, 260);
-    };
-
-    const syncLifeBudgetFields = (source) => {
-      const sliderNode = goalsRoot.querySelector('[data-goals-field="leisure-slider"]');
-      const inputNode = goalsRoot.querySelector('[data-goals-field="leisure-input"]');
-      if (!sliderNode || !inputNode) return;
-      const max = Math.max(0, toNumber(sliderNode.max));
-      if (source === "slider") {
-        const next = Math.max(0, Math.min(max, toNumber(sliderNode.value)));
-        inputNode.value = String(Math.round(next));
-      } else {
-        const next = Math.max(0, Math.min(max, toNumber(inputNode.value)));
-        sliderNode.value = String(Math.round(next));
-      }
-    };
-
-    goalsRoot.addEventListener("input", (event) => {
-      const field = event.target.closest("[data-goals-field]");
-      if (!field) return;
-
-      const key = String(field.dataset.goalsField || "");
-      if (key === "leisure-slider") syncLifeBudgetFields("slider");
-      if (key === "leisure-input") syncLifeBudgetFields("input");
-
-      if (key === "ct-enabled") {
-        const fieldsNode = goalsRoot.querySelector("[data-goals-ct-fields]");
-        if (fieldsNode) fieldsNode.hidden = !field.checked;
-      }
-      if (key === "lt-type") {
-        applyLtDefaults();
-      }
-
-      updateLocalFeedback();
-      const shouldAutosaveOnInput = [
-        "leisure-slider",
-        "ct-enabled",
-        "ct-type",
-        "lt-type",
-      ].includes(key);
-      if (shouldAutosaveOnInput) {
-        scheduleSave();
       }
     });
 
-    goalsRoot.addEventListener("change", (event) => {
-      const field = event.target.closest("[data-goals-field]");
-      if (!field) return;
-      const key = String(field.dataset.goalsField || "");
-      if (key === "lt-type") {
-        applyLtDefaults();
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("[data-goals-info-close]")) {
+        closeInfo();
+        return;
       }
-      updateLocalFeedback();
-      scheduleSave();
+      if (event.target.closest("[data-goals-drawer-close]")) {
+        closeDrawer();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      closeInfo();
+      closeDrawer();
     });
   };
 
@@ -3698,7 +7012,7 @@
     renderAll();
     setupUserMenu();
     setupHamburgerMenu();
-    setupGoalsEditor();
+    setupGoalsInteractions();
     setupSmartSaveAllocationDetails();
     setupQuickActions();
     setupTransactionDeletes();

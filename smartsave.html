@@ -2,11 +2,12 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#eef2ff" />
     <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
     <title>SmartSave – Allocation</title>
-    <link rel="stylesheet" href="styles.css?v=20260212-01" />
+    <link rel="stylesheet" href="styles.css?v=20260219-05" />
     <link rel="stylesheet" href="theme-polish.css" />
   </head>
   <body class="dashboard app-page" data-page="smartsave" data-mvp>
@@ -76,57 +77,101 @@
             <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
               <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="smartsave">SmartSave</a>
               <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Suivi</a>
-              <a class="hamburger-link" role="menuitem" href="actions.html" data-nav="actions">Home</a>
+              <a class="hamburger-link" role="menuitem" href="budget.html" data-nav="budget">Budget</a>
               <a class="hamburger-link" role="menuitem" href="future.html" data-nav="future">Future</a>
               <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
+              <a class="hamburger-link" role="menuitem" href="mes-depenses.html">Mois précédents</a>
+              <a class="hamburger-link" role="menuitem" href="profil.html">Mes données</a>
+              <a class="hamburger-link hamburger-link--danger" role="menuitem" href="index.html">Déconnexion</a>
             </div>
           </div>
         </div>
       </header>
 
       <main class="app-main">
-        <section class="page-title">
-          <h1>Répartition SmartSave</h1>
-          <p>Répartition de ton argent pour favoriser ta sécurité financière, tes objectifs et la croissance de ton patrimoine</p>
+        <section class="page-title repartition-page-head">
+          <h1 data-smartsave-title>Répartition – —</h1>
+          <p data-smartsave-subtitle>3 étapes: surplus, répartition, projection.</p>
+        </section>
+        <p class="smartsave-inline-state" data-smartsave-review-banner hidden>
+          Mois à clôturer. Fais le bilan depuis <a href="mon-argent.html">Mon Mois</a>.
+        </p>
+        <p class="smartsave-inline-state" data-smartsave-status-banner hidden></p>
+
+        <section class="card smartsave-blocking-card" data-smartsave-blocking hidden>
+          <h2>Répartition indisponible</h2>
+          <p>Valide ton budget pour générer ta répartition.</p>
+          <a class="month-btn month-btn--start" href="budget.html">Aller au Budget</a>
         </section>
 
-        <section class="allocation-layout">
-          <div class="allocation-main">
-            <div class="card allocation-total">
-              <p class="card-label">Montant total réparti</p>
-              <div class="allocation-total__value" data-allocation-total>CHF 0</div>
-              <p class="allocation-total__note">
-                <span class="allocation-total__info">i</span>
-                Optimisation selon les 3 piliers
-              </p>
+        <section class="card allocation-context-card" aria-live="polite" data-smartsave-star>
+          <div class="allocation-context-card__header">
+            <div class="allocation-context-card__hero">
+              <p class="allocation-context-card__label">Surplus mensuel</p>
+              <p class="allocation-context-card__value" data-smartsave-surplus-value>+ CHF 0</p>
             </div>
-
-            <div class="allocation-section-heading">
-              <h3 class="section-title">Répartition actuelle</h3>
-            </div>
-            <div class="allocation-list" data-allocation-list></div>
+            <span class="smartsave-status-badge is-ready" data-smartsave-plan-status-badge>Plan prêt</span>
           </div>
-
-          <aside class="allocation-aside">
-            <div class="card how-card">
-              <h3>Comment fonctionne SmartSave</h3>
-              <ol class="how-list">
-                <li>
-                  <span class="how-step how-step--blue">1</span>
-                  La sécurité d'abord: construis ton fonds d'urgence (3 a 6 mois de dépenses)
-                </li>
-                <li>
-                  <span class="how-step how-step--purple">2</span>
-                  Anticipe: épargne pour tes objectifs et dépenses prévues
-                </li>
-                <li>
-                  <span class="how-step how-step--green">3</span>
-                  Fais grandir ton patrimoine: investis le reste pour le long terme
-                </li>
-              </ol>
-            </div>
-          </aside>
+          <div class="allocation-hero-equation" data-smartsave-hero-equation hidden>
+            <span class="allocation-hero-equation__item"><span data-smartsave-income-value>CHF 0</span> revenu</span>
+            <span class="allocation-hero-equation__sep" aria-hidden="true">−</span>
+            <span class="allocation-hero-equation__item"><span data-smartsave-expenses-value>CHF 0</span> dépenses</span>
+          </div>
         </section>
+
+        <section class="card smartsave-card smartsave-setup-card" data-smartsave-setup-card hidden>
+          <header class="smartsave-section-header">
+            <div class="smartsave-setup-card__title-wrap">
+              <span class="smartsave-setup-card__eyebrow">Avant d'appliquer le plan</span>
+              <h2>Rééquilibre de tes comptes</h2>
+            </div>
+            <button class="smartsave-section-toggle" type="button" data-smartsave-setup-toggle hidden aria-expanded="false" aria-label="Afficher ou masquer la section">
+              ⌄
+            </button>
+          </header>
+          <div data-smartsave-setup-body>
+            <p class="smartsave-inline-state" data-smartsave-setup-status></p>
+            <p class="smartsave-setup-total" data-smartsave-setup-total></p>
+            <div class="smartsave-setup-checklist" data-smartsave-setup-checklist></div>
+            <p class="smartsave-inline-state" data-smartsave-setup-profile-hint></p>
+            <button class="month-btn month-btn--start smartsave-setup-apply-cta" type="button" data-smartsave-setup-apply-all>
+              J'ai effectué ces virements
+            </button>
+          </div>
+        </section>
+
+        <section class="card smartsave-card smartsave-plan-card" data-smartsave-transfers-card hidden>
+          <header class="smartsave-section-heading">
+            <h2>Répartition du surplus</h2>
+            <p>Visualise clairement les montants alloués à chaque compte.</p>
+          </header>
+          <div class="smartsave-allocation-cards" data-allocation-list data-smartsave-allocation-lines></div>
+        </section>
+
+        <section class="card smartsave-card smartsave-projection-card" data-smartsave-projection-card hidden>
+          <header class="smartsave-section-heading smartsave-section-heading--projection">
+            <h2>Projection à 10 et 20 ans</h2>
+            <p>Estimation de ton patrimoine si tu suis ce plan.</p>
+          </header>
+          <div class="smartsave-projection-grid">
+            <article>
+              <p>Dans 10 ans</p>
+              <strong data-smartsave-projection-10y>CHF 0</strong>
+              <small data-smartsave-projection-10y-gain>Gain vs trajectoire actuelle : + CHF 0</small>
+            </article>
+            <article>
+              <p>Dans 20 ans</p>
+              <strong data-smartsave-projection-20y>CHF 0</strong>
+              <small data-smartsave-projection-20y-gain>Gain vs trajectoire actuelle : + CHF 0</small>
+            </article>
+          </div>
+        </section>
+
+        <div class="smartsave-cta-wrap">
+          <button class="month-btn month-btn--start smartsave-main-cta" type="button" data-smartsave-main-cta hidden>
+            Appliquer mon plan
+          </button>
+        </div>
       </main>
     </div>
 
@@ -139,7 +184,7 @@
         aria-labelledby="allocation-details-title"
       >
         <header class="allocation-details-modal__header">
-          <h2 id="allocation-details-title" data-allocation-details-title>Sécurité — CHF 0/mois</h2>
+          <h2 id="allocation-details-title" data-allocation-details-title>Compte — CHF 0/mois</h2>
           <button
             class="allocation-details-modal__close"
             type="button"
@@ -152,69 +197,44 @@
 
         <div class="allocation-details-modal__body">
           <section class="allocation-details-block">
-            <h3>Objectif</h3>
-            <p data-allocation-details-objective>Te protéger en cas d'imprévu (santé, perte de revenu, grosse facture).</p>
+            <h3>Pourquoi ce compte</h3>
+            <p data-allocation-details-objective>—</p>
+            <p class="allocation-details-block__meta" data-allocation-details-monthly>Ce mois-ci : +CHF 0</p>
+            <p class="allocation-details-block__meta" data-allocation-details-goal hidden></p>
           </section>
 
           <section class="allocation-details-block">
-            <h3>Où placer cet argent</h3>
-            <ul data-allocation-details-placement></ul>
-          </section>
-
-          <section class="allocation-details-block">
-            <h3>Règles SmartSave</h3>
+            <h3>Ce que fait SmartSave</h3>
             <ul data-allocation-details-rules></ul>
           </section>
 
           <section class="allocation-details-block">
-            <h3>Prochaine action</h3>
-            <div class="allocation-details-actions">
-              <button class="cta" type="button" data-allocation-details-primary>Créer un virement auto</button>
-              <button class="ghost-btn small" type="button" data-allocation-details-secondary>Cocher la checklist</button>
-            </div>
-            <ul class="allocation-details-checklist" data-allocation-details-next></ul>
-          </section>
-
-          <section class="allocation-details-block">
-            <button
-              class="allocation-details-more-btn"
-              type="button"
-              data-allocation-details-more-toggle
-              aria-expanded="false"
-            >
-              À savoir
-            </button>
-            <p class="allocation-details-more-text" data-allocation-details-more hidden></p>
+            <h3>À retenir</h3>
+            <p data-allocation-details-more>—</p>
           </section>
         </div>
       </div>
     </div>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <a class="bottom-nav__link" href="smartsave.html" data-nav="smartsave">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
-          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
-        </svg>
-        <span>SmartSave</span>
-      </a>
       <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
         </svg>
-        <span>Suivi</span>
+        <span>Mon Mois</span>
       </a>
-      <a class="bottom-nav__link" href="actions.html" data-nav="actions">
+      <a class="bottom-nav__link" href="budget.html" data-nav="budget">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
-        <span>Home</span>
+        <span>Budget</span>
       </a>
-      <a class="bottom-nav__link" href="future.html" data-nav="future">
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="repartition">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 16l5-5 4 3 7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
         </svg>
-        <span>Future</span>
+        <span>Répartition</span>
       </a>
       <a class="bottom-nav__link" href="score.html" data-nav="score">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -222,18 +242,25 @@
         </svg>
         <span>Objectifs</span>
       </a>
+      <a class="bottom-nav__link" href="profil.html" data-nav="profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Profil</span>
+      </a>
     </nav>
 
+
     <script src="financialScoreEngine.js?v=20260212-01" defer></script>
-    <script src="allocationEngine.js?v=20260212-01" defer></script>
+    <script src="allocationEngine.js?v=20260216-12" defer></script>
     <script src="projectionEngine.js?v=20260212-01" defer></script>
     <script src="taxEngine.js?v=20260212-01" defer></script>
     <script src="spendingAnalysisEngine.js?v=20260212-01" defer></script>
     <script src="smartsaveSnapshot.js?v=20260212-01" defer></script>
     <script src="runtimeConfig.js?v=20260212-01" defer></script>
-    <script src="mvp-v2.js?v=20260212-01" defer></script>
-    <script src="monthlyStore.js?v=20260212-01" defer></script>
-    <script src="app-pages.js?v=20260212-01" defer></script>
+    <script src="mvp-v2.js?v=20260218-04" defer></script>
+    <script src="monthlyStore.js?v=20260218-04" defer></script>
+    <script src="app-pages.js?v=20260219-05" defer></script>
     <script src="/dev-reload.js" defer></script>
     <script>
       localStorage.setItem("profileLastMain", "smartsave.html");

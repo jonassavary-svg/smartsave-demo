@@ -1,11 +1,48 @@
 (() => {
   const STORE_KEY = "smartsaveMonthlyStore";
+  const DEBUG_NOW_KEY = "smartsaveDebugNow";
   const TRANSACTIONS_KEY = "transactions";
+  const MAX_STORE_RAW_BYTES = 1_500_000;
+  const MAX_TRANSACTIONS_RAW_BYTES = 2_500_000;
   const VARIABLE_BUDGET_SWEEP_RULE = [
     { to: "security", toLabel: "Compte épargne", share: 0.4 },
     { to: "pillar3a", toLabel: "3e pilier", share: 0.3 },
     { to: "investments", toLabel: "Investissements", share: 0.3 },
   ];
+  const MONTHLY_FLOW_STATES = Object.freeze({
+    NEW_MONTH: "NOUVEAU_MOIS",
+    BUDGET_READY: "BUDGET_FAIT_REPARTITION_NON_VUE",
+    PLAN_READY: "PLAN_REPARTITION_VALIDE",
+    MONTH_REVIEW: "FIN_MOIS_A_CLOTURER",
+    MONTH_CLOSED: "MOIS_CLOTURE",
+  });
+  const MONTHLY_FLOW_UI = Object.freeze({
+    [MONTHLY_FLOW_STATES.NEW_MONTH]: {
+      message: "Commence ton mois en définissant ton budget.",
+      ctaLabel: "Faire mon budget",
+      action: "open_budget",
+    },
+    [MONTHLY_FLOW_STATES.BUDGET_READY]: {
+      message: "Ton budget est prêt — regarde maintenant ta répartition.",
+      ctaLabel: "Voir la répartition",
+      action: "open_allocation",
+    },
+    [MONTHLY_FLOW_STATES.PLAN_READY]: {
+      message: "Ton plan est en place — le mois peut se dérouler.",
+      ctaLabel: "Voir mon plan",
+      action: "open_plan",
+    },
+    [MONTHLY_FLOW_STATES.MONTH_REVIEW]: {
+      message: "Ton mois est terminé — fais le bilan.",
+      ctaLabel: "Faire le bilan",
+      action: "open_review",
+    },
+    [MONTHLY_FLOW_STATES.MONTH_CLOSED]: {
+      message: "Nouveau mois prêt — relance ton budget.",
+      ctaLabel: "Faire mon budget",
+      action: "open_budget",
+    },
+  });
 
   const toNumber = (value) => {
     if (typeof window.toNumber === "function") return window.toNumber(value);
@@ -22,6 +59,18 @@
     const month = String(target.getMonth() + 1).padStart(2, "0");
     const day = String(target.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+  };
+
+  const resolveDebugNow = (fallback = new Date()) => {
+    const base = fallback instanceof Date ? fallback : new Date(fallback);
+    try {
+      const raw = localStorage.getItem(DEBUG_NOW_KEY);
+      if (!raw) return base;
+      const parsed = new Date(raw);
+      return Number.isNaN(parsed.getTime()) ? base : parsed;
+    } catch (_error) {
+      return base;
+    }
   };
 
   const getMonthId = (date) => {
@@ -45,6 +94,15 @@
     const date = parseMonthId(monthId);
     if (!date) return "";
     return getMonthId(new Date(date.getFullYear(), date.getMonth() + delta, 1));
+  };
+
+  const MAX_MONTH_CATCH_UP_STEPS = 36;
+
+  const getMonthDistance = (fromMonthId, toMonthId) => {
+    const fromDate = parseMonthId(fromMonthId);
+    const toDate = parseMonthId(toMonthId);
+    if (!fromDate || !toDate) return 0;
+    return (toDate.getFullYear() - fromDate.getFullYear()) * 12 + (toDate.getMonth() - fromDate.getMonth());
   };
 
   const resolveMonthlyAmount = (entry = {}) => {
@@ -72,6 +130,7 @@
   const readStore = () => {
     try {
       const raw = localStorage.getItem(STORE_KEY);
+      if (raw && raw.length > MAX_STORE_RAW_BYTES) return {};
       const parsed = raw ? JSON.parse(raw) : {};
       return parsed && typeof parsed === "object" ? parsed : {};
     } catch (_error) {
@@ -125,15 +184,140 @@
         null,
     };
 
+    const resolveTaxDueDate = () => {
+      const explicitDate =
+        formData?.taxes?.taxDueDate ||
+        formData?.taxes?.dueDate ||
+        formData?.taxDueDate ||
+        null;
+      if (explicitDate) return String(explicitDate);
+      const now = new Date();
+      const dueYear = now.getFullYear() + 1;
+      return `${dueYear}-03-31`;
+    };
+    const taxDueDate = resolveTaxDueDate();
+    const thirteenthMonth = Math.max(
+      1,
+      Math.min(
+        12,
+        Math.round(
+          toNumber(
+            formData?.incomes?.thirteenthMonth ||
+              formData?.incomes?.thirteenthSalaryMonth ||
+              formData?.personal?.thirteenthSalaryMonth ||
+              12
+          )
+        )
+      )
+    );
+    const bonusMonthly = Math.max(
+      0,
+      toNumber(
+        formData?.incomes?.bonusMonthly ||
+          formData?.incomes?.regularBonusMonthly ||
+          formData?.personal?.bonusMonthly ||
+          0
+      )
+    );
+    const taxFacts = {
+      canton: String(formData?.taxes?.canton || formData?.personal?.canton || "").trim() || null,
+      employmentStatus: String(formData?.personal?.employmentStatus || "").trim() || null,
+      hasThirteenthSalary:
+        formData?.incomes?.thirteenth === "oui" ||
+        formData?.incomes?.thirteenth === true ||
+        Boolean(formData?.incomes?.thirteenthSalary),
+      thirteenthSalaryMonth: thirteenthMonth,
+      bonusMonthly,
+      taxDueDate,
+      taxDueMonth: String(taxDueDate).slice(0, 7),
+    };
+
     return {
       allocationPlan,
       fixedExpenses,
       mandatoryExpenses,
       preferences,
+      taxFacts,
+      taxMode: "AUTO_PROVISION",
+      taxOnboardingChoice: null,
+      taxLumpSumExpectedAmount: 0,
+      taxLumpSumExpectedMonth: null,
+      taxDueDate,
+      taxDueMonth: String(taxDueDate).slice(0, 7),
     };
   };
 
-  const getMonthlyInputsSnapshot = (formData = {}, mvpData = {}) => {
+  const mergeUserSettings = (existing = {}, nextFromForm = {}) => {
+    const base = nextFromForm && typeof nextFromForm === "object" ? nextFromForm : {};
+    const prev = existing && typeof existing === "object" ? existing : {};
+    const merged = {
+      ...base,
+      ...prev,
+      allocationPlan:
+        base.allocationPlan && typeof base.allocationPlan === "object"
+          ? { ...base.allocationPlan }
+          : {},
+      fixedExpenses: Array.isArray(base.fixedExpenses) ? base.fixedExpenses : [],
+      mandatoryExpenses: Array.isArray(base.mandatoryExpenses) ? base.mandatoryExpenses : [],
+      preferences:
+        base.preferences && typeof base.preferences === "object" ? { ...base.preferences } : {},
+      taxFacts:
+        base.taxFacts && typeof base.taxFacts === "object" ? { ...base.taxFacts } : {},
+    };
+    if (prev.allocationPlan && typeof prev.allocationPlan === "object") {
+      merged.allocationPlan = { ...merged.allocationPlan, ...prev.allocationPlan };
+    }
+    if (prev.preferences && typeof prev.preferences === "object") {
+      merged.preferences = { ...merged.preferences, ...prev.preferences };
+    }
+    if (prev.taxFacts && typeof prev.taxFacts === "object") {
+      merged.taxFacts = { ...merged.taxFacts, ...prev.taxFacts };
+    }
+    merged.taxMode = String(base.taxMode || prev.taxMode || "AUTO_PROVISION").toUpperCase();
+    merged.taxOnboardingChoice =
+      String(base.taxOnboardingChoice ?? prev.taxOnboardingChoice ?? "")
+        .trim()
+        .toUpperCase() || null;
+    merged.taxLumpSumExpectedAmount = Math.max(
+      0,
+      toNumber(base.taxLumpSumExpectedAmount ?? prev.taxLumpSumExpectedAmount ?? 0)
+    );
+    merged.taxLumpSumExpectedMonth =
+      String(base.taxLumpSumExpectedMonth || prev.taxLumpSumExpectedMonth || "").trim() || null;
+    merged.taxDueDate = base.taxDueDate || prev.taxDueDate || merged.taxFacts?.taxDueDate || null;
+    merged.taxDueMonth = base.taxDueMonth || prev.taxDueMonth || (merged.taxDueDate || "").slice(0, 7) || null;
+    return merged;
+  };
+
+  const applySettingsPatch = (target = {}, patch = {}) => {
+    if (!patch || typeof patch !== "object") return target;
+    Object.keys(patch).forEach((key) => {
+      const nextValue = patch[key];
+      if (Array.isArray(nextValue)) {
+        target[key] = nextValue.map((entry) =>
+          entry && typeof entry === "object" ? { ...entry } : entry
+        );
+        return;
+      }
+      if (nextValue && typeof nextValue === "object") {
+        const baseValue =
+          target[key] && typeof target[key] === "object" && !Array.isArray(target[key])
+            ? { ...target[key] }
+            : {};
+        target[key] = applySettingsPatch(baseValue, nextValue);
+        return;
+      }
+      target[key] = nextValue;
+    });
+    return target;
+  };
+
+  const getMonthlyInputsSnapshot = (formData = {}, mvpData = {}, monthlyBudget = null) => {
+    const normalizedBudget =
+      monthlyBudget && typeof monthlyBudget === "object"
+        ? normalizeMonthlyBudget(monthlyBudget, monthlyBudget)
+        : null;
+    const useBudgetSnapshot = Boolean(normalizedBudget);
     const fixedTotal = ensureArray(formData.expenses?.fixed).reduce(
       (sum, item) => sum + resolveMonthlyAmount(item),
       0
@@ -142,6 +326,8 @@
       (sum, item) => sum + resolveMonthlyAmount(item),
       0
     );
+    const fixedFromBudget = Math.max(0, toNumber(normalizedBudget?.fixedTotal || 0));
+    const mandatoryFromBudget = Math.max(0, toNumber(normalizedBudget?.mandatoryTotal || 0));
 
     const loans = ensureArray(formData.loans);
     const debtsTotal = loans.reduce(
@@ -158,7 +344,12 @@
 
     const revenuNetMensuel = Math.max(
       0,
-      toNumber(mvpData?.metrics?.monthlyNetIncome || mvpData?.monthlyNetIncome || 0)
+      toNumber(
+        mvpData?.metrics?.monthlyNetIncome ||
+          mvpData?.monthlyNetIncome ||
+          normalizedBudget?.totalIncome ||
+          estimateMonthlyIncomeFromForm(formData)
+      )
     );
 
     const taxesNeed = Math.max(
@@ -168,8 +359,8 @@
 
     return {
       revenuNetMensuel,
-      fixedTotal,
-      mandatoryTotal,
+      fixedTotal: useBudgetSnapshot ? fixedFromBudget : fixedTotal,
+      mandatoryTotal: useBudgetSnapshot ? mandatoryFromBudget : mandatoryTotal,
       debtsTotal,
       taxesNeed,
     };
@@ -178,7 +369,17 @@
   const getAllocationResultSnapshot = (mvpData = {}) => {
     const allocations = deepClone(mvpData?.allocation?.allocations) || {};
     const shortTermAccount = mvpData?.allocation?.shortTermAccount || mvpData?.allocation?.debug?.shortTermAccount || {};
-    const shortTermDeduction = Math.max(0, toNumber(shortTermAccount?.amount || 0));
+    const shortTermKey = String(shortTermAccount?.key || "projetsCourtTerme").trim() || "projetsCourtTerme";
+    const shortTermDeduction = Math.max(
+      0,
+      toNumber(
+        mvpData?.allocation?.shortTermDeduction ??
+          shortTermAccount?.amount ??
+          allocations[shortTermKey] ??
+          allocations.projetsCourtTerme ??
+          0
+      )
+    );
 
     const totalSmartSave = Object.values(allocations).reduce(
       (sum, value) => sum + Math.max(0, toNumber(value)),
@@ -241,6 +442,297 @@
     return key;
   };
 
+  const estimateMonthlyIncomeFromForm = (formData = {}) => {
+    if (typeof window.buildIncomeBreakdownEntries === "function") {
+      return Math.max(
+        0,
+        ensureArray(window.buildIncomeBreakdownEntries(formData)).reduce(
+          (sum, entry) => sum + Math.max(0, toNumber(entry?.amount)),
+          0
+        )
+      );
+    }
+    const incomes = ensureArray(formData?.incomes?.entries);
+    const base = incomes.reduce((sum, entry) => {
+      if (typeof window.getIncomeMonthlyAmount === "function") {
+        return sum + Math.max(0, toNumber(window.getIncomeMonthlyAmount(entry)));
+      }
+      return sum + Math.max(0, toNumber(entry?.amount));
+    }, 0);
+    const spouse =
+      toNumber(formData?.incomes?.spouseNetIncome) ||
+      toNumber(formData?.incomes?.spouseIncome) ||
+      toNumber(formData?.spouseIncome);
+    return Math.max(0, base + Math.max(0, spouse));
+  };
+
+  const normalizeBudgetFixedItems = (items = []) =>
+    ensureArray(items)
+      .map((item = {}, index) => ({
+        id: String(item.id || `fixed-${index + 1}`).trim() || `fixed-${index + 1}`,
+        label: String(item.label || `Charge fixe ${index + 1}`).trim() || `Charge fixe ${index + 1}`,
+        amount: Math.max(0, toNumber(item.amount)),
+      }))
+      .filter((item) => item.amount >= 0);
+
+  const buildBudgetExpenseItemsFromForm = (entries = [], labelPrefix = "Charge") =>
+    ensureArray(entries)
+      .map((entry = {}, index) => ({
+        id:
+          String(entry.id || `${labelPrefix.toLowerCase().replace(/\s+/g, "-")}-${index + 1}`).trim() ||
+          `${labelPrefix.toLowerCase().replace(/\s+/g, "-")}-${index + 1}`,
+        label: String(entry.label || entry.name || `${labelPrefix} ${index + 1}`).trim() || `${labelPrefix} ${index + 1}`,
+        amount: Math.max(0, resolveMonthlyAmount(entry)),
+      }))
+      .filter((item) => item.amount >= 0);
+
+  const applyFormExpensesToBudget = (budget = {}, formData = {}) => {
+    const expenses = formData?.expenses || {};
+    const hasFixed = Array.isArray(expenses.fixed);
+    const hasMandatory = Array.isArray(expenses.variable);
+    if (!hasFixed && !hasMandatory) return normalizeMonthlyBudget(budget, budget);
+
+    const patched = { ...(budget || {}) };
+    if (hasFixed) {
+      const fixedItems = buildBudgetExpenseItemsFromForm(expenses.fixed, "Charge fixe");
+      patched.fixedItems = fixedItems;
+      patched.fixedTotal = fixedItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0);
+    }
+    if (hasMandatory) {
+      const mandatoryItems = buildBudgetExpenseItemsFromForm(expenses.variable, "Charge obligatoire");
+      patched.mandatoryItems = mandatoryItems;
+      patched.mandatoryTotal = mandatoryItems.reduce(
+        (sum, item) => sum + Math.max(0, toNumber(item.amount)),
+        0
+      );
+    }
+    return normalizeMonthlyBudget(patched, patched);
+  };
+
+  const toVariableMonthlyAmount = (amount, period) => {
+    const safe = Math.max(0, toNumber(amount));
+    if (period === "week") return (safe * 52) / 12;
+    if (period === "year") return safe / 12;
+    return safe;
+  };
+
+  const normalizeVariableBudgetCategories = (items = [], fallbackSplit = {}) => {
+    const rows = ensureArray(items)
+      .map((item = {}, index) => {
+        const period = ["week", "month", "year"].includes(item.period) ? item.period : "month";
+        const amount = Math.max(0, toNumber(item.amount));
+        return {
+          id: String(item.id || `variable-${index + 1}`).trim() || `variable-${index + 1}`,
+          label: String(item.label || `Catégorie ${index + 1}`).trim() || `Catégorie ${index + 1}`,
+          period,
+          amount,
+          monthlyAmount: Math.max(0, toVariableMonthlyAmount(amount, period)),
+        };
+      })
+      .filter((item) => item.label || item.amount > 0);
+
+    if (rows.length) return rows;
+
+    const legacy = [
+      { label: "Nourriture", amount: Math.max(0, toNumber(fallbackSplit?.food)) },
+      { label: "Loisirs / sorties", amount: Math.max(0, toNumber(fallbackSplit?.leisure)) },
+      { label: "Divers", amount: Math.max(0, toNumber(fallbackSplit?.misc)) },
+    ].filter((entry) => entry.amount > 0);
+
+    return legacy.map((entry, index) => ({
+      id: `variable-legacy-${index + 1}`,
+      label: entry.label,
+      period: "month",
+      amount: entry.amount,
+      monthlyAmount: entry.amount,
+    }));
+  };
+
+  const variableLegacySplitFromCategories = (categories = []) => {
+    const split = { food: 0, leisure: 0, misc: 0 };
+    ensureArray(categories).forEach((item) => {
+      const monthly = Math.max(0, toNumber(item?.monthlyAmount));
+      const label = String(item?.label || "").toLowerCase();
+      if (!monthly) return;
+      if (label.includes("nourr") || label.includes("food") || label.includes("course")) {
+        split.food += monthly;
+        return;
+      }
+      if (label.includes("loisir") || label.includes("sortie") || label.includes("restaurant") || label.includes("resto")) {
+        split.leisure += monthly;
+        return;
+      }
+      split.misc += monthly;
+    });
+    return {
+      food: Math.round(split.food * 100) / 100,
+      leisure: Math.round(split.leisure * 100) / 100,
+      misc: Math.round(split.misc * 100) / 100,
+    };
+  };
+
+  const normalizeMonthlyBudget = (budget = {}, fallback = {}) => {
+    const inputIncomeItems = ensureArray(
+      budget.incomeItems != null ? budget.incomeItems : fallback.incomeItems
+    );
+    const normalizedIncomeItems = inputIncomeItems
+      .map((item = {}, index) => ({
+        id: String(item.id || `income-${index + 1}`).trim() || `income-${index + 1}`,
+        label: String(item.label || `Revenu ${index + 1}`).trim() || `Revenu ${index + 1}`,
+        amount: Math.max(0, toNumber(item.amount)),
+      }))
+      .filter((item) => item.label || item.amount > 0);
+    const incomeMain = Math.max(0, toNumber(budget.incomeMain ?? fallback.incomeMain));
+    const incomeOther = Math.max(0, toNumber(budget.incomeOther ?? fallback.incomeOther));
+    const incomeFromItems = normalizedIncomeItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0);
+    const totalIncome = Math.max(
+      0,
+      toNumber(budget.totalIncome ?? (incomeFromItems || incomeMain + incomeOther))
+    );
+    const fixedItems = normalizeBudgetFixedItems(
+      budget.fixedItems != null ? budget.fixedItems : fallback.fixedItems
+    );
+    const fixedTotal = Math.max(
+      0,
+      toNumber(
+        budget.fixedTotal != null
+          ? budget.fixedTotal
+          : fixedItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0)
+      )
+    );
+    const mandatoryItems = normalizeBudgetFixedItems(
+      budget.mandatoryItems != null ? budget.mandatoryItems : fallback.mandatoryItems
+    );
+    const mandatoryTotal = Math.max(
+      0,
+      toNumber(
+        budget.mandatoryTotal != null
+          ? budget.mandatoryTotal
+          : mandatoryItems.reduce((sum, item) => sum + Math.max(0, toNumber(item.amount)), 0)
+      )
+    );
+    const variablePlanned = Math.max(
+      0,
+      toNumber(budget.variablePlanned ?? fallback.variablePlanned)
+    );
+    const variableSplitEnabled = Boolean(
+      budget.variableSplitEnabled ?? fallback.variableSplitEnabled
+    );
+    const splitInput = budget.variableSplit || fallback.variableSplit || {};
+    const variableCategories = normalizeVariableBudgetCategories(
+      budget.variableCategories != null ? budget.variableCategories : fallback.variableCategories,
+      splitInput
+    );
+    const baseSplit = {
+      food: Math.max(0, toNumber(splitInput.food)),
+      leisure: Math.max(0, toNumber(splitInput.leisure)),
+      misc: Math.max(0, toNumber(splitInput.misc)),
+    };
+    const derivedSplit = variableLegacySplitFromCategories(variableCategories);
+    const variableSplit =
+      variableSplitEnabled && variableCategories.length
+        ? derivedSplit
+        : {
+            food: baseSplit.food,
+            leisure: baseSplit.leisure,
+            misc: baseSplit.misc,
+          };
+    const remaining = Math.round((totalIncome - fixedTotal - mandatoryTotal - variablePlanned) * 100) / 100;
+    return {
+      incomeMain,
+      incomeOther,
+      incomeItems: normalizedIncomeItems.length
+        ? normalizedIncomeItems
+        : [
+            {
+              id: "income-main",
+              label: "Revenu principal",
+              amount: Math.max(0, incomeMain),
+            },
+            ...(incomeOther > 0
+              ? [
+                  {
+                    id: "income-other",
+                    label: "Autre revenu",
+                    amount: Math.max(0, incomeOther),
+                  },
+                ]
+              : []),
+          ],
+      totalIncome,
+      fixedItems,
+      fixedTotal,
+      mandatoryItems,
+      mandatoryTotal,
+      variablePlanned,
+      variableSplitEnabled,
+      variableSplit,
+      variableCategories,
+      remaining,
+      source: String(budget.source || fallback.source || "").trim() || null,
+      savedAt: budget.savedAt || fallback.savedAt || null,
+    };
+  };
+
+  const getDefaultMonthlyBudget = ({ bucket, monthId, formData = {} }) => {
+    const previousMonthId = addMonths(monthId, -1);
+    const previousBudget = previousMonthId
+      ? deepClone(bucket?.monthlyPlan?.[previousMonthId]?.monthlyBudget)
+      : null;
+    if (previousBudget && typeof previousBudget === "object") {
+      return normalizeMonthlyBudget(previousBudget, previousBudget);
+    }
+
+    const fallbackFixedItems = normalizeBudgetFixedItems(
+      ensureArray(bucket?.userSettings?.fixedExpenses).map((entry, index) => ({
+        id: entry.id || `fixed-${index + 1}`,
+        label: entry.label || `Charge fixe ${index + 1}`,
+        amount: Math.max(0, toNumber(entry.amount)),
+      }))
+    );
+    const fallbackMandatoryItems = normalizeBudgetFixedItems(
+      ensureArray(bucket?.userSettings?.mandatoryExpenses).map((entry, index) => ({
+        id: entry.id || `mandatory-${index + 1}`,
+        label: entry.label || `Charge obligatoire ${index + 1}`,
+        amount: Math.max(0, toNumber(entry.amount)),
+      }))
+    );
+    const fixedTotal = fallbackFixedItems.reduce(
+      (sum, item) => sum + Math.max(0, toNumber(item.amount)),
+      0
+    );
+    const mandatoryTotal = fallbackMandatoryItems.reduce(
+      (sum, item) => sum + Math.max(0, toNumber(item.amount)),
+      0
+    );
+    const totalIncome = Math.max(0, estimateMonthlyIncomeFromForm(formData));
+    const variablePlanned = Math.max(
+      0,
+      toNumber(
+        bucket?.userSettings?.allocationPlan?.leisureMonthly ||
+          formData?.allocationPlan?.leisureMonthly ||
+          0
+      )
+    );
+    return normalizeMonthlyBudget(
+      {
+        incomeMain: totalIncome,
+        incomeOther: 0,
+        incomeItems: [{ id: "income-main", label: "Revenu principal", amount: totalIncome }],
+        totalIncome,
+        fixedItems: fallbackFixedItems,
+        fixedTotal,
+        mandatoryItems: fallbackMandatoryItems,
+        mandatoryTotal,
+        variablePlanned,
+        variableSplitEnabled: false,
+        variableSplit: { food: 0, leisure: 0, misc: 0 },
+        variableCategories: [],
+      },
+      {}
+    );
+  };
+
   const applyTransactionsToBalances = (baseBalances = {}, transactions = []) => {
     const balances = normalizeBalances(baseBalances);
     ensureArray(transactions).forEach((entry) => {
@@ -285,11 +777,11 @@
     if (!userId || !monthId) return [];
     const rates = formData.rates || {};
     const annualRates = {
-      security: toRateDecimal(rates.savings, 0.012),
-      tax: toRateDecimal(rates.savings, 0.012),
-      projects: toRateDecimal(rates.blocked, 0.015),
-      pillar3a: toRateDecimal(rates.pillar3, 0.02),
-      investments: toRateDecimal(rates.investments, 0.04),
+      security: toRateDecimal(rates.savings, 0.018),
+      tax: toRateDecimal(rates.savings, 0.018),
+      projects: toRateDecimal(rates.blocked, 0.02),
+      pillar3a: toRateDecimal(rates.pillar3, 0.03),
+      investments: toRateDecimal(rates.investments, 0.05),
     };
     const labels = {
       security: "Compte épargne",
@@ -385,7 +877,11 @@
     if (!entries.length) return { added: 0, entries: [] };
     let stored = [];
     try {
-      const raw = JSON.parse(localStorage.getItem(TRANSACTIONS_KEY) || "[]");
+      const rawString = localStorage.getItem(TRANSACTIONS_KEY) || "[]";
+      if (rawString.length > MAX_TRANSACTIONS_RAW_BYTES) {
+        return { added: 0, entries: [] };
+      }
+      const raw = JSON.parse(rawString);
       stored = Array.isArray(raw) ? raw : [];
     } catch (_error) {
       stored = [];
@@ -408,7 +904,8 @@
       // ignore storage issues
     }
     if (typeof window.syncTransactionToProfile === "function") {
-      added.forEach((entry) => window.syncTransactionToProfile(entry, entry.userId));
+      const syncableEntries = added.filter((entry) => !entry?.autoGenerated);
+      syncableEntries.forEach((entry) => window.syncTransactionToProfile(entry, entry.userId));
     }
     return { added: added.length, entries: added };
   };
@@ -438,6 +935,117 @@
     },
   });
 
+  const hasInputsSnapshotData = (inputs = {}) => {
+    const keys = ["revenuNetMensuel", "fixedTotal", "mandatoryTotal", "debtsTotal", "taxesNeed"];
+    return keys.some((key) => Math.abs(toNumber(inputs?.[key])) > 0);
+  };
+
+  const isInMonthReviewWindow = (monthId, now = new Date()) => {
+    const nowMonthId = getMonthId(now);
+    if (!monthId || monthId !== nowMonthId) return false;
+    const target = now instanceof Date ? now : new Date(now);
+    if (Number.isNaN(target.getTime())) return false;
+    return target.getDate() >= 25;
+  };
+
+  const inferBudgetValidatedAt = (plan = {}) => {
+    const flags = plan.flags || {};
+    const flow = flags.flow && typeof flags.flow === "object" ? flags.flow : {};
+    const budget = plan.monthlyBudget && typeof plan.monthlyBudget === "object" ? plan.monthlyBudget : null;
+    const budgetSource = String(budget?.source || "").trim().toLowerCase();
+    const hasManualBudget = budgetSource === "manual-budget" || Boolean(budget?.savedAt);
+    const allocationValidatedAt =
+      flow.allocationValidatedAt ||
+      flags.allocationValidatedAt ||
+      flags.planAppliedAt ||
+      flags.monthlyPlanAppliedAt ||
+      null;
+    const explicitBudgetValidatedAt = flow.budgetValidatedAt || flags.budgetValidatedAt || null;
+
+    if (explicitBudgetValidatedAt) {
+      if (allocationValidatedAt || hasManualBudget) return explicitBudgetValidatedAt;
+      if (!budget) return null;
+      const isAutoOnlyBudget = budgetSource === "auto-form-sync" && !budget.savedAt;
+      if (isAutoOnlyBudget) return null;
+      return explicitBudgetValidatedAt;
+    }
+
+    if (hasManualBudget) {
+      return budget.savedAt || flags.updatedAt || flags.createdAt || new Date().toISOString();
+    }
+    if (allocationValidatedAt) return allocationValidatedAt;
+    return null;
+  };
+
+  const inferAllocationValidatedAt = (plan = {}) => {
+    const flags = plan.flags || {};
+    const flow = flags.flow && typeof flags.flow === "object" ? flags.flow : {};
+    if (flow.allocationValidatedAt) return flow.allocationValidatedAt;
+    if (flags.allocationValidatedAt) return flags.allocationValidatedAt;
+    if (flags.planAppliedAt) return flags.planAppliedAt;
+    return null;
+  };
+
+  const getFlowStateFromPlan = ({ monthId, monthlyPlan, now = new Date() }) => {
+    const plan = monthlyPlan || {};
+    const flags = plan.flags || {};
+    const monthStatus = String(flags.monthStatus || "active");
+    if (monthStatus === "closed") return MONTHLY_FLOW_STATES.MONTH_CLOSED;
+
+    const budgetValidatedAt = inferBudgetValidatedAt(plan);
+    if (!budgetValidatedAt) return MONTHLY_FLOW_STATES.NEW_MONTH;
+
+    const allocationValidatedAt = inferAllocationValidatedAt(plan);
+    if (!allocationValidatedAt) return MONTHLY_FLOW_STATES.BUDGET_READY;
+
+    if (isInMonthReviewWindow(monthId, now)) return MONTHLY_FLOW_STATES.MONTH_REVIEW;
+
+    return MONTHLY_FLOW_STATES.PLAN_READY;
+  };
+
+  const buildFlowUi = (flowState) => {
+    const safeState =
+      MONTHLY_FLOW_UI[flowState] ? flowState : MONTHLY_FLOW_STATES.NEW_MONTH;
+    const ui = MONTHLY_FLOW_UI[safeState];
+    return {
+      state: safeState,
+      message: ui.message,
+      ctaLabel: ui.ctaLabel,
+      action: ui.action,
+    };
+  };
+
+  const ensurePlanFlowFlags = (plan = {}, nowIso = null) => {
+    if (!plan || typeof plan !== "object") return plan;
+    const flags = plan.flags && typeof plan.flags === "object" ? plan.flags : {};
+    const flow = flags.flow && typeof flags.flow === "object" ? flags.flow : {};
+    const nextFlow = { ...flow };
+    const at = nowIso || new Date().toISOString();
+
+    const budgetValidatedAt = inferBudgetValidatedAt(plan);
+    const allocationValidatedAt = inferAllocationValidatedAt(plan);
+
+    if (budgetValidatedAt) {
+      nextFlow.budgetValidatedAt = budgetValidatedAt;
+    } else if (Object.prototype.hasOwnProperty.call(nextFlow, "budgetValidatedAt")) {
+      delete nextFlow.budgetValidatedAt;
+    }
+    if (allocationValidatedAt) {
+      nextFlow.allocationValidatedAt = allocationValidatedAt;
+    } else if (Object.prototype.hasOwnProperty.call(nextFlow, "allocationValidatedAt")) {
+      delete nextFlow.allocationValidatedAt;
+    }
+    if (flags.monthStatus === "closed" && !nextFlow.reviewCompletedAt) {
+      nextFlow.reviewCompletedAt = flags.closedAt || at;
+    }
+
+    plan.flags = {
+      ...flags,
+      flow: nextFlow,
+    };
+    return plan;
+  };
+
   const ensureMonthEntries = (
     bucket,
     monthId,
@@ -455,10 +1063,22 @@
         inputsSnapshot: getMonthlyInputsSnapshot(formData, mvpData),
         allocationResultSnapshot: getAllocationResultSnapshot(mvpData),
         projectionSnapshot: null,
+        settingsSnapshot: {
+          smart: deepClone(bucket.userSettings?.smartSaveSettings || {}) || {},
+          smartSave: deepClone(bucket.userSettings?.smartSaveSettings || {}) || {},
+          advanced: deepClone(bucket.userSettings?.advancedSettings || {}) || {},
+        },
         flags: {
           planAppliedAt: null,
+          monthlyPlanIsApplied: false,
+          monthlyPlanIsReady: false,
           isFirstMonth: Boolean(isFirstMonth),
           monthStatus: status || (isFirstMonth ? "setup" : "active"),
+          flow: {
+            budgetValidatedAt: null,
+            allocationValidatedAt: null,
+            reviewCompletedAt: null,
+          },
           startingBalances,
           closingBalances: null,
           interestAppliedAt: null,
@@ -466,6 +1086,7 @@
           updatedAt: new Date().toISOString(),
         },
       };
+      ensurePlanFlowFlags(bucket.monthlyPlan[monthId]);
     }
 
     if (!bucket.monthlyTracking[monthId]) {
@@ -528,12 +1149,13 @@
     now = new Date(),
   }) => {
     if (!userId) return null;
+    const effectiveNow = resolveDebugNow(now);
 
     const state = readStore();
     const bucket = normalizeUserState(state, userId);
-    const monthNow = getMonthId(now);
+    const monthNow = getMonthId(effectiveNow);
 
-    bucket.userSettings = getUserSettingsFromForm(formData);
+    bucket.userSettings = mergeUserSettings(bucket.userSettings, getUserSettingsFromForm(formData));
 
     const hasAnyPlan = Object.keys(bucket.monthlyPlan || {}).length > 0;
     if (!hasAnyPlan) {
@@ -548,7 +1170,22 @@
 
     let workingTransactions = ensureArray(allTransactions);
 
+    const monthDistance = getMonthDistance(cursor, monthNow);
+    if (monthDistance > MAX_MONTH_CATCH_UP_STEPS) {
+      cursor = monthNow;
+      bucket.currentMonthId = monthNow;
+      ensureMonthEntries(bucket, monthNow, formData, mvpData, false, "active");
+    }
+
+    let rolloverSteps = 0;
     while (cursor < monthNow) {
+      rolloverSteps += 1;
+      if (rolloverSteps > MAX_MONTH_CATCH_UP_STEPS) {
+        cursor = monthNow;
+        bucket.currentMonthId = monthNow;
+        ensureMonthEntries(bucket, monthNow, formData, mvpData, false, "active");
+        break;
+      }
       const currentPlan = bucket.monthlyPlan[cursor];
       let closingBalances = normalizeBalances(resolveBalancesFromAssets(formData));
       if (currentPlan) {
@@ -612,12 +1249,13 @@
             closedAt: new Date().toISOString(),
           },
         });
+        ensurePlanFlowFlags(bucket.monthlyPlan[cursor]);
         if (persistedInterest.added > 0) {
           workingTransactions = workingTransactions.concat(persistedInterest.entries);
         }
       }
       const nextMonth = addMonths(cursor, 1);
-      if (!nextMonth) break;
+      if (!nextMonth || nextMonth === cursor) break;
       const isFirst = false;
       ensureMonthEntries(bucket, nextMonth, formData, mvpData, isFirst, "active", closingBalances);
       cursor = nextMonth;
@@ -630,14 +1268,18 @@
     const currentPlan = bucket.monthlyPlan[currentMonthId];
     if (currentPlan) {
       const planStatus = currentPlan.flags?.monthStatus || "active";
-      const alreadyApplied = Boolean(currentPlan.flags?.planAppliedAt);
-      if (planStatus !== "closed" && !alreadyApplied) {
-        currentPlan.inputsSnapshot = getMonthlyInputsSnapshot(formData, mvpData);
+      if (planStatus !== "closed") {
+        currentPlan.inputsSnapshot = getMonthlyInputsSnapshot(
+          formData,
+          mvpData,
+          currentPlan.monthlyBudget
+        );
         currentPlan.allocationResultSnapshot = getAllocationResultSnapshot(mvpData);
         currentPlan.flags = {
           ...(currentPlan.flags || {}),
           updatedAt: new Date().toISOString(),
         };
+        ensurePlanFlowFlags(currentPlan);
       }
     }
 
@@ -653,6 +1295,9 @@
       }
     }
 
+    if (bucket.monthlyPlan[currentMonthId]) {
+      ensurePlanFlowFlags(bucket.monthlyPlan[currentMonthId]);
+    }
     syncTrackingWithTransactions(bucket, userId, currentMonthId, allTransactions);
 
     state[userId] = bucket;
@@ -682,17 +1327,26 @@
       return deepClone(existing);
     }
 
-    bucket.userSettings = getUserSettingsFromForm(formData);
+    bucket.userSettings = mergeUserSettings(bucket.userSettings, getUserSettingsFromForm(formData));
     bucket.monthlyPlan[monthId] = {
       ...existing,
-      inputsSnapshot: getMonthlyInputsSnapshot(formData, mvpData),
+      inputsSnapshot: getMonthlyInputsSnapshot(formData, mvpData, existing.monthlyBudget),
       allocationResultSnapshot: getAllocationResultSnapshot(mvpData),
+      settingsSnapshot:
+        existing.settingsSnapshot && typeof existing.settingsSnapshot === "object"
+          ? existing.settingsSnapshot
+          : {
+              smart: deepClone(bucket.userSettings?.smartSaveSettings || {}) || {},
+              smartSave: deepClone(bucket.userSettings?.smartSaveSettings || {}) || {},
+              advanced: deepClone(bucket.userSettings?.advancedSettings || {}) || {},
+            },
       flags: {
         ...(existing.flags || {}),
         monthStatus,
         updatedAt: new Date().toISOString(),
       },
     };
+    ensurePlanFlowFlags(bucket.monthlyPlan[monthId]);
 
     if (bucket.monthlyTracking[monthId]) {
       bucket.monthlyTracking[monthId].variableBudget = Math.max(
@@ -723,6 +1377,14 @@
     plan.flags = {
       ...(plan.flags || {}),
       planAppliedAt: appliedAt,
+      monthlyPlanApplied: true,
+      monthlyPlanAppliedAt: appliedAt,
+      monthlyPlanIsApplied: true,
+      flow: {
+        ...((plan.flags && plan.flags.flow) || {}),
+        budgetValidatedAt: ((plan.flags && plan.flags.flow) || {}).budgetValidatedAt || appliedAt,
+        allocationValidatedAt: appliedAt,
+      },
       updatedAt: appliedAt,
     };
 
@@ -747,6 +1409,173 @@
       ok: true,
       appliedAt,
       checklist,
+    };
+  };
+
+  const markAccountsBalancedForMonth = ({ userId, monthId, now = new Date(), details = null }) => {
+    if (!userId || !monthId) return { ok: false, reason: "missing" };
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const plan = bucket.monthlyPlan?.[monthId];
+    if (!plan) return { ok: false, reason: "no-plan" };
+
+    const at = now.toISOString();
+    const flags = plan.flags && typeof plan.flags === "object" ? plan.flags : {};
+    plan.flags = {
+      ...flags,
+      accountsBalanced: true,
+      accountsBalancedAt: flags.accountsBalancedAt || at,
+      updatedAt: at,
+    };
+
+    const detailPayload = details && typeof details === "object" ? deepClone(details) : null;
+    if (detailPayload) {
+      plan.accountsBalanceSnapshot = {
+        ...(plan.accountsBalanceSnapshot && typeof plan.accountsBalanceSnapshot === "object"
+          ? plan.accountsBalanceSnapshot
+          : {}),
+        ...detailPayload,
+        updatedAt: at,
+      };
+    }
+
+    bucket.monthlyPlan[monthId] = plan;
+    state[userId] = bucket;
+    writeStore(state);
+    return {
+      ok: true,
+      accountsBalancedAt: plan.flags.accountsBalancedAt || at,
+    };
+  };
+
+  const saveMonthlyPlanExecutionForMonth = ({
+    userId,
+    monthId,
+    now = new Date(),
+    entries = [],
+    source = "auto-apply",
+  }) => {
+    if (!userId || !monthId) return { ok: false, reason: "missing" };
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const plan = bucket.monthlyPlan?.[monthId];
+    if (!plan) return { ok: false, reason: "no-plan" };
+
+    const at = now.toISOString();
+    const transfers = ensureArray(entries)
+      .filter((entry) => entry && entry.type === "transfer")
+      .map((entry) => ({
+        id: String(entry.id || "").trim() || null,
+        from: String(entry.from || "").trim() || null,
+        to: String(entry.to || "").trim() || null,
+        amount: Math.max(0, toNumber(entry.amount)),
+        note: String(entry.note || "").trim() || null,
+        date: entry.date || null,
+        createdAt: entry.createdAt || null,
+        autoApplyKind: entry.autoApplyKind || null,
+      }))
+      .filter((entry) => entry.amount > 0);
+
+    const flags = plan.flags && typeof plan.flags === "object" ? plan.flags : {};
+    plan.flags = {
+      ...flags,
+      monthlyPlanApplied: true,
+      monthlyPlanAppliedAt: flags.monthlyPlanAppliedAt || at,
+      monthlyPlanIsApplied: true,
+      updatedAt: at,
+    };
+    plan.monthlyPlanExecution = {
+      source,
+      capturedAt: at,
+      transfers,
+      transferCount: transfers.length,
+    };
+    plan.transfers = transfers.slice();
+
+    bucket.monthlyPlan[monthId] = plan;
+    state[userId] = bucket;
+    writeStore(state);
+    return {
+      ok: true,
+      transferCount: transfers.length,
+      capturedAt: at,
+    };
+  };
+
+  const saveRebalanceExecutionForMonth = ({ userId, monthId, now = new Date(), transfers = [] }) => {
+    if (!userId || !monthId) return { ok: false, reason: "missing" };
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const plan = bucket.monthlyPlan?.[monthId];
+    if (!plan) return { ok: false, reason: "no-plan" };
+    const at = now.toISOString();
+    const rows = ensureArray(transfers)
+      .map((entry) => ({
+        from: String(entry?.from || "").trim() || null,
+        to: String(entry?.to || "").trim() || null,
+        amount: Math.max(0, toNumber(entry?.amount || 0)),
+        reason: String(entry?.reason || "").trim() || null,
+      }))
+      .filter((entry) => entry.from && entry.to && entry.amount > 0);
+    plan.rebalanceTransfers = rows;
+    plan.flags = {
+      ...(plan.flags || {}),
+      accountsBalanced: rows.length === 0,
+      accountsBalancedAt: rows.length === 0 ? at : plan.flags?.accountsBalancedAt || null,
+      updatedAt: at,
+    };
+    bucket.monthlyPlan[monthId] = plan;
+    state[userId] = bucket;
+    writeStore(state);
+    return { ok: true, transferCount: rows.length };
+  };
+
+  const saveMonthlyPlanTaxForMonth = ({ userId, monthId, now = new Date(), tax = {} }) => {
+    if (!userId || !monthId) return { ok: false, reason: "missing" };
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const plan = bucket.monthlyPlan?.[monthId];
+    if (!plan) return { ok: false, reason: "no-plan" };
+    const at = now.toISOString();
+    plan.taxMode = String(tax.taxMode || plan.taxMode || "AUTO_PROVISION").toUpperCase();
+    plan.taxOnboardingChoice =
+      String(tax.taxOnboardingChoice || plan.taxOnboardingChoice || "").trim().toUpperCase() || null;
+    plan.taxMonthlyTarget = Math.max(0, toNumber(tax.taxMonthlyTarget || 0));
+    plan.taxMonthlyActual = Math.max(0, toNumber(tax.taxMonthlyActual || 0));
+    plan.taxTopUpFromSurplus = Math.max(0, toNumber(tax.taxTopUpFromSurplus || 0));
+    plan.taxShortfallThisMonth = Math.max(0, toNumber(tax.taxShortfallThisMonth || 0));
+    plan.taxNotProvisionedAmount = Math.max(0, toNumber(tax.taxNotProvisionedAmount || 0));
+    plan.flags = {
+      ...(plan.flags || {}),
+      updatedAt: at,
+    };
+    bucket.monthlyPlan[monthId] = plan;
+    state[userId] = bucket;
+    writeStore(state);
+    return {
+      ok: true,
+      taxMode: plan.taxMode,
+      taxOnboardingChoice: plan.taxOnboardingChoice,
+      taxMonthlyTarget: plan.taxMonthlyTarget,
+      taxMonthlyActual: plan.taxMonthlyActual,
+      taxTopUpFromSurplus: plan.taxTopUpFromSurplus,
+      taxShortfallThisMonth: plan.taxShortfallThisMonth,
+      taxNotProvisionedAmount: plan.taxNotProvisionedAmount,
+    };
+  };
+
+  const updateUserSettingsForUser = ({ userId, patch = {} }) => {
+    if (!userId || !patch || typeof patch !== "object") return { ok: false, reason: "missing" };
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const baseSettings = mergeUserSettings(bucket.userSettings, bucket.userSettings);
+    const nextSettings = applySettingsPatch(deepClone(baseSettings) || {}, patch);
+    bucket.userSettings = mergeUserSettings(nextSettings, nextSettings);
+    state[userId] = bucket;
+    writeStore(state);
+    return {
+      ok: true,
+      userSettings: deepClone(bucket.userSettings),
     };
   };
 
@@ -783,17 +1612,268 @@
     return deepClone(plan.setupPlan);
   };
 
+  const getFlowStateForMonth = ({ userId, monthId, now = new Date(), monthlyPlan = null }) => {
+    if (!userId || !monthId) return null;
+    const effectiveNow = resolveDebugNow(now);
+    let plan = monthlyPlan;
+    if (!plan) {
+      const state = readStore();
+      const bucket = normalizeUserState(state, userId);
+      plan = bucket.monthlyPlan?.[monthId] || null;
+    }
+    if (!plan) {
+      const fallback = buildFlowUi(MONTHLY_FLOW_STATES.NEW_MONTH);
+      return { monthId, monthStatus: "missing", ...fallback };
+    }
+    const state = getFlowStateFromPlan({ monthId, monthlyPlan: plan, now: effectiveNow });
+    const ui = buildFlowUi(state);
+    return {
+      monthId,
+      monthStatus: String(plan.flags?.monthStatus || "active"),
+      ...ui,
+    };
+  };
+
+  const markBudgetValidatedForMonth = ({ userId, monthId, now = new Date() }) => {
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const plan = bucket.monthlyPlan?.[monthId];
+    if (!plan) return { ok: false, reason: "no-plan" };
+    const at = now.toISOString();
+    const flags = plan.flags && typeof plan.flags === "object" ? plan.flags : {};
+    plan.flags = {
+      ...flags,
+      monthStatus: flags.monthStatus === "setup" ? "active" : flags.monthStatus || "active",
+      flow: {
+        ...((flags.flow && typeof flags.flow === "object" ? flags.flow : {})),
+        budgetValidatedAt:
+          ((flags.flow && flags.flow.budgetValidatedAt) || flags.budgetValidatedAt || at),
+      },
+      updatedAt: at,
+    };
+    ensurePlanFlowFlags(plan, at);
+    bucket.monthlyPlan[monthId] = plan;
+    state[userId] = bucket;
+    writeStore(state);
+    return { ok: true, budgetValidatedAt: plan.flags?.flow?.budgetValidatedAt || at };
+  };
+
+  const markAllocationValidatedForMonth = ({ userId, monthId, now = new Date() }) => {
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const plan = bucket.monthlyPlan?.[monthId];
+    if (!plan) return { ok: false, reason: "no-plan" };
+    const at = now.toISOString();
+    const flags = plan.flags && typeof plan.flags === "object" ? plan.flags : {};
+    const flow = flags.flow && typeof flags.flow === "object" ? flags.flow : {};
+    plan.flags = {
+      ...flags,
+      monthStatus: flags.monthStatus === "setup" ? "active" : flags.monthStatus || "active",
+      flow: {
+        ...flow,
+        budgetValidatedAt: flow.budgetValidatedAt || flags.budgetValidatedAt || at,
+        allocationValidatedAt: flow.allocationValidatedAt || flags.allocationValidatedAt || at,
+      },
+      monthlyPlanIsReady: true,
+      updatedAt: at,
+    };
+    ensurePlanFlowFlags(plan, at);
+    bucket.monthlyPlan[monthId] = plan;
+    state[userId] = bucket;
+    writeStore(state);
+    return {
+      ok: true,
+      budgetValidatedAt: plan.flags?.flow?.budgetValidatedAt || at,
+      allocationValidatedAt: plan.flags?.flow?.allocationValidatedAt || at,
+    };
+  };
+
+  const getMonthlyBudgetForMonth = ({ userId, monthId, formData = {} }) => {
+    if (!userId || !monthId) return null;
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    if (!bucket.monthlyPlan[monthId]) {
+      ensureMonthEntries(bucket, monthId, formData, {}, false, "active");
+    }
+    const plan = bucket.monthlyPlan[monthId];
+    const existing = plan?.monthlyBudget && typeof plan.monthlyBudget === "object" ? plan.monthlyBudget : null;
+    const fallback = getDefaultMonthlyBudget({ bucket, monthId, formData });
+    const normalizedBase = normalizeMonthlyBudget(existing || {}, fallback);
+    const existingSource = String(existing?.source || "").trim().toLowerCase();
+    const hasLegacyManualMarker = Boolean(existing?.savedAt);
+    const isLegacyBudgetWithoutSource = Boolean(existing && !existingSource);
+    const shouldSyncFromForm =
+      !existing ||
+      existingSource === "auto-form-sync" ||
+      (isLegacyBudgetWithoutSource && !hasLegacyManualMarker);
+    const normalized = shouldSyncFromForm
+      ? applyFormExpensesToBudget(normalizedBase, formData)
+      : normalizedBase;
+    normalized.source = shouldSyncFromForm ? "auto-form-sync" : "manual-budget";
+
+    const existingRaw = existing ? JSON.stringify(existing) : "";
+    const normalizedRaw = JSON.stringify(normalized);
+    if (!existing || existingRaw !== normalizedRaw) {
+      plan.monthlyBudget = normalized;
+      ensurePlanFlowFlags(plan);
+      bucket.monthlyPlan[monthId] = plan;
+      state[userId] = bucket;
+      writeStore(state);
+    }
+    return deepClone(normalized);
+  };
+
+  const saveMonthlyBudgetForMonth = ({ userId, monthId, budget, formData = {} }) => {
+    if (!userId || !monthId || !budget || typeof budget !== "object") return null;
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    if (!bucket.monthlyPlan[monthId]) {
+      ensureMonthEntries(bucket, monthId, formData, {}, false, "active");
+    }
+    const plan = bucket.monthlyPlan[monthId];
+    const fallback = getDefaultMonthlyBudget({ bucket, monthId, formData });
+    const normalized = normalizeMonthlyBudget(budget, fallback);
+    const nowIso = new Date().toISOString();
+    normalized.savedAt = nowIso;
+    normalized.source = "manual-budget";
+
+    plan.monthlyBudget = normalized;
+    plan.inputsSnapshot = {
+      ...(plan.inputsSnapshot || {}),
+      revenuNetMensuel: normalized.totalIncome,
+      fixedTotal: normalized.fixedTotal,
+      mandatoryTotal: normalized.mandatoryTotal,
+    };
+    plan.flags = {
+      ...(plan.flags || {}),
+      updatedAt: nowIso,
+    };
+    ensurePlanFlowFlags(plan, nowIso);
+    bucket.monthlyPlan[monthId] = plan;
+
+    if (!bucket.monthlyTracking[monthId]) {
+      bucket.monthlyTracking[monthId] = {
+        variableBudget: normalized.variablePlanned,
+        variableSpent: 0,
+        transactions: [],
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+    } else {
+      bucket.monthlyTracking[monthId].variableBudget = normalized.variablePlanned;
+      bucket.monthlyTracking[monthId].updatedAt = nowIso;
+    }
+
+    state[userId] = bucket;
+    writeStore(state);
+    return deepClone(normalized);
+  };
+
+  const closeMonthWithReview = ({
+    userId,
+    monthId,
+    formData = {},
+    mvpData = {},
+    allTransactions = [],
+  }) => {
+    if (!userId || !monthId) return { ok: false, reason: "missing" };
+    const state = readStore();
+    const bucket = normalizeUserState(state, userId);
+    const plan = bucket.monthlyPlan?.[monthId];
+    if (!plan) return { ok: false, reason: "no-plan" };
+    const status = String(plan.flags?.monthStatus || "active");
+    if (status === "closed") {
+      const next = addMonths(monthId, 1);
+      if (next) bucket.currentMonthId = next;
+      state[userId] = bucket;
+      writeStore(state);
+      return { ok: true, monthId, nextMonthId: next || monthId, alreadyClosed: true };
+    }
+
+    syncTrackingWithTransactions(bucket, userId, monthId, allTransactions);
+
+    const nowIso = new Date().toISOString();
+    const nextMonthId = addMonths(monthId, 1) || monthId;
+    const planFlags = plan.flags || {};
+    const startingBalances = normalizeBalances(
+      planFlags.closingBalances || planFlags.startingBalances || resolveBalancesFromAssets(formData)
+    );
+
+    plan.flags = {
+      ...planFlags,
+      monthStatus: "closed",
+      closedAt: nowIso,
+      updatedAt: nowIso,
+      flow: {
+        ...((planFlags.flow && typeof planFlags.flow === "object" ? planFlags.flow : {})),
+        reviewCompletedAt: nowIso,
+      },
+    };
+    ensurePlanFlowFlags(plan, nowIso);
+    bucket.monthlyPlan[monthId] = plan;
+
+    ensureMonthEntries(bucket, nextMonthId, formData, mvpData, false, "setup", startingBalances);
+    if (plan.monthlyBudget && typeof plan.monthlyBudget === "object") {
+      bucket.monthlyPlan[nextMonthId].monthlyBudget = normalizeMonthlyBudget(
+        plan.monthlyBudget,
+        plan.monthlyBudget
+      );
+    }
+    bucket.currentMonthId = nextMonthId;
+
+    state[userId] = bucket;
+    writeStore(state);
+    return { ok: true, monthId, nextMonthId };
+  };
+
   window.SmartSaveMonthlyStore = {
     STORE_KEY,
+    MONTHLY_FLOW_STATES,
     getMonthId,
     parseMonthId,
     addMonths,
     ensureUserMonthContext,
     regeneratePlanForMonth,
     applyPlanForMonth,
+    getFlowStateForMonth,
+    markBudgetValidatedForMonth,
+    markAllocationValidatedForMonth,
+    getMonthlyBudgetForMonth,
+    saveMonthlyBudgetForMonth,
+    closeMonthWithReview,
     getStateForUser,
     getSetupPlanForMonth,
     saveSetupPlanForMonth,
+    markAccountsBalancedForMonth,
+    saveMonthlyPlanExecutionForMonth,
+    saveRebalanceExecutionForMonth,
+    saveMonthlyPlanTaxForMonth,
+    updateUserSettingsForUser,
+    setDebugNow: (isoDateString) => {
+      try {
+        const parsed = new Date(isoDateString);
+        if (Number.isNaN(parsed.getTime())) return { ok: false, reason: "invalid-date" };
+        localStorage.setItem(DEBUG_NOW_KEY, parsed.toISOString());
+        return { ok: true, now: parsed.toISOString() };
+      } catch (_error) {
+        return { ok: false, reason: "invalid-date" };
+      }
+    },
+    clearDebugNow: () => {
+      try {
+        localStorage.removeItem(DEBUG_NOW_KEY);
+      } catch (_error) {
+        // ignore storage issues
+      }
+      return { ok: true };
+    },
+    getDebugNow: () => {
+      try {
+        return localStorage.getItem(DEBUG_NOW_KEY) || null;
+      } catch (_error) {
+        return null;
+      }
+    },
     readStore,
     writeStore,
   };

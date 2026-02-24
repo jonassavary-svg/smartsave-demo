@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#eef2ff" />
+    <script src="seed-data.js"></script>
+    <script src="device-mode.js?v=20260213-01" defer></script>
+    <title>SmartSave – Plan du mois</title>
+    <link rel="stylesheet" href="styles.css?v=20260212-01" />
+    <link rel="stylesheet" href="theme-polish.css" />
+  </head>
+  <body class="dashboard app-page" data-page="plan" data-mvp>
+    <div class="dashboard-shell app-shell">
+      <header class="dashboard-header app-header">
+        <div class="brand-block">
+          <a class="logo" href="mon-argent.html">
+            <div class="logo-mark" aria-hidden="true">S</div>
+            <span class="logo-text">SmartSave</span>
+          </a>
+          <span class="logo-subtitle">Plan du mois</span>
+        </div>
+        <div class="header-search"></div>
+        <div class="header-actions">
+          <div class="hamburger-wrapper">
+            <button class="icon-button menu-button" type="button" aria-label="Menu" aria-expanded="false" aria-controls="app-nav">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <div class="hamburger-menu" id="app-nav" role="menu" aria-label="Navigation principale">
+              <a class="hamburger-link" role="menuitem" href="mon-argent.html" data-nav="home">Mon Mois</a>
+              <a class="hamburger-link" role="menuitem" href="budget.html" data-nav="budget">Budget</a>
+              <a class="hamburger-link" role="menuitem" href="smartsave.html" data-nav="repartition">Répartition</a>
+              <a class="hamburger-link" role="menuitem" href="score.html" data-nav="score">Objectifs</a>
+              <a class="hamburger-link" role="menuitem" href="mes-depenses.html">Mois précédents</a>
+              <a class="hamburger-link hamburger-link--danger" role="menuitem" href="index.html">Déconnexion</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main plan-page">
+        <section class="page-title">
+          <h1 data-plan-title>Ton plan – —</h1>
+          <p>Voici comment ton argent est organisé ce mois-ci.</p>
+        </section>
+
+        <p class="plan-banner" data-plan-endmonth-banner hidden>
+          Mois à clôturer — fais le bilan depuis Mon Mois.
+        </p>
+
+        <section class="card plan-star-card">
+          <p class="plan-star-card__label">Reste disponible ce mois</p>
+          <p class="plan-star-card__value" data-plan-remaining>CHF 0</p>
+          <p class="plan-star-card__note">C’est ce montant qui travaille pour tes objectifs.</p>
+        </section>
+
+        <section class="card plan-budget-card">
+          <h2>Ta vie ce mois-ci</h2>
+          <div class="plan-kpi-list">
+            <p><span>Revenu total</span><strong data-plan-income>CHF 0</strong></p>
+            <p><span>Total dépenses prévues</span><strong data-plan-expenses>CHF 0</strong></p>
+            <p><span>Dépenses variables prévues</span><strong data-plan-variable>CHF 0</strong></p>
+          </div>
+        </section>
+
+        <section class="card plan-allocation-card">
+          <h2>Ton argent au travail</h2>
+          <p class="plan-allocation-empty" data-plan-allocation-pending hidden>
+            Plan pas encore validé. Finalise ta répartition pour voir où va ton reste disponible.
+          </p>
+          <a class="month-btn month-btn--start plan-allocation-cta" data-plan-allocation-cta href="smartsave.html" hidden>
+            Valider ma répartition
+          </a>
+          <div class="plan-kpi-list" data-plan-allocation-list></div>
+        </section>
+
+        <section class="card plan-goals-card" data-plan-goals-card>
+          <h2>Impact sur tes objectifs</h2>
+          <div class="plan-goals-list" data-plan-goals-list></div>
+          <p class="plan-allocation-empty" data-plan-goals-empty hidden>
+            Aucun objectif actif détecté pour ce mois.
+          </p>
+          <p class="plan-projection-note" data-plan-projection-note hidden></p>
+        </section>
+
+        <a class="month-btn month-btn--start plan-back-btn" href="mon-argent.html">Retour à Mon Mois</a>
+      </main>
+    </div>
+
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <a class="bottom-nav__link" href="mon-argent.html" data-nav="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6h14M5 12h14M5 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Mon Mois</span>
+      </a>
+      <a class="bottom-nav__link" href="budget.html" data-nav="budget">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 10.5l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span>Budget</span>
+      </a>
+      <a class="bottom-nav__link" href="smartsave.html" data-nav="repartition">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+        <span>Répartition</span>
+      </a>
+      <a class="bottom-nav__link" href="score.html" data-nav="score">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <span>Objectifs</span>
+      </a>
+      <a class="bottom-nav__link" href="profil.html" data-nav="profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-6 1.6-6 3.5V19h12v-1.5c0-1.9-2.7-3.5-6-3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Profil</span>
+      </a>
+    </nav>
+
+    <script src="runtimeConfig.js?v=20260212-01" defer></script>
+    <script src="monthlyStore.js?v=20260218-04" defer></script>
+    <script src="plan-page.js?v=20260216-03" defer></script>
+    <script src="/dev-reload.js" defer></script>
+  </body>
+</html>
