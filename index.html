@@ -71,12 +71,7 @@
         }
       }
 
-      const activeUser = safeParse(localStorage.getItem(STORAGE_KEY_ACTIVE_USER));
-      const storedForms = safeParse(localStorage.getItem(STORAGE_KEY_FORM)) || {};
-      if (!logoutRequested && activeUser?.id && (storedForms[activeUser.id] || storedForms.__default)) {
-        window.location.href = resolvePostLoginTarget(activeUser.id);
-        return;
-      }
+      // Toujours forcer le passage par l'index: pas de redirection automatique.
 
       form.addEventListener("submit", (event) => {
         const firstName = firstNameInput.value.trim();
