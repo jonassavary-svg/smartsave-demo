@@ -23060,6 +23060,28 @@ body[data-page="smartsave"] .smartsave-setup-card h2 {
   margin: 0;
 }
 
+body[data-page="smartsave"] .smartsave-setup-card.is-collapsed {
+  margin-top: 0.45rem;
+  padding: 0.64rem 0.72rem;
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+body[data-page="smartsave"] .smartsave-setup-card.is-collapsed .smartsave-section-header {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+body[data-page="smartsave"] .smartsave-setup-card.is-collapsed .smartsave-setup-card__eyebrow {
+  font-size: 0.64rem;
+  color: #64748b;
+}
+
+body[data-page="smartsave"] .smartsave-setup-card.is-collapsed h2 {
+  font-size: 0.86rem;
+  color: #334155;
+}
+
 body[data-page="smartsave"] .smartsave-rebalance-intro {
   margin: 0 0 0.9rem;
   font-size: 0.9rem;
@@ -23074,25 +23096,43 @@ body[data-page="smartsave"] .smartsave-rebalance-intro--done {
 
 body[data-page="smartsave"] .smartsave-rebalance-steps {
   list-style: none;
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.78rem;
   padding: 0;
   display: grid;
-  gap: 0.48rem;
+  gap: 0.54rem;
 }
 
 body[data-page="smartsave"] .smartsave-rebalance-step {
-  display: flex;
-  align-items: center;
-  gap: 0.72rem;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid rgba(15, 23, 42, 0.13);
-  border-radius: 12px;
-  background: #fff;
-  transition: opacity 0.2s ease, border-color 0.2s ease;
+  margin: 0;
 }
 
-body[data-page="smartsave"] .smartsave-rebalance-step.is-done {
-  opacity: 0.6;
+body[data-page="smartsave"] .smartsave-rebalance-step__card {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.72rem 0.8rem;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.68rem;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-step__card:hover {
+  border-color: rgba(30, 64, 175, 0.34);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-step__card:focus-visible {
+  outline: 2px solid rgba(30, 64, 175, 0.46);
+  outline-offset: 2px;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-step.is-done .smartsave-rebalance-step__card {
   background: rgba(240, 253, 248, 0.9);
   border-color: rgba(16, 185, 129, 0.28);
 }
@@ -23146,27 +23186,87 @@ body[data-page="smartsave"] .smartsave-rebalance-step__amount {
 }
 
 body[data-page="smartsave"] .smartsave-rebalance-step__badge {
-  font-size: 0.72rem;
+  margin-left: auto;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #e07b00;
-  background: rgba(251, 191, 36, 0.14);
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #1e3a8a;
+  background: rgba(30, 64, 175, 0.1);
+  border: 1px solid rgba(30, 64, 175, 0.24);
   border-radius: 999px;
-  padding: 0.14rem 0.48rem;
+  padding: 0.16rem 0.46rem;
   flex-shrink: 0;
 }
 
-body[data-page="smartsave"] .smartsave-rebalance-why {
-  margin: 0.5rem 0 0.6rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 10px;
-  background: rgba(255, 251, 235, 0.85);
-  border: 1px solid rgba(251, 191, 36, 0.28);
-  font-size: 0.82rem;
-  color: #78350f;
-  line-height: 1.45;
+body[data-page="smartsave"] .smartsave-rebalance-step.is-done .smartsave-rebalance-step__badge {
+  color: #0f766e;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal .allocation-details-modal__content {
+  max-width: 450px;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__summary {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
+  padding: 0.7rem 0.78rem;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__route {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #334155;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__amount {
+  margin: 0.36rem 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__mini {
+  margin: 0;
+  display: grid;
+  gap: 0.44rem;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__mini p {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: baseline;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__mini span {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__mini strong {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+body[data-page="smartsave"] .smartsave-rebalance-modal__why {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #334155;
+  line-height: 1.5;
 }
 
 body[data-page="smartsave"] .smartsave-setup-apply-cta {
@@ -23277,7 +23377,6 @@ body[data-page="smartsave"] .smartsave-setup-apply-cta {
 }
 
 /* ---------- Repartition simplifiee (3 sections) ---------- */
-body[data-page="smartsave"] [data-smartsave-setup-card],
 body[data-page="smartsave"] [data-smartsave-status-banner],
 body[data-page="smartsave"] .smartsave-transfer-total,
 body[data-page="smartsave"] .smartsave-projection-extra {
@@ -23359,30 +23458,6 @@ body[data-page="smartsave"] .smartsave-projection-grid article {
 
 body[data-page="smartsave"] .smartsave-section-heading {
   margin: 0 0 0.45rem;
-}
-
-body[data-page="smartsave"] .smartsave-plan-card .smartsave-section-heading h2,
-body[data-page="smartsave"] .smartsave-projection-card .smartsave-section-heading h2 {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.46rem;
-}
-
-body[data-page="smartsave"] .smartsave-plan-card .smartsave-section-heading h2::before,
-body[data-page="smartsave"] .smartsave-projection-card .smartsave-section-heading h2::before {
-  content: "";
-  width: 0.54rem;
-  height: 0.54rem;
-  border-radius: 999px;
-  flex: 0 0 auto;
-}
-
-body[data-page="smartsave"] .smartsave-plan-card .smartsave-section-heading h2::before {
-  background: #0ea5e9;
-}
-
-body[data-page="smartsave"] .smartsave-projection-card .smartsave-section-heading h2::before {
-  background: #4f46e5;
 }
 
 body[data-page="smartsave"] .smartsave-section-heading p {

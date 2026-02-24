@@ -2788,6 +2788,8 @@
     const transferTotalNode = document.querySelector("[data-smartsave-transfer-total]");
     const monthlyStatusNode = document.querySelector("[data-smartsave-monthly-status]");
     const mainCta = document.querySelector("[data-smartsave-main-cta]");
+    const ctaWrap = document.querySelector(".smartsave-cta-wrap");
+    const mainRoot = document.querySelector(".app-main");
     const projectionCard = document.querySelector("[data-smartsave-projection-card]");
     const projectionNoteNode = document.querySelector("[data-smartsave-projection-note]");
     const planStatusBadgeNode = document.querySelector("[data-smartsave-plan-status-badge]");
@@ -2853,6 +2855,58 @@
 
     const setupUi = ensureSmartSaveMonthUi();
     const taxModal = setupUi?.taxModal || null;
+    const rebalanceDetailModal = setupUi?.rebalanceDetailModal || null;
+    let openRebalanceDetailModal = null;
+    if (rebalanceDetailModal) {
+      const detailTitleNode = rebalanceDetailModal.querySelector("[data-smartsave-rebalance-modal-title]");
+      const detailRouteNode = rebalanceDetailModal.querySelector("[data-smartsave-rebalance-modal-route]");
+      const detailAmountNode = rebalanceDetailModal.querySelector("[data-smartsave-rebalance-modal-amount]");
+      const detailFromNode = rebalanceDetailModal.querySelector("[data-smartsave-rebalance-modal-from]");
+      const detailToNode = rebalanceDetailModal.querySelector("[data-smartsave-rebalance-modal-to]");
+      const detailWhyNode = rebalanceDetailModal.querySelector("[data-smartsave-rebalance-modal-why]");
+      const closeRebalanceDetailModal = () => {
+        const fallbackFocus =
+          rebalanceDetailModal.__lastTrigger && document.contains(rebalanceDetailModal.__lastTrigger)
+            ? rebalanceDetailModal.__lastTrigger
+            : null;
+        rebalanceDetailModal.classList.remove("is-open");
+        rebalanceDetailModal.setAttribute("aria-hidden", "true");
+        rebalanceDetailModal.setAttribute("inert", "");
+        document.body.classList.remove("allocation-details-open");
+        window.setTimeout(() => {
+          if (!rebalanceDetailModal.classList.contains("is-open")) rebalanceDetailModal.hidden = true;
+        }, 120);
+        if (fallbackFocus && typeof fallbackFocus.focus === "function") {
+          try {
+            fallbackFocus.focus({ preventScroll: true });
+          } catch (_error) {
+            fallbackFocus.focus();
+          }
+        }
+      };
+      openRebalanceDetailModal = (detail, triggerEl) => {
+        if (!detail) return;
+        if (detailTitleNode) detailTitleNode.textContent = detail.title || "Détail du transfert";
+        if (detailRouteNode) detailRouteNode.textContent = detail.route || "";
+        if (detailAmountNode) detailAmountNode.textContent = detail.amountLabel || formatCurrency(0);
+        if (detailFromNode) detailFromNode.textContent = detail.fromLabel || "";
+        if (detailToNode) detailToNode.textContent = detail.toLabel || "";
+        if (detailWhyNode) detailWhyNode.textContent = detail.whyText || "";
+        rebalanceDetailModal.__lastTrigger = triggerEl || null;
+        rebalanceDetailModal.hidden = false;
+        rebalanceDetailModal.removeAttribute("inert");
+        rebalanceDetailModal.setAttribute("aria-hidden", "false");
+        rebalanceDetailModal.classList.add("is-open");
+        document.body.classList.add("allocation-details-open");
+      };
+      if (!rebalanceDetailModal.dataset.bound) {
+        rebalanceDetailModal.addEventListener("click", (event) => {
+          if (!event.target.closest("[data-smartsave-rebalance-close]")) return;
+          closeRebalanceDetailModal();
+        });
+        rebalanceDetailModal.dataset.bound = "true";
+      }
+    }
     const planSnapshot = context?.monthlyPlan?.allocationResultSnapshot || null;
     const allocationsRaw = planSnapshot?.allocations || data?.allocation?.allocations || {};
     const taxFunding = planSnapshot?.debug?.taxFunding || data?.allocation?.debug?.taxFunding || {};
@@ -3130,7 +3184,8 @@
       });
     }
 
-    if (setupCard) setupCard.hidden = true;
+    const showSetupSection = hasRebalance;
+    if (setupCard) setupCard.hidden = !showSetupSection;
 
     if (setupCard) {
       setupCard.classList.toggle("is-readonly", hasRebalance && allRebalanceDone);
@@ -3154,97 +3209,128 @@
           .replace(/>/g, "&gt;")
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#39;");
-      const totalRebalance = Math.max(
+      const taxNeedForDetails = Math.max(
         0,
-        toNumber(rebalance?.totals?.pool || rebalance?.totals?.rearrangedTotal || rebalance?.totals?.totalTransfers || 0)
+        toNumber(effectiveTaxOnboarding?.remainingNeed || annualTaxEstimate || 0)
       );
-      const totalTransferred = Math.max(0, toNumber(rebalance?.totals?.totalTransfers || 0));
-      const totalKeptOnSavings = Math.max(0, toNumber(rebalance?.totals?.keepOnSavings || 0));
-      const sourceUsage =
-        rebalance?.totals?.sourceUsage && typeof rebalance.totals.sourceUsage === "object"
-          ? rebalance.totals.sourceUsage
-          : {};
-      const movedBySource = {};
-      const usedFromCurrent = Math.max(0, toNumber(sourceUsage.currentUsed || 0));
-      const usedFromSavings = Math.max(0, toNumber(sourceUsage.savingsUsed || 0));
-      if (usedFromCurrent > 0) movedBySource.current = usedFromCurrent;
-      if (usedFromSavings > 0) movedBySource.security = usedFromSavings;
-      if (!Object.keys(movedBySource).length) {
-        rebalanceRows.forEach((row) => {
-          const key = String(row?.from || "").trim().toLowerCase();
-          const amount = Math.max(0, toNumber(row?.amount || 0));
-          if (!key || amount <= 0) return;
-          movedBySource[key] = Math.max(0, toNumber(movedBySource[key] || 0)) + amount;
-        });
-      }
-      const sourceRows = Object.keys(movedBySource)
-        .map((accountKey) => {
-          const movedAmount = Math.max(0, toNumber(movedBySource[accountKey] || 0));
-          const amountOnAccount = Math.max(0, toNumber(liveBalances?.[accountKey] || 0));
-          const hasLimit = accountKey === "current" || accountKey === "security";
-          const limit =
-            accountKey === "current"
-              ? Math.max(0, toNumber(currentLimit || 0))
-              : Math.max(0, toNumber(rebalance?.totals?.savingsFloor || securityLimit || 0));
-          const surplus = hasLimit ? Math.max(0, toNumber(amountOnAccount) - toNumber(limit)) : 0;
-          const sharePct = totalRebalance > 0 ? Math.round((movedAmount / totalRebalance) * 100) : 0;
-          const keptOnSource =
-            accountKey === "security"
-              ? Math.max(0, toNumber(sourceUsage.savingsKept || totalKeptOnSavings || 0))
-              : 0;
-          return {
-            accountKey,
-            accountLabel: formatTransferAccountLabel(accountKey),
-            movedAmount,
-            amountOnAccount,
-            hasLimit,
-            limit,
-            surplus,
-            sharePct,
-            keptOnSource,
-          };
-        })
-        .sort((a, b) => b.movedAmount - a.movedAmount);
-      const whyLines = sourceRows
-        .filter((r) => r.hasLimit && r.surplus > 0.5)
-        .map(
-          (r) =>
-            `Ton ${r.accountLabel.toLowerCase()} a ${formatCurrency(r.surplus)} au-dessus de la limite recommandée (${formatCurrency(r.limit)}).`
-        );
+      const securityTargetForDetails = Math.max(
+        0,
+        toNumber(rebalance?.totals?.savingsFloor || securityLimit || 0)
+      );
+      const pillarRoomForDetails = Math.max(
+        0,
+        toNumber(computeThirdPillarRoomForRebalance(formData, monthInputs, liveBalances, monthId))
+      );
+      const growthCapForDetails = Math.max(
+        0,
+        toNumber(
+          resolveGrowthCapFromSettings({
+            availableSurplus: surplus,
+            smartSaveSettings,
+            advancedSettings,
+          })
+        )
+      );
+      const destinationObjectiveByKey = {
+        current: "garder du cash disponible pour les dépenses et les charges à venir",
+        security: "renforcer ton épargne de sécurité",
+        tax: "anticiper les futurs impôts à payer",
+        pillar3a: "faire travailler ton argent pour ta retraite",
+        investments: "faire travailler ton argent et créer un patrimoine futur",
+        projects: "financer tes objectifs court terme",
+      };
+      const buildRebalanceDetail = (row) => {
+        const toKey = normalizeTransferAccountKey(row?.to || "");
+        const fromKey = normalizeTransferAccountKey(row?.from || "");
+        const objectiveText =
+          destinationObjectiveByKey[toKey] ||
+          "réaligner ce compte avec la stratégie SmartSave du mois";
+        const sourceLimitText =
+          fromKey === "current" && currentLimit > 0.5
+            ? `Le compte courant est limité à ${formatCurrency(currentLimit)}.`
+            : fromKey === "security" && securityTargetForDetails > 0.5
+            ? `Le compte épargne garde une base de ${formatCurrency(securityTargetForDetails)}.`
+            : "";
+        let destinationTargetText = "";
+        if (toKey === "tax" && taxNeedForDetails > 0.5) {
+          destinationTargetText = `Besoin impôts estimé: ${formatCurrency(taxNeedForDetails)}.`;
+        } else if (toKey === "security" && securityTargetForDetails > 0.5) {
+          destinationTargetText = `Objectif épargne de sécurité: ${formatCurrency(securityTargetForDetails)}.`;
+        } else if (toKey === "pillar3a" && pillarRoomForDetails > 0.5) {
+          destinationTargetText = `Plafond 3e pilier restant: ${formatCurrency(pillarRoomForDetails)}.`;
+        } else if (toKey === "investments" && growthCapForDetails > 0.5) {
+          destinationTargetText = `Cap d'investissement du mois: ${formatCurrency(growthCapForDetails)}.`;
+        }
+        const whyText = [sourceLimitText, `Ce transfert sert à ${objectiveText}.`, destinationTargetText]
+          .filter(Boolean)
+          .join(" ");
+        return {
+          title: "Détail du transfert",
+          route: `${row.fromLabel} → ${row.toLabel}`,
+          amountLabel: formatCurrency(row.amount),
+          fromLabel: row.fromLabel,
+          toLabel: row.toLabel,
+          whyText: whyText || "Ce transfert garde tes comptes alignés avec ton plan du mois.",
+        };
+      };
+      const detailsByActionId = {};
+      rebalanceRows.forEach((row) => {
+        detailsByActionId[String(row.actionId)] = buildRebalanceDetail(row);
+      });
+      setupChecklistNode.__rebalanceDetailByActionId = detailsByActionId;
       setupChecklistNode.innerHTML = hasRebalance
         ? `
             ${
               allRebalanceDone
-                ? `<p class="smartsave-rebalance-intro smartsave-rebalance-intro--done">Virements effectués. Tes comptes sont dans la bonne zone.</p>`
-                : `<p class="smartsave-rebalance-intro">SmartSave a détecté que tes comptes sont déséquilibrés. Effectue ces virements <strong>dans ta banque</strong> avant d'appliquer ton plan mensuel.</p>`
+                ? `<p class="smartsave-rebalance-intro smartsave-rebalance-intro--done">Virements effectués. Tu peux ouvrir une carte pour revoir le détail.</p>`
+                : `<p class="smartsave-rebalance-intro">Fais ces virements dans ta banque. Clique sur une carte pour voir le détail.</p>`
             }
             <ol class="smartsave-rebalance-steps">
               ${rebalanceRows
-                .map(
-                  (row, i) => `
+                .map((row, i) => {
+                  return `
                   <li class="smartsave-rebalance-step ${row.done ? "is-done" : ""}">
-                    <span class="smartsave-rebalance-step__num" aria-hidden="true">${row.done ? "✓" : i + 1}</span>
-                    <div class="smartsave-rebalance-step__body">
-                      <p class="smartsave-rebalance-step__route">
-                        <span class="smartsave-rebalance-step__from">${escapeForHtml(row.fromLabel)}</span>
-                        <span class="smartsave-rebalance-step__arrow" aria-hidden="true">→</span>
-                        <span class="smartsave-rebalance-step__to">${escapeForHtml(row.toLabel)}</span>
-                      </p>
-                      <p class="smartsave-rebalance-step__amount">${formatCurrency(row.amount)}</p>
-                    </div>
-                    ${row.done ? "" : `<span class="smartsave-rebalance-step__badge">À faire</span>`}
+                    <button
+                      class="smartsave-rebalance-step__card"
+                      type="button"
+                      data-smartsave-rebalance-open="${escapeForHtml(row.actionId)}"
+                    >
+                      <span class="smartsave-rebalance-step__num" aria-hidden="true">${row.done ? "✓" : i + 1}</span>
+                      <div class="smartsave-rebalance-step__body">
+                        <p class="smartsave-rebalance-step__route">
+                          <span class="smartsave-rebalance-step__from">${escapeForHtml(row.fromLabel)}</span>
+                          <span class="smartsave-rebalance-step__arrow" aria-hidden="true">→</span>
+                          <span class="smartsave-rebalance-step__to">${escapeForHtml(row.toLabel)}</span>
+                        </p>
+                        <p class="smartsave-rebalance-step__amount">${formatCurrency(row.amount)}</p>
+                      </div>
+                      <span class="smartsave-rebalance-step__badge">${row.done ? "Fait" : "Voir"}</span>
+                    </button>
                   </li>
-                `
-                )
+                `;
+                })
                 .join("")}
             </ol>
-            ${
-              whyLines.length > 0 && !allRebalanceDone
-                ? `<p class="smartsave-rebalance-why">${whyLines.join(" ")}</p>`
-                : ""
-            }
           `
         : "";
+      if (!setupChecklistNode.dataset.rebalanceDetailBound) {
+        setupChecklistNode.addEventListener("click", (event) => {
+          const cardBtn = event.target.closest("[data-smartsave-rebalance-open]");
+          if (!cardBtn || !setupChecklistNode.contains(cardBtn)) return;
+          if (typeof openRebalanceDetailModal !== "function") return;
+          const actionId = String(cardBtn.dataset.smartsaveRebalanceOpen || "").trim();
+          if (!actionId) return;
+          const detailById =
+            setupChecklistNode.__rebalanceDetailByActionId &&
+            typeof setupChecklistNode.__rebalanceDetailByActionId === "object"
+              ? setupChecklistNode.__rebalanceDetailByActionId
+              : {};
+          const detail = detailById[actionId] || null;
+          if (!detail) return;
+          openRebalanceDetailModal(detail, cardBtn);
+        });
+        setupChecklistNode.dataset.rebalanceDetailBound = "true";
+      }
     }
     if (setupToggleNode) {
       setupToggleNode.hidden = !(hasRebalance && allRebalanceDone);
@@ -3343,7 +3429,17 @@
     }
 
     const lockPlanByRebalance = hasRebalance && !allRebalanceDone;
-    if (transfersCard) transfersCard.hidden = false;
+    if (mainRoot && setupCard && transfersCard) {
+      if (hasRebalance && allRebalanceDone) {
+        const target = ctaWrap && ctaWrap.parentElement === mainRoot ? ctaWrap : null;
+        if (target && setupCard.nextElementSibling !== target) {
+          mainRoot.insertBefore(setupCard, target);
+        }
+      } else if (setupCard.nextElementSibling !== transfersCard) {
+        mainRoot.insertBefore(setupCard, transfersCard);
+      }
+    }
+    if (transfersCard) transfersCard.hidden = lockPlanByRebalance;
     if (projectionCard) projectionCard.hidden = false;
 
     const monthlyTransferEntries = buildMonthlyApplyEntries({
@@ -3732,23 +3828,10 @@
       planHasTransfers;
 
     if (mainCta) {
-      const showRebalanceAction = lockPlanByRebalance && !isPlanApplied;
-      const canRunRebalance =
-        showRebalanceAction &&
-        pendingRebalanceRows.length > 0 &&
-        typeof setupApplyAllBtn?.onclick === "function";
-      mainCta.hidden = false;
-      mainCta.disabled = showRebalanceAction ? !canRunRebalance : !canApplyPlan;
-      mainCta.textContent = isPlanApplied
-        ? "Plan appliqué"
-        : showRebalanceAction
-        ? "Ajuster mes comptes"
-        : "Appliquer mon plan";
+      mainCta.hidden = lockPlanByRebalance;
+      mainCta.disabled = !canApplyPlan;
+      mainCta.textContent = isPlanApplied ? "Plan appliqué" : "Appliquer mon plan";
       mainCta.onclick = () => {
-        if (showRebalanceAction) {
-          if (typeof setupApplyAllBtn?.onclick === "function") setupApplyAllBtn.onclick();
-          return;
-        }
         if (!canApplyPlan || !store || !activeUser?.id) return;
         const transferControls =
           advancedSettings.transferControls && typeof advancedSettings.transferControls === "object"
@@ -4045,7 +4128,40 @@
       document.body.appendChild(taxModal);
     }
 
-    return { setupModal, taxModal };
+    let rebalanceDetailModal = document.querySelector("[data-smartsave-rebalance-modal]");
+    if (!rebalanceDetailModal) {
+      rebalanceDetailModal = document.createElement("div");
+      rebalanceDetailModal.className = "allocation-details-modal smartsave-rebalance-modal";
+      rebalanceDetailModal.setAttribute("data-smartsave-rebalance-modal", "");
+      rebalanceDetailModal.hidden = true;
+      rebalanceDetailModal.setAttribute("aria-hidden", "true");
+      rebalanceDetailModal.setAttribute("inert", "");
+      rebalanceDetailModal.innerHTML = `
+        <div class="allocation-details-modal__overlay" data-smartsave-rebalance-close></div>
+        <div class="allocation-details-modal__content" role="dialog" aria-modal="true" aria-labelledby="smartsave-rebalance-title">
+          <header class="allocation-details-modal__header">
+            <h2 id="smartsave-rebalance-title" data-smartsave-rebalance-modal-title>Détail du transfert</h2>
+            <button class="allocation-details-modal__close" type="button" data-smartsave-rebalance-close aria-label="Fermer">×</button>
+          </header>
+          <div class="allocation-details-modal__body">
+            <section class="smartsave-rebalance-modal__summary">
+              <p class="smartsave-rebalance-modal__route" data-smartsave-rebalance-modal-route>Compte source → Compte destination</p>
+              <p class="smartsave-rebalance-modal__amount" data-smartsave-rebalance-modal-amount>CHF 0</p>
+            </section>
+            <section class="smartsave-rebalance-modal__mini">
+              <p><span>Depuis</span><strong data-smartsave-rebalance-modal-from>Compte source</strong></p>
+              <p><span>Vers</span><strong data-smartsave-rebalance-modal-to>Compte destination</strong></p>
+            </section>
+            <section class="allocation-details-block">
+              <p class="smartsave-rebalance-modal__why" data-smartsave-rebalance-modal-why></p>
+            </section>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(rebalanceDetailModal);
+    }
+
+    return { setupModal, taxModal, rebalanceDetailModal };
   };
 
   const getLiveAccountBalances = (_activeUser, formData) =>
